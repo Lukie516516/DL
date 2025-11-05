@@ -366,7 +366,7 @@ contract Deal is Initializable, ReentrancyGuard {
         Fees memory f = _computeFees();
         _processFees(f); emit FeesProcessed(aSwapToken, f.aFee, bSwapToken, f.bFee);
 
-        Rewards memory r = _computeRewardsFromFees(f);
+        Rewards memory r = _computeRewards();
         _mintAndRecord(r);
         _refreshMaxPointers();
 
@@ -455,24 +455,23 @@ contract Deal is Initializable, ReentrancyGuard {
     }
 
     /* ========== 奖励（基于“已计提手续费(折 DL) * 比例”） ========== */
-    function _computeRewardsFromFees(Fees memory f) internal returns (Rewards memory r) {
+    function _computeRewards() internal returns (Rewards memory r) {
         if (mintOnFeesNum == 0) return r;
 
         bool hasA = (infoNft != address(0)) && aNftLocked && aNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(aNftId) == a;
         bool hasB = (infoNft != address(0)) && bNftLocked && bNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(bNftId) == b;
-        if (!hasA && !hasB) return r;
+       
+        uint256 fa = _isNoFeeToken(aSwapToken) ? 0 : (aSwapAmount * mintOnFeesNum * 3) / mintOnFeesDen;
+        uint256 fb = _isNoFeeToken(bSwapToken) ? 0 : (bSwapAmount * mintOnFeesNum * 3) / mintOnFeesDen;
 
-        uint256 totalFeeDL =
-            _quoteAggToDL(aSwapToken, aPair, f.aFee) +
-            _quoteAggToDL(bSwapToken, bPair, f.bFee);
-        if (totalFeeDL == 0) return r;
-
-        uint256 totalToMint = (totalFeeDL * mintOnFeesNum) / mintOnFeesDen;
+        uint256 totalToMint =
+            _quoteAggToDL(aSwapToken, aPair, fa) +
+            _quoteAggToDL(bSwapToken, bPair, fb);
         if (totalToMint == 0) return r;
 
         uint256 share = totalToMint / 3;
-        if (hasA) r.toA = share;
-        if (hasB) r.toB = share;
+        r.toA = share;
+        r.toB = share;
 
         uint256 cToken = _selectC(hasA, hasB);
         if (cToken != 0) {
@@ -480,10 +479,6 @@ contract Deal is Initializable, ReentrancyGuard {
             r.cAddr  = IDealInfoNFTView(infoNft).ownerOf(cToken);
             r.toC    = share;
         }
-
-        uint256 used = (hasA ? share : 0) + (hasB ? share : 0) + (r.toC);
-        uint256 rem = (totalToMint > used) ? (totalToMint - used) : 0;
-        if (rem > 0 && hasA) r.toA += rem;
     }
 
     function _selectC(bool hasA, bool hasB) internal view returns (uint256 cToken) {

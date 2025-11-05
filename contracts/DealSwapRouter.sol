@@ -447,90 +447,90 @@ contract DealRouter is ReentrancyGuard {
      * ===================================================== */
 
     // —— 单跳（ERC20） —— //
-    function swapExact1For0(address pair, uint256 amount1In, uint256 minOut0Net, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _execExact1For0(pair, amount1In, msg.sender, to, minOut0Net);
-        emit SwapExact1For0(pair, msg.sender, r.inAmt, r.outAmt, r.outGross, r.feeSide, to);
+    function swapExact1For0(address pair, uint256 amount1In, uint256 minOut0Net, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _execExact1For0(pair, amount1In, msg.sender, msg.sender, minOut0Net);
+        emit SwapExact1For0(pair, msg.sender, r.inAmt, r.outAmt, r.outGross, r.feeSide, msg.sender);
     }
-    function swap1ForExact0Net(address pair, uint256 out0NetTarget, uint256 maxAmount1In, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _exec1ForExact0Net(pair, msg.sender, to, out0NetTarget, maxAmount1In);
-        emit Swap1ForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, to);
+    function swap1ForExact0Net(address pair, uint256 out0NetTarget, uint256 maxAmount1In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _exec1ForExact0Net(pair, msg.sender, msg.sender, out0NetTarget, maxAmount1In);
+        emit Swap1ForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, msg.sender);
     }
-    function swapExact0For1(address pair, uint256 amount0In, uint256 minOut1, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _execExact0For1(pair, amount0In, msg.sender, to, minOut1);
-        emit SwapExact0For1(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, to);
+    function swapExact0For1(address pair, uint256 amount0In, uint256 minOut1, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _execExact0For1(pair, amount0In, msg.sender, msg.sender, minOut1);
+        emit SwapExact0For1(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
     }
-    function swap0ForExact1(address pair, uint256 out1Target, uint256 maxAmount0In, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _exec0ForExact1(pair, msg.sender, to, out1Target, maxAmount0In);
-        emit Swap0ForExact1(pair, msg.sender, r.inAmt, out1Target, r.feeSide, to);
+    function swap0ForExact1(address pair, uint256 out1Target, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _exec0ForExact1(pair, msg.sender, msg.sender, out1Target, maxAmount0In);
+        emit Swap0ForExact1(pair, msg.sender, r.inAmt, out1Target, r.feeSide, msg.sender);
     }
 
     // —— 单跳（ETH/BNB via WNATIVE） —— //
-    function swapExactETHFor0(address pair, uint256 minOut0Net, address to, uint256 deadline) external payable nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
+    function swapExactETHFor0(address pair, uint256 minOut0Net, uint256 deadline) external payable nonReentrant {
+        _deadline(deadline);
         uint256 ethIn = msg.value;
-        ResSingle memory r = _execExactETHFor0(pair, to, ethIn, minOut0Net);
-        emit SwapExactETHFor0(pair, msg.sender, ethIn, r.outAmt, r.outGross, r.feeSide, to);
+        ResSingle memory r = _execExactETHFor0(pair, msg.sender, ethIn, minOut0Net);
+        emit SwapExactETHFor0(pair, msg.sender, ethIn, r.outAmt, r.outGross, r.feeSide, msg.sender);
     }
-    function swapETHForExact0Net(address pair, uint256 out0NetTarget, address to, uint256 deadline) external payable nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
+    function swapETHForExact0Net(address pair, uint256 out0NetTarget, uint256 deadline) external payable nonReentrant {
+        _deadline(deadline);
         uint256 ethMax = msg.value;
-        ResSingle memory r = _execETHForExact0Net(pair, to, out0NetTarget, ethMax);
+        ResSingle memory r = _execETHForExact0Net(pair, msg.sender, out0NetTarget, ethMax);
         if (r.refund > 0) _sendETH(msg.sender, r.refund);
-        emit SwapETHForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, r.refund, to);
+        emit SwapETHForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, r.refund, msg.sender);
     }
-    function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _execExact0ForETH(pair, amount0In, msg.sender, to, minOutETH);
-        emit SwapExact0ForETH(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, to);
+    function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _execExact0ForETH(pair, amount0In, msg.sender, msg.sender, minOutETH);
+        emit SwapExact0ForETH(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
     }
-    function swap0ForExactETH(address pair, uint256 outETHTarget, uint256 maxAmount0In, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResSingle memory r = _exec0ForExactETH(pair, outETHTarget, msg.sender, to, maxAmount0In);
-        emit Swap0ForExactETH(pair, msg.sender, r.inAmt, outETHTarget, r.feeSide, to);
+    function swap0ForExactETH(address pair, uint256 outETHTarget, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResSingle memory r = _exec0ForExactETH(pair, outETHTarget, msg.sender, msg.sender, maxAmount0In);
+        emit Swap0ForExactETH(pair, msg.sender, r.inAmt, outETHTarget, r.feeSide, msg.sender);
     }
 
     // —— 双跳（A ↔ DL ↔ B，ERC20） —— //
-    function swapExact1For1ViaDL(address pairA, address pairB, uint256 amountAIn, uint256 minOutB, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResDouble memory r = _execExact1For1ViaDL(pairA, pairB, msg.sender, to, amountAIn, minOutB);
-        emit SwapExact1For1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, to);
+    function swapExact1For1ViaDL(address pairA, address pairB, uint256 amountAIn, uint256 minOutB, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResDouble memory r = _execExact1For1ViaDL(pairA, pairB, msg.sender, msg.sender, amountAIn, minOutB);
+        emit SwapExact1For1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
-    function swap1ForExact1ViaDL(address pairA, address pairB, uint256 outBTarget, uint256 maxAmountAIn, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResDouble memory r = _exec1ForExact1ViaDL(pairA, pairB, msg.sender, to, outBTarget, maxAmountAIn);
-        emit Swap1ForExact1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, to);
+    function swap1ForExact1ViaDL(address pairA, address pairB, uint256 outBTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResDouble memory r = _exec1ForExact1ViaDL(pairA, pairB, msg.sender, msg.sender, outBTarget, maxAmountAIn);
+        emit Swap1ForExact1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, msg.sender);
     }
 
     // —— 双跳便捷（ETH ↔ DL ↔ ERC20） —— //
-    function swapExactETHFor1ViaDL(address pairWNATIVE, address pairB, uint256 minOutB, address to, uint256 deadline) external payable nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
+    function swapExactETHFor1ViaDL(address pairWNATIVE, address pairB, uint256 minOutB, uint256 deadline) external payable nonReentrant {
+        _deadline(deadline);
         uint256 ethIn = msg.value;
-        ResDouble memory r = _execExactETHFor1ViaDL(pairWNATIVE, pairB, to, ethIn, minOutB);
-        emit SwapExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, to);
+        ResDouble memory r = _execExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, minOutB);
+        emit SwapExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
-    function swap1ForExactETHViaDL(address pairA, address pairWNATIVE, uint256 outETHTarget, uint256 maxAmountAIn, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResDouble memory r = _exec1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, to, outETHTarget, maxAmountAIn);
-        emit Swap1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, outETHTarget, r.feeOutDL, r.feeInDL, r.dlRefund, to);
+    function swap1ForExactETHViaDL(address pairA, address pairWNATIVE, uint256 outETHTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResDouble memory r = _exec1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, outETHTarget, maxAmountAIn);
+        emit Swap1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, outETHTarget, r.feeOutDL, r.feeInDL, r.dlRefund, msg.sender);
     }
 
     // u（A） exact-in -> ETH min-out
-    function swapExact1ForETHViaDL(address pairA, address pairWNATIVE, uint256 amountAIn, uint256 minOutETH, address to, uint256 deadline) external nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
-        ResDouble memory r = _execExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, to, amountAIn, minOutETH);
-        emit SwapExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, to);
+    function swapExact1ForETHViaDL(address pairA, address pairWNATIVE, uint256 amountAIn, uint256 minOutETH, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        ResDouble memory r = _execExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, amountAIn, minOutETH);
+        emit SwapExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
     // ETH max-in -> u exact-out（退回未用 ETH）
-    function swapETHForExact1ViaDL(address pairWNATIVE, address pairB, uint256 outBTarget, address to, uint256 deadline) external payable nonReentrant {
-        _deadline(deadline); require(to != address(0), "ZERO_TO");
+    function swapETHForExact1ViaDL(address pairWNATIVE, address pairB, uint256 outBTarget, uint256 deadline) external payable nonReentrant {
+        _deadline(deadline);
         uint256 ethMax = msg.value;
-        ResDouble memory r = _execETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, to, outBTarget, ethMax);
+        ResDouble memory r = _execETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, msg.sender, outBTarget, ethMax);
         uint256 ethRefund = ethMax - r.inAUsed;
         if (ethRefund > 0) _sendETH(msg.sender, ethRefund);
-        emit SwapETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, ethRefund, to);
+        emit SwapETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, ethRefund, msg.sender);
     }
 }
