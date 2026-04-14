@@ -166,8 +166,8 @@ contract DCDomainHall is ReentrancyGuard {
         uint8 templateType,
         uint256 aSwapAmount,
         uint256 bSwapAmount,
-        uint256 aMarginAmount,
-        uint256 bMarginAmount
+        uint256,
+        uint256
     ) internal pure {
         require(
             templateType == uint8(IDealFactoryForHall.TemplateType.TokenToEmpty) ||
@@ -180,7 +180,6 @@ contract DCDomainHall is ReentrancyGuard {
             require(aSw != bSw, "DCDomainHall: TTE swap");
         } else {
             require(!aSw && !bSw, "DCDomainHall: ETE swap");
-            require(aMarginAmount > 0 && bMarginAmount > 0, "DCDomainHall: ETE margin");
         }
     }
 
