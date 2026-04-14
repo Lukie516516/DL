@@ -123,16 +123,16 @@ async function main() {
   const dealReader = await viem.deployContract("DealReader", [], { client });
   console.log("DealReader", dealReader.address);
 
-  // —— DC domain stack (payment + rank stake = AUSD) ——
-  const dcDomain = await viem.deployContract("DCDomain", [ausd.address, dep], { client });
+  // —— DC domain stack (registration = DL/DC, rank stake = AUSD) ——
+  const dcDomain = await viem.deployContract("DCDomain", [dl.address, dep], { client });
   console.log("DCDomain", dcDomain.address);
 
-  const dcRank = await viem.deployContract("DCDomainRank", [ausd.address, dcDomain.address, dep], { client });
+  const dcRank = await viem.deployContract("DCDomainRank", [dl.address, dcDomain.address, dep], { client });
   console.log("DCDomainRank", dcRank.address);
 
   const dcMarket = await viem.deployContract(
     "DCDomainMarket",
-    [dcDomain.address, ausd.address, dep, 100n],
+    [dcDomain.address, dl.address, dep, 100n],
     { client },
   );
   console.log("DCDomainMarket", dcMarket.address);
@@ -229,7 +229,7 @@ async function main() {
     },
     notes: [
       "Deal: no postMessage/getMessages (EIP-170); use DCDomainHall for hall messaging.",
-      "DCDomain / DCDomainRank use AUSD as payment & stake token; treasury = deployer.",
+      "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
       "DCDomainHall.createDealFor / chargeMessageFeeFrom are not on this DealFactory ABI; hall auto-create paths need a factory upgrade or different entrypoints.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are intentionally not deployed.",
     ],

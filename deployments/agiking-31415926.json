@@ -1,7 +1,7 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-04-14T03:18:36.031Z",
+  "deployedAt": "2026-04-14T07:52:21.489Z",
   "deployer": "0x6807ed8c44ae2a89ddb7706fa22a5b274ecd8785",
   "addresses": {
     "dlToken": "0x39f27267184d3ff8522d5ed209fbf32fc7cbf3bb",
@@ -9,20 +9,20 @@
     "usdt": "0xedc6e1ebc966f19a32ac58b09fe667ba59ec149a",
     "wrappedNative": "0x298d8871bfa6129a74d1ab324f4728794848c5b3",
     "dealLib": "0x38edeb51ef5a502a1c1c6829059edcbdccf3f928",
-    "dealImplementation": "0x7b8487651826ee64f7c4891b7b01e2fa720fb20e",
+    "dealImplementation": "0xff49cfe27ef531e8d6f53a5fa5cb20e5bdcf951f",
     "pairImplementation": "0x6613540b2451ced2dd8a7a48db89ca2c8414b163",
-    "dealFactory": "0x09df6ef14ad89ce87bb83037b5d8b4384216631d",
+    "dealFactory": "0xe6082e05d2c58df23cbb74d1614f3df31fdaec81",
     "dealInfoNFT": "0x00fcc7f1a406ebfe6e5a1077821cc53c6752c789",
     "pairDlAusd": "0xc48b652C9c240FB18aFCf4ADac67471f28fb70e5",
     "pairDlUsdt": "0x8ca50e47b9a142bE5665E35d4697f475eC93C765",
     "dealSwapOrderBook": "0xb43ad4748459d82cf59efb56aca96fdf1d2d82f3",
     "dealRouter": "0x1e957fa8e7cf3e927398f4305b06e7c000101aea",
-    "dealReader": "0x02279c62fb3613e8417af21bfb3f528ebb875e89",
-    "dcDomain": "0xd77a8781108918f650de8536014e297747b39920",
-    "dcDomainRank": "0x9ae5bba9f0ab4613de72b84f5e1df3b5a64c954a",
-    "dcDomainMarket": "0x63f89b5f5c14a6345a9f8999d8eb5371ec4eb020",
-    "dcDomainSwap": "0x08cfb1c8289f790e4ead4d7be9aef2e30f7dc6ea",
-    "dcDomainHall": "0x823741578ec91a05789de35823a3bd0b6ca24c81",
+    "dealReader": "0x814e0ae2df922f32a2bd856908d4bee9fdfbddf1",
+    "dcDomain": "0x74f3295548e4e24caf00554464dbdb1c7de6db7d",
+    "dcDomainRank": "0xf9f0f9e2b601a5dba2c634509fed482ed2d6f386",
+    "dcDomainMarket": "0xf2ee0aa26255790178bdbd321ebfac28bd368920",
+    "dcDomainSwap": "0x7390b576c9b0435164a1ac2ec83c11d21df234c2",
+    "dcDomainHall": "0x38228e26fc58b8eb36a24aa0915ecd07643e424a",
     "dToken": "0x7a4a195bac5ff77af01fc1ce13f1fc5a1770b429",
     "dealTimelock": "0xaad9988a5f6fcb3cf3f0ab8f9730592eb3826468",
     "dealGovernor": "0xc51da2df1f71ad40b5d9560b85ca89a3454e436c",
@@ -11479,7 +11479,7 @@
         "inputs": [
           {
             "internalType": "string",
-            "name": "domainName",
+            "name": "",
             "type": "string"
           }
         ],

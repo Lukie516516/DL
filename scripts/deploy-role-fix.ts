@@ -69,7 +69,7 @@ async function main() {
   console.log("\n--- Deploying DCDomainRank (isMerchant fix) ---");
   const dcRank = await viem.deployContract(
     "DCDomainRank",
-    [EXISTING.ausd, EXISTING.dcDomain, dep],
+    [EXISTING.dlToken, EXISTING.dcDomain, dep],
     { client },
   );
   console.log("DCDomainRank:", dcRank.address);

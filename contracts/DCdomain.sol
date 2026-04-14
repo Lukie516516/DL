@@ -109,12 +109,9 @@ contract DCDomain is ERC721, Ownable {
     // 价格计算
     // ─────────────────────────────────────────────
 
-    /// @notice 计算域名价格
-    /// @param domainName 6位域名字符串
-    /// @return price 所需平台代币数量（18位小数）
-    function getPrice(string memory domainName) public view returns (uint256) {
-        uint256 multiplierBps = _getMultiplierBps(domainName);
-        return (basePrice * multiplierBps) / 100;
+    /// @notice 计算域名价格：当前所有一级注册域名统一 500 DC/DL
+    function getPrice(string memory) public view returns (uint256) {
+        return basePrice;
     }
 
     /// @dev 返回倍数（基数100）：100=1x … 取所有匹配规则中的最高倍数，不叠加。

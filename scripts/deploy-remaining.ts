@@ -127,7 +127,7 @@ async function main() {
     },
     notes: [
       "Deal: no postMessage/getMessages (EIP-170); use DCDomainHall for hall messaging.",
-      "DCDomain / DCDomainRank use AUSD as payment & stake token; treasury = deployer.",
+      "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are not deployed.",
     ],
   };

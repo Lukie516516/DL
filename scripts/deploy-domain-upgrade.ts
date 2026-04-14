@@ -67,7 +67,7 @@ async function main() {
   console.log("\n--- Deploying DCDomainRank ---");
   const dcRank = await viem.deployContract(
     "DCDomainRank",
-    [EXISTING.ausd, EXISTING.dcDomain, dep],
+    [EXISTING.dlToken, EXISTING.dcDomain, dep],
     { client },
   );
   console.log("DCDomainRank:", dcRank.address);
@@ -76,7 +76,7 @@ async function main() {
   console.log("\n--- Deploying DCDomainMarket ---");
   const dcMarket = await viem.deployContract(
     "DCDomainMarket",
-    [EXISTING.dcDomain, EXISTING.ausd, dep, 100n],
+    [EXISTING.dcDomain, EXISTING.dlToken, dep, 100n],
     { client },
   );
   console.log("DCDomainMarket:", dcMarket.address);
