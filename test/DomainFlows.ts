@@ -640,6 +640,11 @@ describe("Domain Flows", async function () {
 
     assert.equal(createEvents.length, 1);
     const dealAddress = createEvents[0].args.deal;
+    const dealAsCarolBeforePick = await viem.getContractAt("Deal", dealAddress, {
+      client: { wallet: carol },
+    });
+
+    await assert.rejects(dealAsCarolBeforePick.write.join([0n, false]), /reverted/);
 
     await waitFor(
       publicClient,
@@ -708,7 +713,7 @@ describe("Domain Flows", async function () {
       toBlock: await publicClient.getBlockNumber(),
       strict: true,
     });
-    assert.ok(factoryEvents.some((event) => getAddress(event.args.deal) === getAddress(dealAddress)));
+    assert.ok(factoryEvents.some((event: (typeof factoryEvents)[number]) => getAddress(event.args.deal) === getAddress(dealAddress)));
   });
 
   it("supports template23 deferred selection and merchant-visitor message threads in DCDomainHall", async function () {
@@ -767,6 +772,11 @@ describe("Domain Flows", async function () {
 
     assert.equal(createEvents.length, 1);
     const dealAddress = createEvents[0].args.deal;
+    const dealAsCarolBeforePick = await viem.getContractAt("Deal", dealAddress, {
+      client: { wallet: carol },
+    });
+
+    await assert.rejects(dealAsCarolBeforePick.write.join([0n, false]), /reverted/);
 
     await waitFor(
       publicClient,
