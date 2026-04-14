@@ -4,12 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "setup:recognized-pairs": "hardhat run scripts/setup-recognized-pairs.ts",
+    "deploy:agiking": "hardhat run scripts/deploy-agiking.ts --network agiking"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/edr-darwin-arm64": "^0.12.0-next.5",
     "@nomicfoundation/hardhat-ignition": "^3.0.2",
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",

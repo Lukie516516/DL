@@ -18,3 +18,15 @@
 
 # Hardhat coverage reports
 /coverage
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Local archives
+*.zip
+
+# Secrets / env files
+.env
+.env.*
+!.env.example

@@ -6,7 +6,11 @@ pragma solidity ^0.8.26;
 interface IDeal {
     function status() external view returns (uint8);
     function joinMode() external view returns (uint8);
+    function templateType() external view returns (uint8);
     function title() external view returns (string memory);
+
+    function isDomainDeal() external view returns (bool);
+    function domainName() external view returns (string memory);
 
     function a() external view returns (address);
     function b() external view returns (address);
@@ -26,16 +30,22 @@ interface IDeal {
     function aAt() external view returns (uint256);
     function bAt() external view returns (uint256);
     function timeoutSeconds() external view returns (uint256);
+    function timeStart() external view returns (uint256);
+    function timeEnd() external view returns (uint256);
 
     function aSwapToken() external view returns (address);
     function aSwapAmount() external view returns (uint256);
     function aMarginToken() external view returns (address);
     function aMarginAmount() external view returns (uint256);
+    function aAssetNft() external view returns (address);
+    function aAssetNftId() external view returns (uint256);
 
     function bSwapToken() external view returns (address);
     function bSwapAmount() external view returns (uint256);
     function bMarginToken() external view returns (address);
     function bMarginAmount() external view returns (uint256);
+    function bAssetNft() external view returns (address);
+    function bAssetNftId() external view returns (uint256);
 }
 
 /// @notice NFT（头像/用户名/积分）接口：名称严格按你给的来（imageOf / username / totalDLMinted）
@@ -62,7 +72,10 @@ contract DealReader {
         address deal;
         uint8 status;
         uint8 joinMode;
+        uint8 templateType;
         string title;
+        bool isDomainDeal;
+        string domainName;
         address a;
         address b;
         uint256 aNftId;
@@ -76,14 +89,20 @@ contract DealReader {
         uint256 aAt;
         uint256 bAt;
         uint256 timeoutSeconds;
+        uint256 timeStart;
+        uint256 timeEnd;
         address aSwapToken;
         uint256 aSwapAmount;
         address aMarginToken;
         uint256 aMarginAmount;
+        address aAssetNft;
+        uint256 aAssetNftId;
         address bSwapToken;
         uint256 bSwapAmount;
         address bMarginToken;
         uint256 bMarginAmount;
+        address bAssetNft;
+        uint256 bAssetNftId;
     }
 
     struct DealInfoSlim {
@@ -91,6 +110,9 @@ contract DealReader {
         address deal;
         uint8 status;
         uint8 joinMode;
+        uint8 templateType;
+        bool isDomainDeal;
+        string domainName;
         address a;
         address b;
         uint256 aNftId;
@@ -104,14 +126,20 @@ contract DealReader {
         uint256 aAt;
         uint256 bAt;
         uint256 timeoutSeconds;
+        uint256 timeStart;
+        uint256 timeEnd;
         address aSwapToken;
         uint256 aSwapAmount;
         address aMarginToken;
         uint256 aMarginAmount;
+        address aAssetNft;
+        uint256 aAssetNftId;
         address bSwapToken;
         uint256 bSwapAmount;
         address bMarginToken;
         uint256 bMarginAmount;
+        address bAssetNft;
+        uint256 bAssetNftId;
     }
 
     /* ------------------------------ 新增：扩展结构 ------------------------------ */
@@ -150,7 +178,10 @@ contract DealReader {
 
         try d.status() returns (uint8 v) { out.status = v; } catch { ok = false; }
         try d.joinMode() returns (uint8 v) { out.joinMode = v; } catch { ok = false; }
+        try d.templateType() returns (uint8 v) { out.templateType = v; } catch { ok = false; }
         try d.title() returns (string memory v) { out.title = v; } catch { ok = false; }
+        try d.isDomainDeal() returns (bool v) { out.isDomainDeal = v; } catch { ok = false; }
+        try d.domainName() returns (string memory v) { out.domainName = v; } catch { ok = false; }
 
         try d.a() returns (address v) { out.a = v; } catch { ok = false; }
         try d.b() returns (address v) { out.b = v; } catch { ok = false; }
@@ -170,16 +201,22 @@ contract DealReader {
         try d.aAt() returns (uint256 v) { out.aAt = v; } catch { ok = false; }
         try d.bAt() returns (uint256 v) { out.bAt = v; } catch { ok = false; }
         try d.timeoutSeconds() returns (uint256 v) { out.timeoutSeconds = v; } catch { ok = false; }
+        try d.timeStart() returns (uint256 v) { out.timeStart = v; } catch { ok = false; }
+        try d.timeEnd() returns (uint256 v) { out.timeEnd = v; } catch { ok = false; }
 
         try d.aSwapToken() returns (address v) { out.aSwapToken = v; } catch { ok = false; }
         try d.aSwapAmount() returns (uint256 v) { out.aSwapAmount = v; } catch { ok = false; }
         try d.aMarginToken() returns (address v) { out.aMarginToken = v; } catch { ok = false; }
         try d.aMarginAmount() returns (uint256 v) { out.aMarginAmount = v; } catch { ok = false; }
+        try d.aAssetNft() returns (address v) { out.aAssetNft = v; } catch { ok = false; }
+        try d.aAssetNftId() returns (uint256 v) { out.aAssetNftId = v; } catch { ok = false; }
 
         try d.bSwapToken() returns (address v) { out.bSwapToken = v; } catch { ok = false; }
         try d.bSwapAmount() returns (uint256 v) { out.bSwapAmount = v; } catch { ok = false; }
         try d.bMarginToken() returns (address v) { out.bMarginToken = v; } catch { ok = false; }
         try d.bMarginAmount() returns (uint256 v) { out.bMarginAmount = v; } catch { ok = false; }
+        try d.bAssetNft() returns (address v) { out.bAssetNft = v; } catch { ok = false; }
+        try d.bAssetNftId() returns (uint256 v) { out.bAssetNftId = v; } catch { ok = false; }
 
         out.ok = ok;
     }
@@ -204,6 +241,9 @@ contract DealReader {
 
             try d.status() returns (uint8 v) { s.status = v; } catch { ok = false; }
             try d.joinMode() returns (uint8 v) { s.joinMode = v; } catch { ok = false; }
+            try d.templateType() returns (uint8 v) { s.templateType = v; } catch { ok = false; }
+            try d.isDomainDeal() returns (bool v) { s.isDomainDeal = v; } catch { ok = false; }
+            try d.domainName() returns (string memory v) { s.domainName = v; } catch { ok = false; }
             try d.a() returns (address v) { s.a = v; } catch { ok = false; }
             try d.b() returns (address v) { s.b = v; } catch { ok = false; }
             try d.aNftId() returns (uint256 v) { s.aNftId = v; } catch { ok = false; }
@@ -217,14 +257,20 @@ contract DealReader {
             try d.aAt() returns (uint256 v) { s.aAt = v; } catch { ok = false; }
             try d.bAt() returns (uint256 v) { s.bAt = v; } catch { ok = false; }
             try d.timeoutSeconds() returns (uint256 v) { s.timeoutSeconds = v; } catch { ok = false; }
+            try d.timeStart() returns (uint256 v) { s.timeStart = v; } catch { ok = false; }
+            try d.timeEnd() returns (uint256 v) { s.timeEnd = v; } catch { ok = false; }
             try d.aSwapToken() returns (address v) { s.aSwapToken = v; } catch { ok = false; }
             try d.aSwapAmount() returns (uint256 v) { s.aSwapAmount = v; } catch { ok = false; }
             try d.aMarginToken() returns (address v) { s.aMarginToken = v; } catch { ok = false; }
             try d.aMarginAmount() returns (uint256 v) { s.aMarginAmount = v; } catch { ok = false; }
+            try d.aAssetNft() returns (address v) { s.aAssetNft = v; } catch { ok = false; }
+            try d.aAssetNftId() returns (uint256 v) { s.aAssetNftId = v; } catch { ok = false; }
             try d.bSwapToken() returns (address v) { s.bSwapToken = v; } catch { ok = false; }
             try d.bSwapAmount() returns (uint256 v) { s.bSwapAmount = v; } catch { ok = false; }
             try d.bMarginToken() returns (address v) { s.bMarginToken = v; } catch { ok = false; }
             try d.bMarginAmount() returns (uint256 v) { s.bMarginAmount = v; } catch { ok = false; }
+            try d.bAssetNft() returns (address v) { s.bAssetNft = v; } catch { ok = false; }
+            try d.bAssetNftId() returns (uint256 v) { s.bAssetNftId = v; } catch { ok = false; }
 
             s.ok = ok;
             out[i] = s;

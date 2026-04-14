@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// ─────────────────────────────────────────────
+// 接口
+// ─────────────────────────────────────────────
+
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
+    function approve(address spender, uint256 value) external returns (bool);
+    function balanceOf(address who) external view returns (uint256);
+}
+
+interface IDCDomain {
+    function resolve(string calldata domainName) external view returns (address);
+}
+
+interface IDCDomainRank {
+    function isActive(string calldata domainName, address playerAddr) external view returns (bool);
+    function isBlacklisted(string calldata domainName, address account) external view returns (bool);
+    function reportDeal(string calldata domainName, address deal, address merchant) external;
+}
+
+interface IDealFactory {
+    /// @dev 与 DealFactory / Deal 的 InitParams 字段顺序一致（含 templateType，见文档 §2）
+    enum TemplateType {
+        TokenToToken,
+        TokenToNft,
+        TokenToEmpty,
+        EmptyToEmpty,
+        NftToEmpty
+    }
+    struct InitParams {
+        address aSwapToken;   uint256 aSwapAmount;
+        address aMarginToken; uint256 aMarginAmount;
+        address bSwapToken;   uint256 bSwapAmount;
+        address bMarginToken; uint256 bMarginAmount;
+        address aAssetNft;
+        uint256 aAssetNftId;
+        address bAssetNft;
+        uint256 bAssetNftId;
+        uint8   templateType; // TemplateType
+        uint8   joinMode;     // 0 Open, 1 ExactAddress, 2 NftGated
+        address expectedB;
+        uint256 gateNftId;
+        uint256 aNftId;
+        string  title;
+        uint64  timeoutSeconds;
+        uint64  timeStart;
+        uint64  timeEnd;
+        bool    isDomainDeal;
+        string  domainName;
+    }
+    struct CreateParams {
+        InitParams init;
+        bool trackCreator;
+    }
+    function createDeal(CreateParams calldata p) external returns (address deal);
+    function createDealFor(address initiator, CreateParams calldata p) external returns (address deal);
+    function chargeMessageFeeFrom(address payer) external;
+}
+
+/**
+ * @title DCDomainSwap
+ * @notice 通过域名在 DealFactory 发起点对点交易（Deal）
+ *         templateType 固定 TokenToToken（§2）
+ *         expectedB = 零地址 → Open 模式（任何人接单）
+ *         expectedB = 具体地址 → ExactAddress（指定对方接单）
+ *         超时固定 3600 秒（1小时）
+ *         部署在 BSC (Chain ID: 56)
+ */
+contract DCDomainSwap {
+
+    // ─────────────────────────────────────────────
+    // 常量 & 状态
+    // ─────────────────────────────────────────────
+
+    address public FACTORY;
+    uint64  public constant TIMEOUT = 3600;
+    IDCDomain     public immutable dcDomain;
+    IDCDomainRank public immutable dcRank;
+
+    // ─────────────────────────────────────────────
+    // 事件
+    // ─────────────────────────────────────────────
+
+    event DealCreated(
+        address indexed creator,
+        string  domain,
+        address indexed deal,
+        address aSwapToken,
+        uint256 aSwapAmount,
+        address bSwapToken,
+        uint256 bSwapAmount,
+        uint8   templateType,  // 本入口固定 0 = TokenToToken
+        uint8   joinMode,      // 0=Open 1=ExactAddress
+        address expectedB
+    );
+
+    // ─────────────────────────────────────────────
+    // 构造函数
+    // ─────────────────────────────────────────────
+
+    constructor(address _dcDomain, address _dcRank, address _factory) {
+        require(_dcDomain != address(0), "ZERO_DOMAIN");
+        require(_dcRank   != address(0), "ZERO_RANK");
+        require(_factory  != address(0), "ZERO_FACTORY");
+        dcDomain = IDCDomain(_dcDomain);
+        dcRank   = IDCDomainRank(_dcRank);
+        FACTORY  = _factory;
+    }//填入DCdomain、DCDomainRank、Factory的地址
+
+    // ─────────────────────────────────────────────
+    // 内部工具
+    // ─────────────────────────────────────────────
+
+    function _resolveDomain(string memory domainName) internal view returns (address) {
+        address resolved = dcDomain.resolve(domainName);
+        require(resolved != address(0), "DCDomainSwap: domain not bound");
+        return resolved;
+    }//检查域名是否存在
+
+    // ─────────────────────────────────────────────
+    // 核心：发起 Deal
+    // ─────────────────────────────────────────────
+
+    /**
+     * @notice 发起交易
+     * @param domainName  域名（必须已在 DCDomainRank 充值）
+     * @param aSwapToken  我出的代币地址（address(0) = BNB）
+     * @param aSwapAmount 我出的数量
+     * @param bSwapToken  我要的代币地址（address(0) = BNB）
+     * @param bSwapAmount 我要的数量
+     * @param expectedB   对方钱包地址（零地址 = 任何人都可接单）
+     */
+
+     //我们的合约只提出这个交易 bsc链上0x6382Cd4693a9091277794BfD07c6BE658Fc04974 实现交易 
+    function createDeal(
+        string  calldata domainName,
+        address aSwapToken,
+        uint256 aSwapAmount,
+        address bSwapToken,
+        uint256 bSwapAmount,
+        string  calldata title,
+        address expectedB
+    ) external returns (address deal) {
+        // 检查域名存在
+        _resolveDomain(domainName);
+
+        // 检查发起人是否在域名内活跃
+        require(
+            dcRank.isActive(domainName, msg.sender),
+            "DCDomainSwap: not active in domain"
+        );
+
+        uint8 joinMode = expectedB == address(0) ? 0 : 1; // Open / ExactAddress
+
+        IDealFactory.InitParams memory init = IDealFactory.InitParams({
+            aSwapToken:     aSwapToken,
+            aSwapAmount:    aSwapAmount,
+            aMarginToken:   address(0),
+            aMarginAmount:  0,
+            bSwapToken:     bSwapToken,
+            bSwapAmount:    bSwapAmount,
+            bMarginToken:   address(0),
+            bMarginAmount:  0,
+            aAssetNft:      address(0),
+            aAssetNftId:    0,
+            bAssetNft:      address(0),
+            bAssetNftId:    0,
+            templateType:   uint8(IDealFactory.TemplateType.TokenToToken),
+            joinMode:       joinMode,
+            expectedB:      expectedB,
+            gateNftId:      0,
+            aNftId:         0,
+            title:                    title,
+            timeoutSeconds:           TIMEOUT,
+            timeStart:                0,
+            timeEnd:                  0,
+            isDomainDeal:             true,
+            domainName:               domainName
+        });
+
+        deal = IDealFactory(FACTORY).createDealFor(
+            msg.sender,
+            IDealFactory.CreateParams({ init: init, trackCreator: true })
+        );
+
+        dcRank.reportDeal(domainName, deal, msg.sender);
+
+        emit DealCreated(
+            msg.sender,
+            domainName,
+            deal,
+            aSwapToken,
+            aSwapAmount,
+            bSwapToken,
+            bSwapAmount,
+            uint8(IDealFactory.TemplateType.TokenToToken),
+            joinMode,
+            expectedB
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // 查询
+    // ─────────────────────────────────────────────
+
+    /**
+     * @notice 查询域名是否已绑定（前端可调用）
+     */
+    function isDomainBound(string calldata domainName) external view returns (bool) {
+        return dcDomain.resolve(domainName) != address(0);
+    }
+}

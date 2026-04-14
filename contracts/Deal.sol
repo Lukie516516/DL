@@ -3,11 +3,14 @@ pragma solidity ^0.8.26;
 
 import {IERC20}            from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721}           from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Receiver}   from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {SafeERC20}         from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable}     from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuard}   from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard}   from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {DealLib}           from "./utils/DealLib.sol";
 
 /* ---------- 工厂侧接口（最小化） ---------- */
+interface IFactoryAuth   { function isAllowedCreateFor(address) external view returns (bool); }
 interface IFactoryMinter { function mintDL(address to, uint256 amount) external; }
 interface IFactoryTwap   { function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut); }
 interface IFactoryIndex {
@@ -31,6 +34,7 @@ interface IFactoryLock {
 }
 
 interface IWNATIVE is IERC20 { function deposit() external payable; function withdraw(uint256) external; }
+interface IDLBurn { function burn(uint256 amount) external; }
 interface IDLBurnFrom { function burnFrom(address account, uint256 amount) external; }
 
 /* ---------- DealInfoNFT（只读） ---------- */
@@ -38,16 +42,20 @@ interface IDealInfoNFTView {
     function totalMintedOf(uint256 tokenId) external view returns (uint256);
     function ownerOf(uint256 tokenId) external view returns (address);
     function maxPartnerOf(uint256 tokenId) external view returns (uint256);
+    function isLocked(uint256 tokenId) external view returns (bool);
 }
 
 /* ========================================================== */
-contract Deal is Initializable, ReentrancyGuard {
+contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
+
+    error DealError(uint16 code);
 
     address public constant NATIVE = address(0);
 
     enum Status { Ready, Active, Locked, Completed, Canceled, Abandoned }
-    enum JoinMode { Open, ExactAddress, NftGated }
+    enum JoinMode { Open, ExactAddress, NftGated, ExactAddressAndNftGated }
+    enum TemplateType { TokenToToken, TokenToNft, TokenToEmpty, EmptyToEmpty, NftToEmpty }
     enum Vote { Unset, Accept, Reject }
     enum CompletionReason { BothAccepted, ForcedByA, ForcedByB }
 
@@ -57,8 +65,14 @@ contract Deal is Initializable, ReentrancyGuard {
     address public a;
     address public b;
 
+    /// @notice 是否经域名入口创建（DCDomainSwap / DCDomainHall）
+    bool    public isDomainDeal;
+    /// @notice 域名 6 位标签（不含 @DC）；普通合约为空串
+    string  public domainName;
+
     Status   public status;
     JoinMode public joinMode;
+    TemplateType public templateType;
     address  public expectedB;
 
     // 门禁 & NFT（仅锁引用）
@@ -67,6 +81,14 @@ contract Deal is Initializable, ReentrancyGuard {
     uint256 public bNftId;
     bool    public aNftLocked;
     bool    public bNftLocked;
+
+    // 商品 NFT（真实交割）
+    address public aAssetNft;
+    uint256 public aAssetNftId;
+    address public bAssetNft;
+    uint256 public bAssetNftId;
+    bool    public aAssetNftDeposited;
+    bool    public bAssetNftDeposited;
 
     // 置换 & 保证金
     address public aSwapToken;   uint256 public aSwapAmount;
@@ -80,6 +102,8 @@ contract Deal is Initializable, ReentrancyGuard {
     // 锁定/投票/超时
     uint64 public lockedAt;
     uint64 public timeoutSeconds;
+    uint64 public timeStart;
+    uint64 public timeEnd;
     uint64 public aAt; uint64 public bAt;
     Vote   public aVote;     Vote   public bVote;
 
@@ -95,6 +119,8 @@ contract Deal is Initializable, ReentrancyGuard {
     address public infoNft;
     address public treasury;
     address public WNATIVE;
+    address public recognizedToken0;
+    address public recognizedToken1;
     address public aTokenNorm; address public bTokenNorm;
     address public aPair;      address public bPair;
 
@@ -112,7 +138,7 @@ contract Deal is Initializable, ReentrancyGuard {
     address public msgPricePair;
     uint256 public msgPriceAmountInToken;
 
-    /* ===== 留言存储 ===== */
+    /* ===== 链上聊天存储 ===== */
     string[]  private _msgContents;
     uint64[]  private _msgTimes;
     address[] private _msgSenders;
@@ -126,13 +152,18 @@ contract Deal is Initializable, ReentrancyGuard {
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
     event FeesProcessed(address indexed tokenA, uint256 aFee, address indexed tokenB, uint256 bFee);
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address indexed cAddr, uint256 toC);
+    event AssetNftDeposited(address indexed owner, uint256 indexed tokenId);
+    event AssetNftReleased(address indexed to, uint256 indexed tokenId);
+    event MessagePosted(address indexed sender, uint256 indexed index);
+    event MessageFeeCharged(address indexed sender, uint256 dlBurned);
 
-    event MessagePosted(address indexed from, uint256 indexed idx, uint64 ts, string content);
-    event MessageFeeCharged(address indexed from, uint256 dlBurned, address indexed tokenNorm, uint256 tokenAmount);
+    modifier onlyA()  { _check(msg.sender == a, 1); _; }
+    modifier onlyAB() { _check(msg.sender == a || msg.sender == b, 2); _; }
+    modifier inState(Status s) { _check(status == s, 3); _; }
 
-    modifier onlyA()  { require(msg.sender == a, "ONLY_A"); _; }
-    modifier onlyAB() { require(msg.sender == a || msg.sender == b, "ONLY_AB"); _; }
-    modifier inState(Status s) { require(status == s, "BAD_STATE"); _; }
+    function _check(bool ok, uint16 code) internal pure {
+        if (!ok) revert DealError(code);
+    }
 
     /* ------------ 初始化 ------------ */
     struct InitParams {
@@ -140,13 +171,22 @@ contract Deal is Initializable, ReentrancyGuard {
         address aMarginToken; uint256 aMarginAmount;
         address bSwapToken;   uint256 bSwapAmount;
         address bMarginToken; uint256 bMarginAmount;
+        address aAssetNft;
+        uint256 aAssetNftId;
+        address bAssetNft;
+        uint256 bAssetNftId;
+        uint8   templateType;
         uint8   joinMode;     address expectedB;
         uint256 gateNftId;
         uint256 aNftId;
         string  title;        uint64  timeoutSeconds;
+        uint64  timeStart;    uint64  timeEnd;
+        bool    isDomainDeal;
+        string  domainName;
     }
     struct ConfigParams {
         address dl;           address infoNft;     address treasury; address WNATIVE;
+        address recognizedToken0; address recognizedToken1;
         address aTokenNorm;   address bTokenNorm;  address aPair;    address bPair;
         uint32  feeNonDLNum;  uint32 feeNonDLDen;
         uint32  mintOnFeesNum; uint32 mintOnFeesDen;
@@ -158,16 +198,18 @@ contract Deal is Initializable, ReentrancyGuard {
     function initialize(address _factory, address _initiator, InitParams calldata p, ConfigParams calldata c)
         external initializer
     {
-        require(_factory != address(0) && _initiator != address(0), "ZERO");
-        require(p.timeoutSeconds > 0, "TIMEOUT");
-        require(c.dl != address(0) && c.WNATIVE != address(0), "DL/WNATIVE");
+        _check(_factory != address(0) && _initiator != address(0), 4);
+        _check(p.timeoutSeconds > 0, 5);
+        _check(c.dl != address(0) && c.WNATIVE != address(0), 6);
+        _check(c.treasury != address(0), 53);
 
         factory = _factory; a = _initiator;
         dl=c.dl; infoNft=c.infoNft; treasury=c.treasury; WNATIVE=c.WNATIVE;
+        recognizedToken0 = c.recognizedToken0; recognizedToken1 = c.recognizedToken1;
         aTokenNorm=c.aTokenNorm; bTokenNorm=c.bTokenNorm; aPair=c.aPair; bPair=c.bPair;
         feeNonDLNum=c.feeNonDLNum; feeNonDLDen=c.feeNonDLDen; mintOnFeesNum=c.mintOnFeesNum; mintOnFeesDen=c.mintOnFeesDen;
-        require(feeNonDLDen>0 && feeNonDLNum<feeNonDLDen, "FEE_RATIO");
-        require(mintOnFeesDen>0 && mintOnFeesNum<mintOnFeesDen, "MINT_RATIO");
+        _check(feeNonDLDen>0 && feeNonDLNum<feeNonDLDen, 7);
+        _check(mintOnFeesDen>0 && mintOnFeesNum<mintOnFeesDen, 8);
         specialNoFeeToken=c.specialNoFeeToken;
 
         msgPriceEnabled=c.msgPriceEnabled; msgPriceTokenNorm=c.msgPriceTokenNorm;
@@ -175,16 +217,38 @@ contract Deal is Initializable, ReentrancyGuard {
 
         aSwapToken=p.aSwapToken; aSwapAmount=p.aSwapAmount; aMarginToken=p.aMarginToken; aMarginAmount=p.aMarginAmount;
         bSwapToken=p.bSwapToken; bSwapAmount=p.bSwapAmount; bMarginToken=p.bMarginToken; bMarginAmount=p.bMarginAmount;
+        aAssetNft=p.aAssetNft; aAssetNftId=p.aAssetNftId;
+        bAssetNft=p.bAssetNft; bAssetNftId=p.bAssetNftId;
 
-        require(p.joinMode <= uint8(JoinMode.NftGated), "JOIN_MODE");
+        _check(p.templateType <= uint8(TemplateType.NftToEmpty), 9);
+        _check(p.joinMode <= uint8(JoinMode.ExactAddressAndNftGated), 10);
+        templateType = TemplateType(p.templateType);
         joinMode  = JoinMode(p.joinMode);
         expectedB = p.expectedB;
+        if (joinMode == JoinMode.ExactAddress || joinMode == JoinMode.ExactAddressAndNftGated) {
+            _check(expectedB != address(0), 11);
+        }
 
         gateNftId = p.gateNftId;
+        if (joinMode == JoinMode.NftGated || joinMode == JoinMode.ExactAddressAndNftGated) {
+            _check(gateNftId != 0, 12);
+        }
         aNftId    = p.aNftId;
         bNftId    = 0;
 
+        _assertAssetNftAllowedForA();
+
         title=p.title; timeoutSeconds=p.timeoutSeconds;
+        timeStart = p.timeStart; timeEnd = p.timeEnd;
+        if (timeStart != 0 || timeEnd != 0) _check(timeEnd > timeStart, 13);
+
+        isDomainDeal = p.isDomainDeal;
+        domainName = p.domainName;
+        if (p.isDomainDeal) {
+            _check(bytes(p.domainName).length > 0 && bytes(p.domainName).length <= 64, 54);
+        } else {
+            _check(bytes(p.domainName).length == 0, 55);
+        }
 
         status = Status.Ready;
 
@@ -192,41 +256,12 @@ contract Deal is Initializable, ReentrancyGuard {
 
         address aNorm = (aSwapToken == NATIVE) ? WNATIVE : aSwapToken;
         address bNorm = (bSwapToken == NATIVE) ? WNATIVE : bSwapToken;
-        require(aNorm == aTokenNorm && bNorm == bTokenNorm, "TOKEN_NORM_MISMATCH");
+        _check(aNorm == aTokenNorm && bNorm == bTokenNorm, 14);
 
         _trackA = c.trackCreator;
         if (_trackA) IFactoryIndex(factory).onCreated(a, true);
 
         emit Initialized(a, factory);
-    }
-
-    /* ======================= 留言 ======================= */
-    function postMessage(string calldata content) external nonReentrant onlyAB returns (uint256 idx) {
-        require(bytes(content).length > 0, "EMPTY");
-        _chargeMessageFee(msg.sender);
-        uint64 ts = uint64(block.timestamp);
-        _msgContents.push(content); _msgTimes.push(ts); _msgSenders.push(msg.sender);
-        idx = _msgContents.length - 1;
-        emit MessagePosted(msg.sender, idx, ts, content);
-    }
-    function getMessages(uint256 offset, uint256 limit)
-        external view returns (string[] memory contents, uint64[] memory times, address[] memory senders)
-    {
-        uint256 len = _msgContents.length;
-        if (offset >= len) return (new string[](0), new uint64[](0), new address[](0));
-        uint256 end = offset + limit; if (end > len) end = len; uint256 n = end - offset;
-        contents = new string[](n); times = new uint64[](n); senders = new address[](n);
-        for (uint256 i=0; i<n; ++i) { contents[i]=_msgContents[offset+i]; times[i]=_msgTimes[offset+i]; senders[i]=_msgSenders[offset+i]; }
-    }
-    function messagesCount() external view returns (uint256) { return _msgContents.length; }
-
-    function _chargeMessageFee(address payer) internal {
-        if (!msgPriceEnabled || msgPriceAmountInToken == 0) return;
-        uint256 dlNeed = (msgPriceTokenNorm == dl)
-            ? msgPriceAmountInToken
-            : _quoteAggToDL(msgPriceTokenNorm, msgPricePair, msgPriceAmountInToken);
-        if (dlNeed > 0) IDLBurnFrom(dl).burnFrom(payer, dlNeed);
-        emit MessageFeeCharged(payer, dlNeed, msgPriceTokenNorm, msgPriceAmountInToken);
     }
 
     /* ========== A：改四数 / 废弃 ========== */
@@ -235,7 +270,7 @@ contract Deal is Initializable, ReentrancyGuard {
     { aSwapAmount=_aSwapAmount; aMarginAmount=_aMarginAmount; bSwapAmount=_bSwapAmount; bMarginAmount=_bMarginAmount; }
 
     function abandonByA() external nonReentrant onlyA {
-        require(status == Status.Ready || status == Status.Active);
+        _check(status == Status.Ready || status == Status.Active, 16);
         address prevB = b;
 
         _refundAllToParties();
@@ -252,64 +287,82 @@ contract Deal is Initializable, ReentrancyGuard {
         status = Status.Abandoned;
     }
 
+    /* ========== A 或授权合约：指定 B（供 DCDomainHall 等调用） ========== */
+    function openJoinFor(address chosenB) external inState(Status.Ready) {
+        _check(
+            msg.sender == a || IFactoryAuth(factory).isAllowedCreateFor(msg.sender),
+            15
+        );
+        _check(b == address(0), 17);
+        _check(chosenB != address(0) && chosenB != a, 18);
+        expectedB = chosenB;
+        joinMode  = JoinMode.ExactAddress;
+    }
+
     /* ========== B：进入 ========== */
     function join(uint256 optId, bool trackMe) external nonReentrant inState(Status.Ready) {
-        require(b == address(0));
-        require(a != msg.sender, "is a");
-        if (joinMode == JoinMode.NftGated) {
-            require(gateNftId != 0, "GATE_ID_0");
-            require(IERC721(infoNft).ownerOf(gateNftId) == msg.sender, "not nft owner");
+        _check(b == address(0), 17);
+        _check(a != msg.sender, 18);
+        if (joinMode == JoinMode.NftGated || joinMode == JoinMode.ExactAddressAndNftGated) {
+            if (joinMode == JoinMode.ExactAddressAndNftGated) _check(msg.sender == expectedB, 19);
+            _check(IERC721(infoNft).ownerOf(gateNftId) == msg.sender, 20);
             b = msg.sender; bNftId = gateNftId;
         } else {
-            if (joinMode == JoinMode.ExactAddress) require(msg.sender == expectedB, "not expectedB");
+            if (joinMode == JoinMode.ExactAddress) _check(msg.sender == expectedB, 21);
             b = msg.sender;
             if (optId > 0) {
-                require(IERC721(infoNft).ownerOf(optId) == msg.sender, "not nft owner");
+                _check(IERC721(infoNft).ownerOf(optId) == msg.sender, 22);
                 bNftId = optId;
             }
         }
 
+        _assertAssetNftAllowedForB();
+
         _lockNftForBIfAny();
-        
+
         _trackBActive = trackMe;
-        if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         status = Status.Active;
         emit Joined(b, bNftLocked);
+        if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         _tryLock();
     }
 
     /* ========== Active：支付 / 撤回 / 退出 / 踢人 ========== */
     function pay() external payable nonReentrant inState(Status.Active) onlyAB {
         if (msg.sender == a) {
-            require(!aPaid);
-            require(msg.value == nativeRequiredForA(), "NATIVE_NEQ_A");
+            _check(!aPaid, 23);
+            _check(msg.value == nativeRequiredForA(), 24);
             if (aSwapToken   != NATIVE) _pullExactERC20(IERC20(aSwapToken), aSwapAmount, msg.sender);
             if (aMarginToken != NATIVE) _pullExactERC20(IERC20(aMarginToken), aMarginAmount, msg.sender);
-            if (aSwapAmount > 0 || aMarginAmount > 0) aPaid = true;
+            _pullAssetNftForA();
+            if (_sideNeedsPayA()) aPaid = true;
         } else {
-            require(b != address(0) && !bPaid);
-            require(msg.value == nativeRequiredForB(), "NATIVE_NEQ_B");
+            _check(b != address(0) && !bPaid, 25);
+            _check(msg.value == nativeRequiredForB(), 26);
             if (bSwapToken   != NATIVE) _pullExactERC20(IERC20(bSwapToken), bSwapAmount, msg.sender);
             if (bMarginToken != NATIVE) _pullExactERC20(IERC20(bMarginToken), bMarginAmount, msg.sender);
-            if (bSwapAmount > 0 || bMarginAmount > 0) bPaid = true;
+            _pullAssetNftForB();
+            if (_sideNeedsPayB()) bPaid = true;
         }
         _tryLock();
     }
 
     function withdrawInActive() external nonReentrant inState(Status.Active) onlyAB {
         if (msg.sender == a) {
-            require(aPaid); aPaid = false;
+            _check(aPaid, 27); aPaid = false;
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
+            _sendOutAssetNftToA();
         } else {
-            require(bPaid); bPaid = false;
+            _check(bPaid, 28); bPaid = false;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
+            _sendOutAssetNftToB();
         }
     }
 
     function exitByB() external nonReentrant inState(Status.Active) {
-        require(msg.sender == b);
+        _check(msg.sender == b, 29);
         address prevB = b;
         _refundFundsA(); _refundFundsB();
         _unlockNftIfLocked(false);
@@ -329,7 +382,7 @@ contract Deal is Initializable, ReentrancyGuard {
 
     /* ========== Locked：投票 / 强制完成 / 取消 ========== */
     function setMyVote(Vote v) external nonReentrant inState(Status.Locked) onlyAB {
-        require(v == Vote.Accept || v == Vote.Reject, "V_UNSET");
+        _check(v == Vote.Accept || v == Vote.Reject, 30);
         if (msg.sender == a) { aVote = v; aAt = uint64(block.timestamp); }
         else { bVote = v; bAt = uint64(block.timestamp); }
 
@@ -339,14 +392,14 @@ contract Deal is Initializable, ReentrancyGuard {
 
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {
         if (msg.sender == a && bVote == Vote.Unset) {
-            require(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), "A_NOT_TIMEOUT");
+            _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
                 _complete(CompletionReason.ForcedByA); return;
             } else if (aVote == Vote.Reject) {
                 _cancel(); return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
-            require(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), "B_NOT_TIMEOUT");
+            _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
                 _complete(CompletionReason.ForcedByB); return;
             } else if (bVote == Vote.Reject) {
@@ -354,15 +407,17 @@ contract Deal is Initializable, ReentrancyGuard {
             }
         } 
         
-        revert("BAD_FORCE");
+        revert DealError(33);
     }
 
     /* ========== 完成 / 取消（自动结算） ========== */
     struct Fees    { uint256 aFee; uint256 bFee; }
     struct Rewards { uint256 toA;  uint256 toB;  uint256 toC; address cAddr; uint256 cToken; }
 
-    // 完成：当场派发 & 清理
+    // 完成：当场派发 & 清理（先置终态，符合 CEI，降低重入窗口）
     function _complete(CompletionReason reason) internal {
+        status = Status.Completed;
+
         Fees memory f = _computeFees();
         _processFees(f); emit FeesProcessed(aSwapToken, f.aFee, bSwapToken, f.bFee);
 
@@ -377,11 +432,13 @@ contract Deal is Initializable, ReentrancyGuard {
         // === 结算派发（完成态） ===
         _sendOut(bSwapToken, a, bSwapNetForA);
         _sendOut(aMarginToken, a, aMarginAmount);
+        _settleAssetNftToA();
 
         emit Claimed(a, bSwapToken, bSwapNetForA, aMarginToken, aMarginAmount);
 
         _sendOut(aSwapToken, b, aSwapNetForB);
         _sendOut(bMarginToken, b, bMarginAmount);
+        _settleAssetNftToB();
 
         emit Claimed(b, aSwapToken, aSwapNetForB, bMarginToken, bMarginAmount);
 
@@ -395,22 +452,25 @@ contract Deal is Initializable, ReentrancyGuard {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        status = Status.Completed;
         emit Completed(reason);
     }
 
-    // 取消：当场退款 & 清理
+    // 取消：当场退款 & 清理（先置终态，符合 CEI，降低重入窗口）
     function _cancel() internal {
+        status = Status.Canceled;
+
         if (aPaid) {
             aPaid = false; aClaimed = true;
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
+            _sendOutAssetNftToA();
             emit Claimed(a, aSwapToken, aSwapAmount, aMarginToken, aMarginAmount);
         }
         if (bPaid) {
             bPaid = false; bClaimed = true;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
+            _sendOutAssetNftToB();
             emit Claimed(b, bSwapToken, bSwapAmount, bMarginToken, bMarginAmount);
         }
 
@@ -420,124 +480,113 @@ contract Deal is Initializable, ReentrancyGuard {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        status = Status.Canceled;
         emit Canceled();
     }
 
     /* ========== 手续费 & 入池 ========== */
-    function _isNoFeeToken(address token) internal view returns (bool) {
-        address tNorm = (token == NATIVE) ? WNATIVE : token;
-        if (tNorm == dl) return true;
-        if (specialNoFeeToken != address(0) && tNorm == specialNoFeeToken) return true;
-        return false;
-    }
     function _computeFees() internal returns (Fees memory f) {
-        f.aFee = _isNoFeeToken(aSwapToken) ? 0 : (aSwapAmount * feeNonDLNum) / feeNonDLDen;
-        f.bFee = _isNoFeeToken(bSwapToken) ? 0 : (bSwapAmount * feeNonDLNum) / feeNonDLDen;
-        aSwapNetForB = aSwapAmount - f.aFee;
-        bSwapNetForA = bSwapAmount - f.bFee;
+        (f.aFee, f.bFee, aSwapNetForB, bSwapNetForA) = DealLib.computeSwapFeesAndNets(
+            aSwapAmount,
+            aTokenNorm,
+            bSwapAmount,
+            bTokenNorm,
+            dl,
+            feeNonDLNum,
+            feeNonDLDen
+        );
     }
     function _processFees(Fees memory f) internal {
+        if (aSwapAmount > 0 && aTokenNorm == dl && bSwapAmount > 0 && bTokenNorm == dl) {
+            _handleDlToDlFees(f.aFee + f.bFee);
+            return;
+        }
         _handleOneSideFees(aSwapToken, aTokenNorm, aPair, f.aFee);
         _handleOneSideFees(bSwapToken, bTokenNorm, bPair, f.bFee);
     }
-    function _handleOneSideFees(address token, address tokenNorm, address pair, uint256 fee) internal {
+    function _handleDlToDlFees(uint256 fee) internal {
         if (fee == 0) return;
-        if (pair != address(0)) {
-            if (token == NATIVE) { IWNATIVE(WNATIVE).deposit{value: fee}(); IERC20(WNATIVE).safeTransfer(pair, fee); }
-            else { IERC20(tokenNorm).safeTransfer(pair, fee); }
-            (bool ok, bytes memory data) = pair.call(abi.encodeWithSignature("mintOtherOnly()"));
-            require(ok && (data.length == 32 || data.length == 0), "PAIR_MINT_FAIL");
+        (uint256 cToken, address cAddr) = _resolveCRewardTarget();
+        if (cToken != 0 && cAddr != address(0)) {
+            IERC20(dl).safeTransfer(cAddr, fee);
         } else {
-            if (token == NATIVE) { (bool ok2, ) = payable(treasury).call{value: fee}(""); require(ok2); }
-            else IERC20(tokenNorm).safeTransfer(treasury, fee);
+            IDLBurn(dl).burn(fee);
         }
     }
+    function _handleOneSideFees(address token, address tokenNorm, address pair, uint256 fee) internal {
+        if (fee == 0) return;
+        if (
+            DealLib.isRecognizedToken(tokenNorm, WNATIVE, recognizedToken0, recognizedToken1)
+                && pair != address(0)
+        ) {
+            if (token == NATIVE) {
+                IWNATIVE(WNATIVE).deposit{value: fee}();
+                IERC20(WNATIVE).safeTransfer(pair, fee);
+            } else {
+                IERC20(tokenNorm).safeTransfer(pair, fee);
+            }
+            (bool okPair, bytes memory data) = pair.call(abi.encodeWithSignature("mintOtherOnly()"));
+            _check(okPair && (data.length == 32 || data.length == 0), 34);
+            return;
+        }
+        // treasury 在 initialize 中已校验非零；此处为防御性断言
+        _check(treasury != address(0), 53);
+        if (token == NATIVE) { (bool ok, ) = payable(treasury).call{value: fee}(""); _check(ok, 35); }
+        else IERC20(tokenNorm).safeTransfer(treasury, fee);
+    }
 
-    /* ========== 奖励（基于“已计提手续费(折 DL) * 比例”） ========== */
+    /* ========== 奖励（按认可币交易额返 DL） ========== */
     function _computeRewards() internal returns (Rewards memory r) {
         if (mintOnFeesNum == 0) return r;
 
-        bool hasA = (infoNft != address(0)) && aNftLocked && aNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(aNftId) == a;
-        bool hasB = (infoNft != address(0)) && bNftLocked && bNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(bNftId) == b;
-       
-        uint256 fa = _isNoFeeToken(aSwapToken) ? 0 : (aSwapAmount * mintOnFeesNum * 3) / mintOnFeesDen;
-        uint256 fb = _isNoFeeToken(bSwapToken) ? 0 : (bSwapAmount * mintOnFeesNum * 3) / mintOnFeesDen;
+        bool aHasSwap = aSwapAmount > 0;
+        bool bHasSwap = bSwapAmount > 0;
 
-        uint256 totalToMint =
-            _quoteAggToDL(aSwapToken, aPair, fa) +
-            _quoteAggToDL(bSwapToken, bPair, fb);
-        if (totalToMint == 0) return r;
+        if (
+            (aHasSwap
+                && !DealLib.isRecognizedOrDL(
+                    aTokenNorm, dl, WNATIVE, recognizedToken0, recognizedToken1
+                ))
+                || (bHasSwap
+                    && !DealLib.isRecognizedOrDL(
+                        bTokenNorm, dl, WNATIVE, recognizedToken0, recognizedToken1
+                    ))
+        ) {
+            return r;
+        }
 
-        uint256 share = totalToMint / 3;
-        r.toA = share;
-        r.toB = share;
+        if (aHasSwap && aTokenNorm == dl && bHasSwap && bTokenNorm == dl) {
+            return r;
+        }
 
-        uint256 cToken = _selectC(hasA, hasB);
+        (uint256 cToken, address cAddr) = _resolveCRewardTarget();
+        uint256 perRole =
+            _rewardFromRecognizedSide(aSwapToken, aTokenNorm, aPair, aSwapAmount) +
+            _rewardFromRecognizedSide(bSwapToken, bTokenNorm, bPair, bSwapAmount);
+        if (perRole == 0) return r;
+
+        r.toA = perRole;
+        r.toB = perRole;
         if (cToken != 0) {
             r.cToken = cToken;
-            r.cAddr  = IDealInfoNFTView(infoNft).ownerOf(cToken);
-            r.toC    = share;
+            r.cAddr  = cAddr;
+            r.toC    = perRole;
         }
     }
 
-    function _selectC(bool hasA, bool hasB) internal view returns (uint256 cToken) {
-        IDealInfoNFTView inf = IDealInfoNFTView(infoNft);
-
-        if (hasA && hasB) {
-            uint256 maxA = inf.maxPartnerOf(aNftId);
-            uint256 maxB = inf.maxPartnerOf(bNftId);
-
-            uint256 sA  = inf.totalMintedOf(aNftId);
-            uint256 sB  = inf.totalMintedOf(bNftId);
-            uint256 sMA = inf.totalMintedOf(maxA);
-            uint256 sMB = inf.totalMintedOf(maxB);
-
-            (uint256 win4, bool unique4) = _uniqueMax4(aNftId, sA, bNftId, sB, maxA, sMA, maxB, sMB);
-            if (unique4) return win4;
-            if (sA == sB && sA == sMA && sA == sMB) return aNftId;
-            return 0;
-        }
-
-        if (hasA) {
-            uint256 maxA = inf.maxPartnerOf(aNftId);
-            uint256 sA   = inf.totalMintedOf(aNftId);
-            uint256 sMA  = inf.totalMintedOf(maxA);
-            return (sMA > sA) ? maxA : aNftId;
-        }
-
-        if (hasB) {
-            uint256 maxB = inf.maxPartnerOf(bNftId);
-            uint256 sB   = inf.totalMintedOf(bNftId);
-            uint256 sMB  = inf.totalMintedOf(maxB);
-            return (sMB > sB) ? maxB : bNftId;
-        }
-
-        return 0;
+    function _rewardFromRecognizedSide(
+        address token,
+        address tokenNorm,
+        address pair,
+        uint256 amount
+    ) internal returns (uint256 dlOut) {
+        if (amount == 0) return 0;
+        if (!DealLib.isRecognizedToken(tokenNorm, WNATIVE, recognizedToken0, recognizedToken1)) return 0;
+        uint256 rewardBasis = (amount * mintOnFeesNum) / mintOnFeesDen;
+        return _quoteAggToDL(token, pair, rewardBasis);
     }
 
-    function _preferFirstMax2(uint256 id1, uint256 s1, uint256 id2, uint256 s2) internal pure returns (uint256) {
-        if (s2 > s1) return id2; return id1;
-    }
-    function _preferFirstMax3(uint256 id1, uint256 s1, uint256 id2, uint256 s2, uint256 id3, uint256 s3)
-        internal pure returns (uint256)
-    {
-        if (s1 >= s2 && s1 >= s3) return id1;
-        if (s2 >= s3) return id2;
-        return id3;
-    }
-    function _uniqueMax4(
-        uint256 id1, uint256 s1,
-        uint256 id2, uint256 s2,
-        uint256 id3, uint256 s3,
-        uint256 id4, uint256 s4
-    ) internal pure returns (uint256 id, bool unique) {
-        uint256 best = s1; uint256 cnt = 1; uint256 win = id1;
-        if (s2 > best) { best = s2; win = id2; cnt = 1; } else if (s2 == best) { cnt++; }
-        if (s3 > best) { best = s3; win = id3; cnt = 1; } else if (s3 == best) { cnt++; }
-        if (s4 > best) { best = s4; win = id4; cnt = 1; } else if (s4 == best) { cnt++; }
-        if (cnt == 1) return (win, true);
-        return (0, false);
+    function _resolveCRewardTarget() internal view returns (uint256 cToken, address cAddr) {
+        return DealLib.resolveCRewardTarget(infoNft, a, b, aNftLocked, aNftId, bNftLocked, bNftId);
     }
 
     /* ---------- 铸币 & 统计（通过 Factory 代理写 InfoNFT） ---------- */
@@ -556,39 +605,7 @@ contract Deal is Initializable, ReentrancyGuard {
 
     /* ---------- 完成后更新 maxA / maxB（通过 Factory 代理） ---------- */
     function _refreshMaxPointers() internal {
-        if (infoNft == address(0)) return;
-        IDealInfoNFTView inf = IDealInfoNFTView(infoNft);
-        bool hasA = aNftLocked && aNftId != 0;
-        bool hasB = bNftLocked && bNftId != 0;
-
-        if (hasA) {
-            uint256 curMaxA = inf.maxPartnerOf(aNftId);
-            uint256 winA = hasB
-                ? _preferFirstMax3(
-                    aNftId, inf.totalMintedOf(aNftId),
-                    bNftId, inf.totalMintedOf(bNftId),
-                    curMaxA, inf.totalMintedOf(curMaxA)
-                )
-                : _preferFirstMax2(
-                    aNftId, inf.totalMintedOf(aNftId),
-                    curMaxA, inf.totalMintedOf(curMaxA)
-                );
-            if (winA != curMaxA) IFactoryInfo(factory).infoSetMaxPartnerOf(aNftId, winA);
-        }
-        if (hasB) {
-            uint256 curMaxB = inf.maxPartnerOf(bNftId);
-            uint256 winB = hasA
-                ? _preferFirstMax3(
-                    bNftId, inf.totalMintedOf(bNftId),
-                    aNftId, inf.totalMintedOf(aNftId),
-                    curMaxB, inf.totalMintedOf(curMaxB)
-                )
-                : _preferFirstMax2(
-                    bNftId, inf.totalMintedOf(bNftId),
-                    curMaxB, inf.totalMintedOf(curMaxB)
-                );
-            if (winB != curMaxB) IFactoryInfo(factory).infoSetMaxPartnerOf(bNftId, winB);
-        }
+        DealLib.refreshMaxPointers(infoNft, factory, aNftLocked, aNftId, bNftLocked, bNftId);
     }
 
     /* ========== 折算 ========== */
@@ -610,12 +627,12 @@ contract Deal is Initializable, ReentrancyGuard {
         }
     }
     function _isSideReadyA() internal view returns (bool) {
-        bool tokensReady = (aSwapAmount == 0 && aMarginAmount == 0) || aPaid;
+        bool tokensReady = !_sideNeedsPayA() || aPaid;
         bool nftReady    = (aNftId == 0) || aNftLocked;
         return tokensReady && nftReady;
     }
     function _isSideReadyB() internal view returns (bool) {
-        bool tokensReady = (bSwapAmount == 0 && bMarginAmount == 0) || bPaid;
+        bool tokensReady = !_sideNeedsPayB() || bPaid;
         bool nftNeeded   = (joinMode == JoinMode.NftGated) || (bNftId != 0);
         bool nftReady    = (!nftNeeded) || bNftLocked;
         return tokensReady && nftReady;
@@ -635,33 +652,114 @@ contract Deal is Initializable, ReentrancyGuard {
         uint256 beforeBal = token.balanceOf(address(this));
         token.safeTransferFrom(from, address(this), amount);
         uint256 delta = token.balanceOf(address(this)) - beforeBal;
-        require(delta == amount, "FOT_NOT_ALLOWED");
+        _check(delta == amount, 36);
     }
     function _sendOut(address token, address to, uint256 amount) internal {
         if (amount == 0) return;
-        if (token == NATIVE) { (bool ok, ) = payable(to).call{value: amount}(""); require(ok, "NATIVE_SEND_FAIL"); }
+        if (token == NATIVE) { (bool ok, ) = payable(to).call{value: amount}(""); _check(ok, 37); }
         else IERC20(token).safeTransfer(to, amount);
     }
     function _refundFundsA() internal {
-        if (aPaid) { aPaid=false; _sendOut(aSwapToken,a,aSwapAmount); _sendOut(aMarginToken,a,aMarginAmount); }
+        if (aPaid) { aPaid=false; _sendOut(aSwapToken,a,aSwapAmount); _sendOut(aMarginToken,a,aMarginAmount); _sendOutAssetNftToA(); }
     }
     function _refundFundsB() internal {
-        if (bPaid) { bPaid=false; _sendOut(bSwapToken,b,bSwapAmount); _sendOut(bMarginToken,b,bMarginAmount); }
+        if (bPaid) { bPaid=false; _sendOut(bSwapToken,b,bSwapAmount); _sendOut(bMarginToken,b,bMarginAmount); _sendOutAssetNftToB(); }
     }
     function _refundAllToParties() internal { _refundFundsA(); _refundFundsB(); b = address(0); }
+
+    function _sideNeedsPayA() internal view returns (bool) {
+        return aSwapAmount > 0 || aMarginAmount > 0 || aAssetNftId != 0;
+    }
+    function _sideNeedsPayB() internal view returns (bool) {
+        return bSwapAmount > 0 || bMarginAmount > 0 || bAssetNftId != 0;
+    }
+
+    function _pullAssetNftForA() internal {
+        if (aAssetNftId == 0 || aAssetNftDeposited) return;
+        _assertAssetNftAllowedForA();
+        IERC721(_assetNftContractForA()).safeTransferFrom(a, address(this), aAssetNftId);
+        aAssetNftDeposited = true;
+        emit AssetNftDeposited(a, aAssetNftId);
+    }
+    function _pullAssetNftForB() internal {
+        if (bAssetNftId == 0 || bAssetNftDeposited) return;
+        _assertAssetNftAllowedForB();
+        IERC721(_assetNftContractForB()).safeTransferFrom(b, address(this), bAssetNftId);
+        bAssetNftDeposited = true;
+        emit AssetNftDeposited(b, bAssetNftId);
+    }
+    function _settleAssetNftToA() internal {
+        if (!bAssetNftDeposited || bAssetNftId == 0) return;
+        bAssetNftDeposited = false;
+        IERC721(_assetNftContractForB()).safeTransferFrom(address(this), a, bAssetNftId);
+        emit AssetNftReleased(a, bAssetNftId);
+    }
+    function _settleAssetNftToB() internal {
+        if (!aAssetNftDeposited || aAssetNftId == 0) return;
+        aAssetNftDeposited = false;
+        IERC721(_assetNftContractForA()).safeTransferFrom(address(this), b, aAssetNftId);
+        emit AssetNftReleased(b, aAssetNftId);
+    }
+    function _sendOutAssetNftToA() internal {
+        if (!aAssetNftDeposited || aAssetNftId == 0) return;
+        aAssetNftDeposited = false;
+        IERC721(_assetNftContractForA()).safeTransferFrom(address(this), a, aAssetNftId);
+        emit AssetNftReleased(a, aAssetNftId);
+    }
+    function _sendOutAssetNftToB() internal {
+        if (!bAssetNftDeposited || bAssetNftId == 0) return;
+        bAssetNftDeposited = false;
+        IERC721(_assetNftContractForB()).safeTransferFrom(address(this), b, bAssetNftId);
+        emit AssetNftReleased(b, bAssetNftId);
+    }
+
+    function _assetNftContractForA() internal view returns (address) {
+        return aAssetNft == address(0) ? infoNft : aAssetNft;
+    }
+    function _assetNftContractForB() internal view returns (address) {
+        return bAssetNft == address(0) ? infoNft : bAssetNft;
+    }
+
+    function _assertAssetNftAllowedForA() internal view {
+        if (aAssetNftId == 0) return;
+        address nft = _assetNftContractForA();
+        _check(nft != address(0), 38);
+        if (nft == infoNft) {
+            _check(aAssetNftId != aNftId, 39);
+            _check(aAssetNftId != gateNftId, 40);
+            _check(IDealInfoNFTView(infoNft).ownerOf(aAssetNftId) == a, 41);
+            _check(!IDealInfoNFTView(infoNft).isLocked(aAssetNftId), 42);
+        } else {
+            _check(IERC721(nft).ownerOf(aAssetNftId) == a, 41);
+        }
+    }
+    function _assertAssetNftAllowedForB() internal view {
+        if (bAssetNftId == 0) return;
+        address nft = _assetNftContractForB();
+        _check(nft != address(0), 43);
+        _check(b != address(0), 44);
+        if (nft == infoNft) {
+            _check(bAssetNftId != bNftId, 45);
+            _check(bAssetNftId != gateNftId, 46);
+            _check(IDealInfoNFTView(infoNft).ownerOf(bAssetNftId) == b, 47);
+            _check(!IDealInfoNFTView(infoNft).isLocked(bAssetNftId), 48);
+        } else {
+            _check(IERC721(nft).ownerOf(bAssetNftId) == b, 47);
+        }
+    }
 
     // 加锁/解锁辅助
     function _lockNftForAIfAny() internal {
         if (aNftId == 0 || aNftLocked) return;
-        require(IERC721(infoNft).ownerOf(aNftId) == a, "A_NFT_NOT_OWNER");
-        IFactoryLock(factory).infoLock(aNftId, a);
+        _check(IERC721(infoNft).ownerOf(aNftId) == a, 49);
         aNftLocked = true;
+        IFactoryLock(factory).infoLock(aNftId, a);
     }
     function _lockNftForBIfAny() internal {
         if (bNftId == 0 || bNftLocked) return;
-        require(IERC721(infoNft).ownerOf(bNftId) == b, "B_NFT_NOT_OWNER");
-        IFactoryLock(factory).infoLock(bNftId, b);
+        _check(IERC721(infoNft).ownerOf(bNftId) == b, 50);
         bNftLocked = true;
+        IFactoryLock(factory).infoLock(bNftId, b);
     }
     function _unlockNftIfLocked(bool isA) internal {
         if (isA) {
@@ -669,6 +767,73 @@ contract Deal is Initializable, ReentrancyGuard {
         } else {
             if (bNftLocked && bNftId != 0) { bNftLocked=false; IFactoryLock(factory).infoUnlock(bNftId); }
         }
+    }
+
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        _check(
+            msg.sender == infoNft
+                || msg.sender == _assetNftContractForA()
+                || msg.sender == _assetNftContractForB(),
+            51
+        );
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /* ========== 链上聊天 ========== */
+    function postMessage(string calldata content) external nonReentrant onlyAB {
+        _check(
+            status == Status.Active || status == Status.Locked || status == Status.Ready,
+            52
+        );
+        _chargeMessageFee(msg.sender);
+        _msgContents.push(content);
+        _msgTimes.push(uint64(block.timestamp));
+        _msgSenders.push(msg.sender);
+        emit MessagePosted(msg.sender, _msgContents.length - 1);
+    }
+
+    function messagesCount() external view returns (uint256) {
+        return _msgContents.length;
+    }
+
+    function getMessages(uint256 offset, uint256 limit)
+        external
+        view
+        returns (
+            string[]  memory contents,
+            uint64[]  memory times,
+            address[] memory senders
+        )
+    {
+        uint256 total = _msgContents.length;
+        if (offset >= total) {
+            return (new string[](0), new uint64[](0), new address[](0));
+        }
+        uint256 end = offset + limit;
+        if (end > total) end = total;
+        uint256 len = end - offset;
+        contents = new string[](len);
+        times    = new uint64[](len);
+        senders  = new address[](len);
+        for (uint256 i = 0; i < len; i++) {
+            contents[i] = _msgContents[offset + i];
+            times[i]    = _msgTimes[offset + i];
+            senders[i]  = _msgSenders[offset + i];
+        }
+    }
+
+    function _chargeMessageFee(address sender) internal {
+        if (!msgPriceEnabled) return;
+        if (msgPriceAmountInToken == 0) return;
+        uint256 dlAmount = _quoteAggToDL(msgPriceTokenNorm, msgPricePair, msgPriceAmountInToken);
+        if (dlAmount == 0) return;
+        IDLBurnFrom(dl).burnFrom(sender, dlAmount);
+        emit MessageFeeCharged(sender, dlAmount);
     }
 
     // 接收原生

@@ -19,12 +19,25 @@ interface IWNative is IERC20 {
     function withdraw(uint256) external;
 }
 
+interface IDealSwapOrderBookHook {
+    function maxImmediateSellIn(address pair) external view returns (uint256);
+    function maxImmediateBuyIn(address pair) external view returns (uint256);
+    function enqueueSellDLFromRouter(address pair, address owner, uint256 amount0In, bool unwrapNativeOut) external returns (uint256);
+    function enqueueBuyDLFromRouter(address pair, address owner, uint256 amount1In, bool refundNativeIn) external returns (uint256);
+    function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
+}
+
 contract DealRouter is ReentrancyGuard {
     using SafeTransfer for IERC20;
 
     /* ---------------- config ---------------- */
     address public immutable WNATIVE;
-    constructor(address _wNative) { require(_wNative != address(0), "ZERO_WNATIVE"); WNATIVE = _wNative; }
+    address public immutable ORDER_BOOK;
+    constructor(address _wNative, address _orderBook) {
+        require(_wNative != address(0), "ZERO_WNATIVE");
+        WNATIVE = _wNative;
+        ORDER_BOOK = _orderBook;
+    }
     receive() external payable { require(msg.sender == WNATIVE, "ETH_NOT_ALLOWED"); }
 
     /* ---------------- events ---------------- */
@@ -49,6 +62,7 @@ contract DealRouter is ReentrancyGuard {
     event Swap1ForExactETHViaDL(address indexed pairA, address indexed pairWNATIVE, address indexed sender, uint256 inAUsed, uint256 dlRequired, uint256 outETHTarget, uint256 feeOutDL, uint256 feeInDL, uint256 dlRefund, address to);
     event SwapExact1ForETHViaDL(address indexed pairA, address indexed pairWNATIVE, address indexed sender, uint256 inA, uint256 dlNet, uint256 ethOut, uint256 feeOutDL, uint256 feeInDL, address to);
     event SwapETHForExact1ViaDL(address indexed pairWNATIVE, address indexed pairB, address indexed sender, uint256 ethUsed, uint256 dlRequired, uint256 outBTarget, uint256 feeOutDL, uint256 feeInDL, uint256 dlRefund, uint256 ethRefund, address to);
+    event SwapQueuedRemainder(address indexed pair, address indexed sender, bool isSellDL, uint256 immediateIn, uint256 immediateOut, uint256 queuedIn, uint256 orderId);
 
     /* -------------- tiny structs（降栈） -------------- */
     struct QBuyNet   { uint256 gross; uint256 feeOut; uint256 in1Min; }
@@ -95,6 +109,11 @@ contract DealRouter is ReentrancyGuard {
         IERC20(token).safeTransferFrom(from, pair, amount);
         unchecked { actual = _balanceOf(token, pair) - b; }
     }
+    function _pullToSelfAndGetIn(address token, address from, uint256 amount) internal returns (uint256 actual) {
+        uint256 b = _balanceOf(token, address(this));
+        IERC20(token).safeTransferFrom(from, address(this), amount);
+        unchecked { actual = _balanceOf(token, address(this)) - b; }
+    }
     function _pullToPairMin(address token, address pair, address from, uint256 minAmount, string memory err) internal {
         uint256 b = _balanceOf(token, pair);
         IERC20(token).safeTransferFrom(from, pair, minAmount);
@@ -109,6 +128,11 @@ contract DealRouter is ReentrancyGuard {
         IERC20(WNATIVE).safeTransfer(pair, ethAmount);
     }
     function _deadline(uint256 d) internal view { require(block.timestamp <= d, "EXPIRED"); }
+    function _maybeSettle(address pair) internal {
+        if (ORDER_BOOK != address(0)) {
+            IDealSwapOrderBookHook(ORDER_BOOK).settlePair(pair, 1, 1);
+        }
+    }
 
     /* ===================================================== *
      *                INTERNAL EXEC (单跳)                   *
@@ -450,21 +474,25 @@ contract DealRouter is ReentrancyGuard {
     function swapExact1For0(address pair, uint256 amount1In, uint256 minOut0Net, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _execExact1For0(pair, amount1In, msg.sender, msg.sender, minOut0Net);
+        _maybeSettle(pair);
         emit SwapExact1For0(pair, msg.sender, r.inAmt, r.outAmt, r.outGross, r.feeSide, msg.sender);
     }
     function swap1ForExact0Net(address pair, uint256 out0NetTarget, uint256 maxAmount1In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _exec1ForExact0Net(pair, msg.sender, msg.sender, out0NetTarget, maxAmount1In);
+        _maybeSettle(pair);
         emit Swap1ForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, msg.sender);
     }
     function swapExact0For1(address pair, uint256 amount0In, uint256 minOut1, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _execExact0For1(pair, amount0In, msg.sender, msg.sender, minOut1);
+        _maybeSettle(pair);
         emit SwapExact0For1(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
     }
     function swap0ForExact1(address pair, uint256 out1Target, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _exec0ForExact1(pair, msg.sender, msg.sender, out1Target, maxAmount0In);
+        _maybeSettle(pair);
         emit Swap0ForExact1(pair, msg.sender, r.inAmt, out1Target, r.feeSide, msg.sender);
     }
 
@@ -473,6 +501,7 @@ contract DealRouter is ReentrancyGuard {
         _deadline(deadline);
         uint256 ethIn = msg.value;
         ResSingle memory r = _execExactETHFor0(pair, msg.sender, ethIn, minOut0Net);
+        _maybeSettle(pair);
         emit SwapExactETHFor0(pair, msg.sender, ethIn, r.outAmt, r.outGross, r.feeSide, msg.sender);
     }
     function swapETHForExact0Net(address pair, uint256 out0NetTarget, uint256 deadline) external payable nonReentrant {
@@ -480,16 +509,19 @@ contract DealRouter is ReentrancyGuard {
         uint256 ethMax = msg.value;
         ResSingle memory r = _execETHForExact0Net(pair, msg.sender, out0NetTarget, ethMax);
         if (r.refund > 0) _sendETH(msg.sender, r.refund);
+        _maybeSettle(pair);
         emit SwapETHForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, r.refund, msg.sender);
     }
     function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _execExact0ForETH(pair, amount0In, msg.sender, msg.sender, minOutETH);
+        _maybeSettle(pair);
         emit SwapExact0ForETH(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
     }
     function swap0ForExactETH(address pair, uint256 outETHTarget, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResSingle memory r = _exec0ForExactETH(pair, outETHTarget, msg.sender, msg.sender, maxAmount0In);
+        _maybeSettle(pair);
         emit Swap0ForExactETH(pair, msg.sender, r.inAmt, outETHTarget, r.feeSide, msg.sender);
     }
 
@@ -497,11 +529,15 @@ contract DealRouter is ReentrancyGuard {
     function swapExact1For1ViaDL(address pairA, address pairB, uint256 amountAIn, uint256 minOutB, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResDouble memory r = _execExact1For1ViaDL(pairA, pairB, msg.sender, msg.sender, amountAIn, minOutB);
+        _maybeSettle(pairA);
+        _maybeSettle(pairB);
         emit SwapExact1For1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
     function swap1ForExact1ViaDL(address pairA, address pairB, uint256 outBTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResDouble memory r = _exec1ForExact1ViaDL(pairA, pairB, msg.sender, msg.sender, outBTarget, maxAmountAIn);
+        _maybeSettle(pairA);
+        _maybeSettle(pairB);
         emit Swap1ForExact1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, msg.sender);
     }
 
@@ -510,11 +546,15 @@ contract DealRouter is ReentrancyGuard {
         _deadline(deadline);
         uint256 ethIn = msg.value;
         ResDouble memory r = _execExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, minOutB);
+        _maybeSettle(pairWNATIVE);
+        _maybeSettle(pairB);
         emit SwapExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
     function swap1ForExactETHViaDL(address pairA, address pairWNATIVE, uint256 outETHTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResDouble memory r = _exec1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, outETHTarget, maxAmountAIn);
+        _maybeSettle(pairA);
+        _maybeSettle(pairWNATIVE);
         emit Swap1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, outETHTarget, r.feeOutDL, r.feeInDL, r.dlRefund, msg.sender);
     }
 
@@ -522,6 +562,8 @@ contract DealRouter is ReentrancyGuard {
     function swapExact1ForETHViaDL(address pairA, address pairWNATIVE, uint256 amountAIn, uint256 minOutETH, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResDouble memory r = _execExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, amountAIn, minOutETH);
+        _maybeSettle(pairA);
+        _maybeSettle(pairWNATIVE);
         emit SwapExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, r.inAUsed, r.dlNetOrReq, r.outBOrETH, r.feeOutDL, r.feeInDL, msg.sender);
     }
     // ETH max-in -> u exact-out（退回未用 ETH）
@@ -531,6 +573,126 @@ contract DealRouter is ReentrancyGuard {
         ResDouble memory r = _execETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, msg.sender, outBTarget, ethMax);
         uint256 ethRefund = ethMax - r.inAUsed;
         if (ethRefund > 0) _sendETH(msg.sender, ethRefund);
+        _maybeSettle(pairWNATIVE);
+        _maybeSettle(pairB);
         emit SwapETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, ethRefund, msg.sender);
+    }
+
+    function swapExact0For1OrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        address token0 = IDealPair(pair).token0();
+        uint256 actualIn = _pullToSelfAndGetIn(token0, msg.sender, amount0In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
+        uint256 immediateIn = actualIn < cap ? actualIn : cap;
+        uint256 immediateOut;
+        if (immediateIn > 0) {
+            QSellIn0 memory q = _qSellIn0(pair, immediateIn);
+            IERC20(token0).safeTransfer(pair, immediateIn);
+            IDealPair(pair).swap(0, q.out1, msg.sender);
+            immediateOut = q.out1;
+        }
+
+        uint256 queuedIn = actualIn - immediateIn;
+        uint256 orderId;
+        if (queuedIn > 0) {
+            IERC20(token0).safeApprove(ORDER_BOOK, 0);
+            IERC20(token0).safeApprove(ORDER_BOOK, queuedIn);
+            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, msg.sender, queuedIn, false);
+        }
+        _maybeSettle(pair);
+        emit SwapQueuedRemainder(pair, msg.sender, true, immediateIn, immediateOut, queuedIn, orderId);
+    }
+
+    function swapExact1For0OrQueue(address pair, uint256 amount1In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        address token1 = IDealPair(pair).token1();
+        uint256 actualIn = _pullToSelfAndGetIn(token1, msg.sender, amount1In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
+        uint256 immediateIn = actualIn < cap ? actualIn : cap;
+        uint256 immediateOut;
+        if (immediateIn > 0) {
+            QBuyIn1 memory q = _qBuyIn1(pair, immediateIn);
+            IERC20(token1).safeTransfer(pair, immediateIn);
+            IDealPair(pair).swap(q.gross, 0, msg.sender);
+            immediateOut = q.out0Net;
+        }
+
+        uint256 queuedIn = actualIn - immediateIn;
+        uint256 orderId;
+        if (queuedIn > 0) {
+            IERC20(token1).safeApprove(ORDER_BOOK, 0);
+            IERC20(token1).safeApprove(ORDER_BOOK, queuedIn);
+            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, msg.sender, queuedIn, false);
+        }
+        _maybeSettle(pair);
+        emit SwapQueuedRemainder(pair, msg.sender, false, immediateIn, immediateOut, queuedIn, orderId);
+    }
+
+    function swapExactETHFor0OrQueue(address pair, uint256 deadline) external payable nonReentrant {
+        _deadline(deadline);
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
+
+        uint256 actualIn = msg.value;
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
+        uint256 immediateIn = actualIn < cap ? actualIn : cap;
+        uint256 immediateOut;
+        if (immediateIn > 0) {
+            _wrapToPair(pair, immediateIn);
+            QBuyIn1 memory q = _qBuyIn1(pair, immediateIn);
+            IDealPair(pair).swap(q.gross, 0, msg.sender);
+            immediateOut = q.out0Net;
+        }
+
+        uint256 queuedIn = actualIn - immediateIn;
+        uint256 orderId;
+        if (queuedIn > 0) {
+            IWNative(WNATIVE).deposit{value: queuedIn}();
+            IERC20(WNATIVE).safeApprove(ORDER_BOOK, 0);
+            IERC20(WNATIVE).safeApprove(ORDER_BOOK, queuedIn);
+            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, msg.sender, queuedIn, true);
+        }
+        _maybeSettle(pair);
+        emit SwapQueuedRemainder(pair, msg.sender, false, immediateIn, immediateOut, queuedIn, orderId);
+    }
+
+    function swapExact0ForETHOrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
+        _deadline(deadline);
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
+
+        address token0 = IDealPair(pair).token0();
+        uint256 actualIn = _pullToSelfAndGetIn(token0, msg.sender, amount0In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
+        uint256 immediateIn = actualIn < cap ? actualIn : cap;
+        uint256 immediateOut;
+        if (immediateIn > 0) {
+            QSellIn0 memory q = _qSellIn0(pair, immediateIn);
+            IERC20(token0).safeTransfer(pair, immediateIn);
+            IDealPair(pair).swap(0, q.out1, address(this));
+            IWNative(WNATIVE).withdraw(q.out1);
+            _sendETH(msg.sender, q.out1);
+            immediateOut = q.out1;
+        }
+
+        uint256 queuedIn = actualIn - immediateIn;
+        uint256 orderId;
+        if (queuedIn > 0) {
+            IERC20(token0).safeApprove(ORDER_BOOK, 0);
+            IERC20(token0).safeApprove(ORDER_BOOK, queuedIn);
+            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, msg.sender, queuedIn, true);
+        }
+        _maybeSettle(pair);
+        emit SwapQueuedRemainder(pair, msg.sender, true, immediateIn, immediateOut, queuedIn, orderId);
     }
 }

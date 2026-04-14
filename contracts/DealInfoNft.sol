@@ -18,6 +18,12 @@ interface IDLBurnable is IERC20 { function burnFrom(address from, uint256 value)
 contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     /* ========== 基本配置 ========== */
     uint256 public nextId = 1;
+    uint16 public currentSeason = 1;
+
+    mapping(uint256 => uint16) public seasonOf;
+    mapping(uint256 => uint32) public dateCodeOf;
+    mapping(uint256 => uint32) public dailySerialOf;
+    mapping(uint16 => mapping(uint32 => uint32)) public mintedCountBySeasonAndDate;
 
     address public admin;
     // 主 Factory（仅用于 mintByBurn 时查询 TWAP 报价）；可由 Owner 切换
@@ -36,6 +42,13 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
 
     /// @notice 铸造事件（记录换算与燃烧结果）
     event MintByBurn(address indexed minter, uint256 indexed tokenId, uint256 uAmount, uint256 dlBurned);
+    event CurrentSeasonUpdated(uint16 season);
+    event DisplayNoAssigned(
+        uint256 indexed tokenId,
+        uint16 indexed season,
+        uint32 indexed dateCode,
+        uint32 dailySerial
+    );
 
     /* ========== 地址枚举（可选） ========== */
     mapping(address => uint256[]) private _ownedTokens;
@@ -128,6 +141,12 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         require(newLimit <= 256*1024, "LIMIT");
         maxImageDataBytes = newLimit;
         emit MaxImageDataBytesUpdated(newLimit);
+    }
+
+    function setCurrentSeason(uint16 season_) external onlyOwner {
+        require(season_ > 0, "BAD_SEASON");
+        currentSeason = season_;
+        emit CurrentSeasonUpdated(season_);
     }
 
     /* ========== 媒体/昵称 ========== */
@@ -232,23 +251,51 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         IDLBurnable(IFactoryLite(factory).dlToken()).burnFrom(msg.sender, dlNeed);
 
         tokenId = nextId++;
+        uint32 dateCode = _dateCodeFromTimestamp(block.timestamp);
+        uint32 serial = mintedCountBySeasonAndDate[currentSeason][dateCode] + 1;
+        mintedCountBySeasonAndDate[currentSeason][dateCode] = serial;
+        seasonOf[tokenId] = currentSeason;
+        dateCodeOf[tokenId] = dateCode;
+        dailySerialOf[tokenId] = serial;
         _mint(msg.sender, tokenId);
         _maxPartner[tokenId] = tokenId; // 默认指向自己
 
+        emit DisplayNoAssigned(tokenId, currentSeason, dateCode, serial);
         emit MintByBurn(msg.sender, tokenId, mintPriceDL, dlNeed);
+    }
+
+    function displayNoOf(uint256 tokenId) public view returns (string memory) {
+        require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
+        return string(
+            abi.encodePacked(
+                "S",
+                _toString(seasonOf[tokenId]),
+                "-",
+                _toString(dateCodeOf[tokenId]),
+                "-",
+                _toString(dailySerialOf[tokenId])
+            )
+        );
     }
 
     /* ========== tokenURI ========== */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
         string memory image = imageOf(tokenId);
+        string memory displayNo = displayNoOf(tokenId);
         bytes memory json = abi.encodePacked(
             '{',
-                '"name":"Deal Info NFT #', _toString(tokenId), '",',
+                '"name":"Deal Info NFT ', displayNo, '",',
                 '"description":"Deal Info NFT - partner & DL stats",',
                 '"image":"', image, '",',
-                '"attributes":[{"trait_type":"Total DL Minted","value":"', _toString(totalDLMinted[tokenId]),
-                '"},{"trait_type":"Locked","value":"', lockCount[tokenId] > 0 ? "true" : "false", '"}]',
+                '"attributes":[',
+                    '{"trait_type":"Display No","value":"', displayNo, '"},',
+                    '{"trait_type":"Season","value":"', _toString(seasonOf[tokenId]), '"},',
+                    '{"trait_type":"Date Code","value":"', _toString(dateCodeOf[tokenId]), '"},',
+                    '{"trait_type":"Daily Serial","value":"', _toString(dailySerialOf[tokenId]), '"},',
+                    '{"trait_type":"Total DL Minted","value":"', _toString(totalDLMinted[tokenId]), '"},',
+                    '{"trait_type":"Locked","value":"', lockCount[tokenId] > 0 ? "true" : "false", '"}',
+                ']',
             '}'
         );
         return string(abi.encodePacked("data:application/json;base64,", Base64.encode(json)));
@@ -304,5 +351,28 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         bytes memory b = new bytes(len);
         while (v != 0) { len -= 1; b[len] = bytes1(uint8(48 + v % 10)); v /= 10; }
         str = string(b);
+    }
+
+    function _dateCodeFromTimestamp(uint256 ts) internal pure returns (uint32 code) {
+        (uint256 year, uint256 month, uint256 day) = _daysToDate(ts / 86400);
+        code = uint32(year * 10000 + month * 100 + day);
+    }
+
+    function _daysToDate(uint256 _days) internal pure returns (uint256 year, uint256 month, uint256 day) {
+        int256 __days = int256(_days);
+        int256 L = __days + 68569 + 2440588;
+        int256 N = (4 * L) / 146097;
+        L = L - (146097 * N + 3) / 4;
+        int256 _year = (4000 * (L + 1)) / 1461001;
+        L = L - (1461 * _year) / 4 + 31;
+        int256 _month = (80 * L) / 2447;
+        int256 _day = L - (2447 * _month) / 80;
+        L = _month / 11;
+        _month = _month + 2 - (12 * L);
+        _year = (100 * (N - 49)) + _year + L;
+
+        year = uint256(_year);
+        month = uint256(_month);
+        day = uint256(_day);
     }
 }

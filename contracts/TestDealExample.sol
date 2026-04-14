@@ -8,9 +8,10 @@ contract ExampleAdminTarget is Ownable {
 
     event FeeChanged(uint256 oldFeeBps, uint256 newFeeBps);
 
-    constructor(address initialOwner, uint256 initialFeeBps)
-        Ownable(initialOwner)
-    {
+    constructor(
+        address initialOwner,
+        uint256 initialFeeBps
+    ) Ownable(initialOwner) {
         require(initialFeeBps <= 10_000, "fee too high");
         feeBps = initialFeeBps;
     }
