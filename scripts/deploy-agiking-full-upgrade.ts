@@ -115,20 +115,20 @@ async function main() {
 
   // 4) DCDomain stack
   console.log("\n--- DCDomain ---");
-  const dcDomain = await viem.deployContract("DCDomain", [EXISTING.ausd, dep], { client });
+  const dcDomain = await viem.deployContract("DCDomain", [EXISTING.dlToken, dep], { client });
   console.log("dcDomain:", dcDomain.address);
 
   console.log("\n--- DCDomainMarket ---");
   const dcMarket = await viem.deployContract(
     "DCDomainMarket",
-    [dcDomain.address, EXISTING.ausd, dep, 100n],
+    [dcDomain.address, EXISTING.dlToken, dep, 100n],
     { client },
   );
   console.log("dcDomainMarket:", dcMarket.address);
   await waitFor(publicClient, await dcDomain.write.setDomainMarket([dcMarket.address]));
 
   console.log("\n--- DCDomainRank ---");
-  const dcRank = await viem.deployContract("DCDomainRank", [EXISTING.ausd, dcDomain.address, dep], { client });
+  const dcRank = await viem.deployContract("DCDomainRank", [EXISTING.dlToken, dcDomain.address, dep], { client });
   console.log("dcDomainRank:", dcRank.address);
 
   console.log("\n--- DCDomainSwap / Hall ---");

@@ -84,17 +84,17 @@ async function deployDomainFixture() {
   ]);
 
   const dcDomain = await viem.deployContract("DCDomain", [
-    ausd.address,
+    dl.address,
     treasury.account.address,
   ]);
   const dcDomainMarket = await viem.deployContract("DCDomainMarket", [
     dcDomain.address,
-    ausd.address,
+    dl.address,
     treasury.account.address,
     100n,
   ]);
   const dcDomainRank = await viem.deployContract("DCDomainRank", [
-    ausd.address,
+    dl.address,
     dcDomain.address,
     treasury.account.address,
   ]);
@@ -164,7 +164,7 @@ async function deployDomainFixture() {
   await createAndInitPair(usdt.address);
 
   async function registerDomain(wallet: typeof owner, domainName: string) {
-    const paymentAsUser = await viem.getContractAt("DCToken", ausd.address, {
+    const paymentAsUser = await viem.getContractAt("DCToken", dl.address, {
       client: { wallet },
     });
     const dcDomainAsUser = await viem.getContractAt("DCDomain", dcDomain.address, {
@@ -275,6 +275,9 @@ describe("Domain Flows", async function () {
     const fixture = await deployDomainFixture();
     const { viem, publicClient, alice, dcDomain } = fixture;
 
+    assert.equal(await dcDomain.read.getPrice(["abc123"]), 500n * ONE);
+    assert.equal(await dcDomain.read.getPrice(["999999"]), 500n * ONE);
+
     const tokenId = await fixture.registerDomain(alice, "abc123");
     const dcDomainAsAlice = await viem.getContractAt("DCDomain", dcDomain.address, {
       client: { wallet: alice },
@@ -308,7 +311,7 @@ describe("Domain Flows", async function () {
 
   it("supports public listings, pagination, fee charging, and resolve sync on buy", async function () {
     const fixture = await deployDomainFixture();
-    const { viem, publicClient, alice, bob, treasury, ausd, dcDomain, dcDomainMarket } = fixture;
+    const { viem, publicClient, alice, bob, treasury, dl, dcDomain, dcDomainMarket } = fixture;
 
     const tokenId = await fixture.registerDomain(alice, "pub123");
     const price = 100n * ONE;
@@ -322,12 +325,12 @@ describe("Domain Flows", async function () {
     const dcDomainAsAlice = await viem.getContractAt("DCDomain", dcDomain.address, {
       client: { wallet: alice },
     });
-    const ausdAsBob = await viem.getContractAt("DCToken", ausd.address, {
+    const dlAsBob = await viem.getContractAt("DCToken", dl.address, {
       client: { wallet: bob },
     });
 
-    const sellerBefore = await ausd.read.balanceOf([alice.account.address]);
-    const treasuryBefore = await ausd.read.balanceOf([treasury.account.address]);
+    const sellerBefore = await dl.read.balanceOf([alice.account.address]);
+    const treasuryBefore = await dl.read.balanceOf([treasury.account.address]);
 
     await waitFor(publicClient, await dcDomainAsAlice.write.approve([dcDomainMarket.address, tokenId]));
     await waitFor(publicClient, await marketAsAlice.write.list([tokenId, price]));
@@ -338,7 +341,7 @@ describe("Domain Flows", async function () {
     assert.equal(publicListings[0].tokenId, tokenId);
     assert.equal(publicListings[0].buyer, zeroAddress);
 
-    await waitFor(publicClient, await ausdAsBob.write.approve([dcDomainMarket.address, price]));
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainMarket.address, price]));
     await waitFor(publicClient, await marketAsBob.write.buy([tokenId]));
 
     const fee = price / 100n;
@@ -346,18 +349,18 @@ describe("Domain Flows", async function () {
     assert.equal(getAddress(await dcDomain.read.resolve(["pub123"])), getAddress(bob.account.address));
     assert.equal(await dcDomainMarket.read.activeListingCount(), 0n);
     assert.equal(
-      await ausd.read.balanceOf([alice.account.address]),
+      await dl.read.balanceOf([alice.account.address]),
       sellerBefore + price - fee,
     );
     assert.equal(
-      await ausd.read.balanceOf([treasury.account.address]),
+      await dl.read.balanceOf([treasury.account.address]),
       treasuryBefore + fee,
     );
   });
 
   it("supports p2p listings and blocks non-designated buyers", async function () {
     const fixture = await deployDomainFixture();
-    const { viem, publicClient, alice, bob, carol, ausd, dcDomain, dcDomainMarket } = fixture;
+    const { viem, publicClient, alice, bob, carol, dl, dcDomain, dcDomainMarket } = fixture;
 
     const tokenId = await fixture.registerDomain(alice, "p2p123");
     const price = 77n * ONE;
@@ -374,7 +377,7 @@ describe("Domain Flows", async function () {
     const marketAsCarol = await viem.getContractAt("DCDomainMarket", dcDomainMarket.address, {
       client: { wallet: carol },
     });
-    const ausdAsBob = await viem.getContractAt("DCToken", ausd.address, {
+    const dlAsBob = await viem.getContractAt("DCToken", dl.address, {
       client: { wallet: bob },
     });
 
@@ -393,7 +396,7 @@ describe("Domain Flows", async function () {
       /not designated buyer/,
     );
 
-    await waitFor(publicClient, await ausdAsBob.write.approve([dcDomainMarket.address, price]));
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainMarket.address, price]));
     await waitFor(publicClient, await marketAsBob.write.buy([tokenId]));
 
     assert.equal(getAddress(await dcDomain.read.ownerOf([tokenId])), getAddress(bob.account.address));
@@ -507,7 +510,7 @@ describe("Domain Flows", async function () {
 
   it("tracks domain leaderboard scores, settlement, and global leaderboard ordering", async function () {
     const fixture = await deployDomainFixture();
-    const { viem, publicClient, alice, bob, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
+    const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
     const testClient = await viem.getTestClient();
 
     await fixture.registerDomain(alice, "rank11");
@@ -519,7 +522,7 @@ describe("Domain Flows", async function () {
     const rankAsBob = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
       client: { wallet: bob },
     });
-    const ausdAsBob = await viem.getContractAt("DCToken", ausd.address, {
+    const dlAsBob = await viem.getContractAt("DCToken", dl.address, {
       client: { wallet: bob },
     });
 
@@ -557,7 +560,7 @@ describe("Domain Flows", async function () {
     assert.deepEqual(globalCounts, [2n, 1n]);
 
     const depositAmount = 1000n * ONE;
-    await waitFor(publicClient, await ausdAsBob.write.approve([dcDomainRank.address, depositAmount]));
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
     await waitFor(publicClient, await rankAsBob.write.deposit(["rank11", deal1, depositAmount]));
 
     const initialLeaderboard = await dcDomainRank.read.getLeaderboard(["rank11", 10n]);
@@ -639,6 +642,11 @@ describe("Domain Flows", async function () {
 
     assert.equal(createEvents.length, 1);
     const dealAddress = createEvents[0].args.deal;
+    const dealAsCarolBeforePick = await viem.getContractAt("Deal", dealAddress, {
+      client: { wallet: carol },
+    });
+
+    await assert.rejects(dealAsCarolBeforePick.write.join([0n, false]), /reverted/);
 
     await waitFor(
       publicClient,
@@ -707,7 +715,7 @@ describe("Domain Flows", async function () {
       toBlock: await publicClient.getBlockNumber(),
       strict: true,
     });
-    assert.ok(factoryEvents.some((event) => getAddress(event.args.deal) === getAddress(dealAddress)));
+    assert.ok(factoryEvents.some((event: (typeof factoryEvents)[number]) => getAddress(event.args.deal) === getAddress(dealAddress)));
   });
 
   it("supports template23 deferred selection and merchant-visitor message threads in DCDomainHall", async function () {
@@ -766,6 +774,11 @@ describe("Domain Flows", async function () {
 
     assert.equal(createEvents.length, 1);
     const dealAddress = createEvents[0].args.deal;
+    const dealAsCarolBeforePick = await viem.getContractAt("Deal", dealAddress, {
+      client: { wallet: carol },
+    });
+
+    await assert.rejects(dealAsCarolBeforePick.write.join([0n, false]), /reverted/);
 
     await waitFor(
       publicClient,
@@ -945,9 +958,9 @@ describe("Domain Flows", async function () {
     await assert.rejects(dealAsOwner.write.join([0n, false]), /reverted/);
   });
 
-  it("rejects invalid template23 parameter combinations in DCDomainHall", async function () {
+  it("rejects bad TTE swap params and allows zero-margin ETE in DCDomainHall", async function () {
     const fixture = await deployDomainFixture();
-    const { viem, alice, bob, ausd, usdt, dcDomainHall } = fixture;
+    const { viem, publicClient, alice, bob, ausd, usdt, dcDomainHall } = fixture;
 
     await fixture.registerDomain(alice, "bad123");
 
@@ -976,26 +989,33 @@ describe("Domain Flows", async function () {
       /TTE swap/,
     );
 
-    await assert.rejects(
-      hallAsBob.write.createHallDealTemplate23([
-        "bad123",
-        3,
-        zeroAddress,
-        0n,
-        zeroAddress,
-        0n,
-        zeroAddress,
-        0n,
-        zeroAddress,
-        0n,
-        0n,
-        3600n,
-        0n,
-        "bad ete",
-        false,
-      ]),
-      /ETE margin/,
-    );
+    const createHash = await hallAsBob.write.createHallDealTemplate23([
+      "bad123",
+      3,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      0n,
+      3600n,
+      0n,
+      "zero margin ete",
+      false,
+    ]);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+    const events = await publicClient.getContractEvents({
+      address: dcDomainHall.address,
+      abi: dcDomainHall.abi,
+      eventName: "HallDealCreatedDeferred",
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+      strict: true,
+    });
+    assert.equal(events.length, 1);
   });
 
   it("sells a domain nft through DealFactory.createDeal and settles ownership to the buyer", async function () {
