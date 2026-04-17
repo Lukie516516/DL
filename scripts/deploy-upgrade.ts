@@ -101,6 +101,8 @@ async function main() {
     { client },
   );
   console.log("New DealFactory:", newFactory.address);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [newFactory.address], { client });
+  console.log("DealMessageHub:", dealMessageHub.address);
 
   // ═══════════════ 4. Configure new DealFactory ═══════════════
   console.log("\n--- Configuring new DealFactory ---");
@@ -113,6 +115,8 @@ async function main() {
 
   await waitFor(publicClient, await newFactory.write.setGlobal(["wrappedNative", EXISTING.wrappedNative]));
   console.log("  setGlobal wrappedNative OK");
+  await waitFor(publicClient, await newFactory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
+  console.log("  setGlobal dealMessageHub OK");
 
   await waitFor(publicClient, await newFactory.write.setGlobal(["swapOrderBook", EXISTING.dealSwapOrderBook]));
   console.log("  setGlobal swapOrderBook OK");
@@ -142,6 +146,7 @@ async function main() {
     dealLib: dealLib.address,
     dealImplementation: newDealImpl,
     dealFactory: newFactory.address,
+    dealMessageHub: dealMessageHub.address,
   };
 
   const allAddresses = {
@@ -154,6 +159,7 @@ async function main() {
     oldDealImplementation: EXISTING.oldDealImplementation,
     pairImplementation: EXISTING.pairImplementation,
     dealFactory: newFactory.address,
+    dealMessageHub: dealMessageHub.address,
     oldDealFactory: EXISTING.oldDealFactory,
     dealInfoNFT: EXISTING.dealInfoNFT,
     pairDlAusd: EXISTING.pairDlAusd,
@@ -191,6 +197,7 @@ async function main() {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
+      DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
     },
   };
 

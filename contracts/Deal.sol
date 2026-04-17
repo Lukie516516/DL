@@ -13,6 +13,7 @@ import {DealLib}           from "./utils/DealLib.sol";
 interface IFactoryAuth   { function isAllowedCreateFor(address) external view returns (bool); }
 interface IFactoryMinter { function mintDL(address to, uint256 amount) external; }
 interface IFactoryTwap   { function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut); }
+interface IFactoryMessageHub { function dealMessageHub() external view returns (address); }
 interface IFactoryIndex {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
@@ -36,6 +37,22 @@ interface IFactoryLock {
 interface IWNATIVE is IERC20 { function deposit() external payable; function withdraw(uint256) external; }
 interface IDLBurn { function burn(uint256 amount) external; }
 interface IDLBurnFrom { function burnFrom(address account, uint256 amount) external; }
+interface IDealMessageHub {
+    function postFromDeal(address sender, string calldata content) external returns (uint256 index);
+    function messagesCount(address deal) external view returns (uint256);
+    function getMessages(
+        address deal,
+        uint256 offset,
+        uint256 limit
+    )
+        external
+        view
+        returns (
+            string[] memory contents,
+            uint64[] memory times,
+            address[] memory senders
+        );
+}
 
 /* ---------- DealInfoNFT（只读） ---------- */
 interface IDealInfoNFTView {
@@ -137,11 +154,6 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     address public msgPriceTokenNorm;
     address public msgPricePair;
     uint256 public msgPriceAmountInToken;
-
-    /* ===== 链上聊天存储 ===== */
-    string[]  private _msgContents;
-    uint64[]  private _msgTimes;
-    address[] private _msgSenders;
 
     /* 事件 */
     event Initialized(address indexed initiator, address indexed factory);
@@ -331,14 +343,14 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     function pay() external payable nonReentrant inState(Status.Active) onlyAB {
         if (msg.sender == a) {
             _check(!aPaid, 23);
-            _check(msg.value == nativeRequiredForA(), 24);
+            _check(msg.value == _nativeRequired(true), 24);
             if (aSwapToken   != NATIVE) _pullExactERC20(IERC20(aSwapToken), aSwapAmount, msg.sender);
             if (aMarginToken != NATIVE) _pullExactERC20(IERC20(aMarginToken), aMarginAmount, msg.sender);
             _pullAssetNftForA();
             if (_sideNeedsPayA()) aPaid = true;
         } else {
             _check(b != address(0) && !bPaid, 25);
-            _check(msg.value == nativeRequiredForB(), 26);
+            _check(msg.value == _nativeRequired(false), 26);
             if (bSwapToken   != NATIVE) _pullExactERC20(IERC20(bSwapToken), bSwapAmount, msg.sender);
             if (bMarginToken != NATIVE) _pullExactERC20(IERC20(bMarginToken), bMarginAmount, msg.sender);
             _pullAssetNftForB();
@@ -639,11 +651,14 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     }
 
     /* ========== 只读：原生需求 ========== */
-    function nativeRequiredForA() public view returns (uint256) {
-        uint256 n=0; if (aSwapToken==NATIVE) n+=aSwapAmount; if (aMarginToken==NATIVE) n+=aMarginAmount; return n;
-    }
-    function nativeRequiredForB() public view returns (uint256) {
-        uint256 n=0; if (bSwapToken==NATIVE) n+=bSwapAmount; if (bMarginToken==NATIVE) n+=bMarginAmount; return n;
+    function _nativeRequired(bool isA) internal view returns (uint256 n) {
+        if (isA) {
+            if (aSwapToken == NATIVE) n += aSwapAmount;
+            if (aMarginToken == NATIVE) n += aMarginAmount;
+        } else {
+            if (bSwapToken == NATIVE) n += bSwapAmount;
+            if (bMarginToken == NATIVE) n += bMarginAmount;
+        }
     }
 
     /* ========== 工具：资金清退/发送/拉取 ========== */
@@ -791,40 +806,10 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
             52
         );
         _chargeMessageFee(msg.sender);
-        _msgContents.push(content);
-        _msgTimes.push(uint64(block.timestamp));
-        _msgSenders.push(msg.sender);
-        emit MessagePosted(msg.sender, _msgContents.length - 1);
-    }
-
-    function messagesCount() external view returns (uint256) {
-        return _msgContents.length;
-    }
-
-    function getMessages(uint256 offset, uint256 limit)
-        external
-        view
-        returns (
-            string[]  memory contents,
-            uint64[]  memory times,
-            address[] memory senders
-        )
-    {
-        uint256 total = _msgContents.length;
-        if (offset >= total) {
-            return (new string[](0), new uint64[](0), new address[](0));
-        }
-        uint256 end = offset + limit;
-        if (end > total) end = total;
-        uint256 len = end - offset;
-        contents = new string[](len);
-        times    = new uint64[](len);
-        senders  = new address[](len);
-        for (uint256 i = 0; i < len; i++) {
-            contents[i] = _msgContents[offset + i];
-            times[i]    = _msgTimes[offset + i];
-            senders[i]  = _msgSenders[offset + i];
-        }
+        address hub = IFactoryMessageHub(factory).dealMessageHub();
+        _check(hub != address(0), 54);
+        uint256 idx = IDealMessageHub(hub).postFromDeal(msg.sender, content);
+        emit MessagePosted(msg.sender, idx);
     }
 
     function _chargeMessageFee(address sender) internal {

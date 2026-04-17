@@ -74,6 +74,8 @@ async function main() {
     client,
   });
   console.log("DealFactory", factory.address);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address], { client });
+  console.log("DealMessageHub", dealMessageHub.address);
 
   const infoNft = await viem.deployContract("DealInfoNFT", [factory.address, zeroAddress, 0n], { client });
   console.log("DealInfoNFT", infoNft.address);
@@ -83,6 +85,7 @@ async function main() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(publicClient, await factory.write.setTreasuryByAdmin([dep]));
   await waitFor(publicClient, await dl.write.grantRole([minterRole, factory.address]));
@@ -185,6 +188,7 @@ async function main() {
     dealImplementation: dealImpl.address,
     pairImplementation: pairImpl.address,
     dealFactory: factory.address,
+    dealMessageHub: dealMessageHub.address,
     dealInfoNFT: infoNft.address,
     pairDlAusd: pairAusd,
     pairDlUsdt: pairUsdt,
@@ -213,6 +217,7 @@ async function main() {
       DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
       DCToken: loadAbi("DL.sol/DCToken.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
+      DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
       DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
       DealSwapOrderBook: loadAbi("DealSwapOrderBook.sol/DealSwapOrderBook.json"),
       DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
@@ -228,7 +233,7 @@ async function main() {
       VoteDividendClaimer: loadAbi("VoteDividendClaimer.sol/VoteDividendClaimer.json"),
     },
     notes: [
-      "Deal: no postMessage/getMessages (EIP-170); use DCDomainHall for hall messaging.",
+      "Deal chat storage is externalized through DealMessageHub; Deal.postMessage remains available, and readers should use the hub for message pagination.",
       "DCDomain / DCDomainRank use AUSD as payment & stake token; treasury = deployer.",
       "DCDomainHall.createDealFor / chargeMessageFeeFrom are not on this DealFactory ABI; hall auto-create paths need a factory upgrade or different entrypoints.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are intentionally not deployed.",

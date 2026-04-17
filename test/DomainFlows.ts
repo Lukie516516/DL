@@ -76,6 +76,7 @@ async function deployDomainFixture() {
     pairImpl.address,
     3600,
   ]);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
     zeroAddress,
@@ -114,6 +115,7 @@ async function deployDomainFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(
     publicClient,
@@ -1085,7 +1087,7 @@ describe("Domain Flows", async function () {
           trackCreator: false,
         },
       ]),
-      /USE_DOMAIN_ENTRY/,
+      /UseDomainEntry/,
     );
   });
 });

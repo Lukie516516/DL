@@ -70,6 +70,8 @@ async function main() {
     { client },
   );
   console.log("DealFactory:", newFactory.address);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [newFactory.address], { client });
+  console.log("DealMessageHub:", dealMessageHub.address);
 
   // Configure DealFactory
   console.log("\n--- Configuring DealFactory ---");
@@ -79,6 +81,8 @@ async function main() {
   console.log("  setGlobal infoNft OK");
   await waitFor(publicClient, await newFactory.write.setGlobal(["wrappedNative", EXISTING.wrappedNative]));
   console.log("  setGlobal wrappedNative OK");
+  await waitFor(publicClient, await newFactory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
+  console.log("  setGlobal dealMessageHub OK");
   await waitFor(publicClient, await newFactory.write.setGlobal(["swapOrderBook", EXISTING.dealSwapOrderBook]));
   console.log("  setGlobal swapOrderBook OK");
   await waitFor(publicClient, await newFactory.write.setRecognizedTokens([EXISTING.ausd, EXISTING.usdt]));
@@ -134,6 +138,7 @@ async function main() {
     dealImplementation: EXISTING.dealImplementation,
     pairImplementation: EXISTING.pairImplementation,
     dealFactory: newFactory.address,
+    dealMessageHub: dealMessageHub.address,
     dealInfoNFT: EXISTING.dealInfoNFT,
     pairDlAusd: EXISTING.pairDlAusd,
     pairDlUsdt: EXISTING.pairDlUsdt,
@@ -167,6 +172,7 @@ async function main() {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
+      DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
       DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),

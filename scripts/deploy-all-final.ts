@@ -61,11 +61,14 @@ async function main() {
   console.log("\n--- DealFactory ---");
   const factory = await viem.deployContract("DealFactory", [E.dealImpl, E.pairImpl, 3600], { client: cl });
   console.log("DealFactory:", factory.address);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address], { client: cl });
+  console.log("DealMessageHub:", dealMessageHub.address);
 
   // Configure globals
   await w(pc, await factory.write.setGlobal(["dlToken", E.dlToken]));
   await w(pc, await factory.write.setGlobal(["infoNft", E.dealInfoNFT]));
   await w(pc, await factory.write.setGlobal(["wrappedNative", E.wrappedNative]));
+  await w(pc, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await w(pc, await factory.write.setGlobal(["swapOrderBook", E.orderBook]));
   await w(pc, await factory.write.setRecognizedTokens([E.ausd, E.usdt]));
   await w(pc, await factory.write.setTreasuryByAdmin([dep]));
@@ -114,6 +117,7 @@ async function main() {
     dealImplementation: E.dealImpl,
     pairImplementation: E.pairImpl,
     dealFactory: factory.address,
+    dealMessageHub: dealMessageHub.address,
     dealInfoNFT: E.dealInfoNFT,
     pairDlAusd: E.pairDlAusd,
     pairDlUsdt: E.pairDlUsdt,
@@ -144,6 +148,7 @@ async function main() {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
+      DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
       DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
       DCToken: loadAbi("DL.sol/DCToken.json"),
       DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),

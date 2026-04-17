@@ -18,6 +18,7 @@ const allAddresses = {
   dealImplementation: "0xd094a855a3571c8f4566e59fca1387a5b6b86d90",
   pairImplementation: "0x6613540b2451ced2dd8a7a48db89ca2c8414b163",
   dealFactory: "0xb59b21bab4ad5a011d6976e0a4ed66721fcd5985",
+  dealMessageHub: "0x0000000000000000000000000000000000000000",
   dealInfoNFT: "0x00fcc7f1a406ebfe6e5a1077821cc53c6752c789",
   pairDlAusd: "0xc48b652C9c240FB18aFCf4ADac67471f28fb70e5",
   pairDlUsdt: "0x8ca50e47b9a142bE5665E35d4697f475eC93C765",
@@ -39,6 +40,7 @@ const allAbi = {
   DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
   Deal: loadAbi("Deal.sol/Deal.json"),
   DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
+  DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
   DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
   DCToken: loadAbi("DL.sol/DCToken.json"),
   DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
@@ -63,6 +65,9 @@ const out = {
   deployer: "0x6807ed8c44ae2a89ddb7706fa22a5b274ecd8785",
   addresses: allAddresses,
   abi: allAbi,
+  notes: [
+    "Replace addresses.dealMessageHub with the real deployed DealMessageHub before publishing this JSON.",
+  ],
 };
 
 const dir = join(process.cwd(), "deployments");

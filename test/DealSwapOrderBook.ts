@@ -177,7 +177,7 @@ describe("DealSwapOrderBook", async function () {
     await waitFor(publicClient, await dlBob.write.approve([orderBook.address, 50n * ONE]));
     await waitFor(publicClient, await orderBookBob.write.placeSellDL([pairAddress, 50n * ONE]));
 
-    await waitFor(publicClient, await other.write.transfer([pairAddress, 20n * ONE]));
+    await waitFor(publicClient, await other.write.transfer([pairAddress, 1_000n * ONE]));
     await waitFor(publicClient, await pair.write.mintOtherOnly());
 
     const aliceOtherBefore = await other.read.balanceOf([alice.account.address]);
@@ -413,5 +413,60 @@ describe("DealSwapOrderBook", async function () {
     const order = await orderBook.read.orders([orderId]);
     assert.equal(order[3], false);
     assert.equal(order[4], 0n);
+  });
+
+  it("factory mintPairOtherAndSettle adds OTHER liquidity and settles queued sell orders", async function () {
+    const fixture = await deployDexFixture();
+    const { viem, publicClient, alice, dl, other, factory, orderBook, createPairWithReserves } = fixture;
+    const { pairAddress } = await createPairWithReserves(1_000n * ONE, 1n);
+
+    await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", orderBook.address]));
+
+    const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
+      client: { wallet: alice },
+    });
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+
+    const orderId = await orderBook.read.nextOrderId();
+    await waitFor(publicClient, await dlAlice.write.approve([orderBook.address, 100n * ONE]));
+    await waitFor(publicClient, await orderBookAlice.write.placeSellDL([pairAddress, 100n * ONE]));
+
+    await waitFor(publicClient, await other.write.transfer([pairAddress, 1_000n * ONE]));
+    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+
+    const order = await orderBook.read.orders([orderId]);
+    assert.equal(order[3], false);
+    assert.equal(order[4], 0n);
+  });
+
+  it("factory mintPairOtherAndSettle still updates reserves when no queued orders exist", async function () {
+    const fixture = await deployDexFixture();
+    const { publicClient, other, factory, createPairWithReserves } = fixture;
+    const { pairAddress, pair } = await createPairWithReserves(1_000n * ONE, 10n * ONE);
+
+    await waitFor(publicClient, await other.write.transfer([pairAddress, 5n * ONE]));
+    const [, reserveBefore] = await pair.read.getReserves();
+
+    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+
+    const [, reserveAfter] = await pair.read.getReserves();
+    assert.equal(reserveAfter, reserveBefore + 5n * ONE);
+  });
+
+  it("factory mintPairOtherAndSettle does not revert liquidity update when settlePair fails", async function () {
+    const fixture = await deployDexFixture();
+    const { viem, publicClient, other, factory, createPairWithReserves } = fixture;
+    const { pairAddress, pair } = await createPairWithReserves(1_000n * ONE, 10n * ONE);
+
+    const revertingOrderBook = await viem.deployContract("TestRevertingOrderBook");
+    await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", revertingOrderBook.address]));
+
+    await waitFor(publicClient, await other.write.transfer([pairAddress, 7n * ONE]));
+    const [, reserveBefore] = await pair.read.getReserves();
+
+    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+
+    const [, reserveAfter] = await pair.read.getReserves();
+    assert.equal(reserveAfter, reserveBefore + 7n * ONE);
   });
 });
