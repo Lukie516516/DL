@@ -93,6 +93,10 @@ interface IDealPairLight {
         external
         view
         returns (uint112 r0, uint112 r1, uint32 ts);
+    function getEffectiveReserves()
+        external
+        view
+        returns (uint256 e0, uint256 e1, uint32 ts);
 }
 interface IDealPairInit {
     function initialize(
@@ -107,6 +111,18 @@ interface IDealPairInit {
     function mintInitial(
         uint256 _b1
     ) external returns (uint amountDL, uint amountOther);
+    function setVirtualReserves(
+        uint256 newVirtualReserve0,
+        uint256 newVirtualReserve1,
+        bool enable0,
+        bool enable1
+    ) external;
+    function setVirtualReservesByBps(
+        uint32 bps0,
+        uint32 bps1,
+        bool enable0,
+        bool enable1
+    ) external;
 }
 
 /* ---------------- DealInfoNFT (写操作由 Factory 代理) ---------------- */
@@ -131,6 +147,12 @@ interface IDealInfoNFTLock {
 interface IOrderBookSettle {
     function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
 }
+interface IDealPairOtherLiquidity {
+    function mintOtherOnly() external returns (uint256 amountOther);
+}
+interface IDealPairVirtualView {
+    function getVirtualReserves() external view returns (uint256 v0, uint256 v1);
+}
 /* ========================================================== */
 contract DealFactory is Ownable {
     using Clones for address;
@@ -144,6 +166,32 @@ contract DealFactory is Ownable {
 
     /* ---------- 数学工具 ---------- */
     error RatioInvalid();
+    error NotAdmin();
+    error NotDeal();
+    error ZeroAddress();
+    error PairExists();
+    error CloneFailed();
+    error CloneNoCode();
+    error UseDomainEntry();
+    error DealImplementationUnset();
+    error CoreGlobalsUnset();
+    error NotAllowedCreateFor();
+    error InitiatorZero();
+    error UnauthorizedQuoteCaller();
+    error InvalidDlPair();
+    error CreateBurnNoPair();
+    error CreateBurnQuantityZero();
+    error InvalidTemplateType();
+    error InvalidJoinMode();
+    error InvalidAssetNftPairing();
+    error ExpectedBZero();
+    error GateIdZero();
+    error InvalidTimeRange();
+    error InvalidTemplateShape();
+    error MarginTokenNotAllowed();
+    error InfoNftAmountInvalid();
+    error InfoNftZero();
+    error RewardPairMissing();
     struct Ratio {
         uint32 num;
         uint32 den;
@@ -167,6 +215,7 @@ contract DealFactory is Ownable {
     address public treasury;
     address public wrappedNative;
     address public swapOrderBook;
+    address public dealMessageHub;
 
     // 归一化 token(OTHER 或 WNATIVE) => pair(DL↔token)
     mapping(address => address) public pairForToken;
@@ -213,7 +262,21 @@ contract DealFactory is Ownable {
         uint32 feeDen
     );
     event PairFeeUpdated(address indexed pair, uint32 newNum, uint32 newDen);
+    event PairVirtualReservesUpdated(
+        address indexed pair,
+        uint256 virtualReserve0,
+        bool virtualReserve0Enabled,
+        uint256 virtualReserve1,
+        bool virtualReserve1Enabled
+    );
     event PairMapped(address indexed otherToken, address indexed pair);
+    event PairOtherLiquidityAddedAndSettled(
+        address indexed pair,
+        uint256 amountOther,
+        bool settleAttempted,
+        bool settleSucceeded
+    );
+    event PairOtherLiquiditySettleFailed(address indexed pair, bytes reason);
     event FeesAndMintOnFeesUpdated(
         uint32 feeNonDLNum,
         uint32 feeNonDLDen,
@@ -282,11 +345,11 @@ contract DealFactory is Ownable {
 
     /* ---------------- Modifiers ---------------- */
     modifier onlyAdmin() {
-        require(msg.sender == admin, "NOT_ADMIN");
+        if (msg.sender != admin) revert NotAdmin();
         _;
     }
     modifier onlyDeal() {
-        require(isDeal[msg.sender]);
+        if (!isDeal[msg.sender]) revert NotDeal();
         _;
     }
 
@@ -329,7 +392,7 @@ contract DealFactory is Ownable {
     }
 
     function setAdmin(address _admin) external onlyAdmin {
-        require(_admin != address(0), "ADMIN_0");
+        if (_admin == address(0)) revert ZeroAddress();
         admin = _admin;
     }
     function setMinTimeoutSecondsByAdmin(uint64 s) external onlyAdmin {
@@ -338,14 +401,15 @@ contract DealFactory is Ownable {
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","treasury","wrappedNative","swapOrderBook"}
+    /// key ∈ {"dlToken","infoNft","treasury","wrappedNative","swapOrderBook","dealMessageHub"}
     function setGlobal(string calldata key, address value) external onlyOwner {
-        require(value != address(0), "GLOBAL_0");
+        if (value == address(0)) revert ZeroAddress();
         bytes32 k = keccak256(bytes(key));
         if (k == keccak256("dlToken")) dlToken = value;
         else if (k == keccak256("infoNft")) infoNft = value;
         else if (k == keccak256("wrappedNative")) wrappedNative = value;
         else if (k == keccak256("swapOrderBook")) swapOrderBook = value;
+        else if (k == keccak256("dealMessageHub")) dealMessageHub = value;
         else revert();
         if ((k == keccak256("dlToken") || k == keccak256("wrappedNative")) && value != address(0)) {
             allowedMarginToken[value] = true;
@@ -369,7 +433,7 @@ contract DealFactory is Ownable {
         address token0,
         address token1
     ) external onlyOwner {
-        require(token0 != address(0) && token1 != address(0), "RECOG_0");
+        if (token0 == address(0) || token1 == address(0)) revert ZeroAddress();
         recognizedToken0 = token0;
         recognizedToken1 = token1;
         if (token0 != address(0)) {
@@ -384,13 +448,13 @@ contract DealFactory is Ownable {
     }
 
     function setAllowedMarginToken(address token, bool allowed) external onlyOwner {
-        require(token != address(0), "MARGIN_TOKEN_0");
+        if (token == address(0)) revert ZeroAddress();
         allowedMarginToken[token] = allowed;
         emit MarginTokenAllowedUpdated(token, allowed);
     }
 
     function setAllowedCreateFor(address caller, bool allowed) external onlyOwner {
-        require(caller != address(0), "CALLER_0");
+        if (caller == address(0)) revert ZeroAddress();
         isAllowedCreateFor[caller] = allowed;
         emit AllowedCreateForSet(caller, allowed);
     }
@@ -433,7 +497,7 @@ contract DealFactory is Ownable {
         emit SpecialNoFeeTokenUpdated(token);
     }
     function setTreasuryByAdmin(address _treasury) external onlyAdmin {
-        require(_treasury != address(0), "TREASURY_0");
+        if (_treasury == address(0)) revert ZeroAddress();
         treasury = _treasury;
     }
 
@@ -493,15 +557,14 @@ contract DealFactory is Ownable {
         uint32 feeNum,
         uint32 feeDen
     ) external onlyOwner returns (address pair) {
-        require(pairForToken[tokenOther] == address(0), "PAIR_EXISTS");
+        if (pairForToken[tokenOther] != address(0)) revert PairExists();
         require(pairImplementation != address(0) && dlToken != address(0));
         require(tokenOther != address(0) && tokenOther != dlToken);
         Ratio memory r = Ratio({num: feeNum, den: feeDen});
         _assertRatio(r);
 
         pair = pairImplementation.clone();
-        require(pair != address(0), "CLONE_FAILED");
-        require(pair.code.length > 0, "CLONE_NO_CODE");
+        _assertClone(pair);
 
         IDealPairInit(pair).initialize(
             dlToken,
@@ -530,6 +593,31 @@ contract DealFactory is Ownable {
             IOrderBookSettle(swapOrderBook).settlePair(pair, 1, 1);
         }
     }
+    function mintPairOtherAndSettle(
+        address pair
+    ) external onlyOwner returns (uint256 amountOther) {
+        _assertDlPair(pair);
+        amountOther = IDealPairOtherLiquidity(pair).mintOtherOnly();
+
+        bool settleAttempted;
+        bool settleSucceeded;
+        if (swapOrderBook != address(0)) {
+            settleAttempted = true;
+            try IOrderBookSettle(swapOrderBook).settlePair(pair, 1, 8) {
+                settleSucceeded = true;
+            } catch (bytes memory reason) {
+                settleSucceeded = false;
+                emit PairOtherLiquiditySettleFailed(pair, reason);
+            }
+        }
+
+        emit PairOtherLiquidityAddedAndSettled(
+            pair,
+            amountOther,
+            settleAttempted,
+            settleSucceeded
+        );
+    }
     function setPairFee(
         address pair,
         uint32 newNum,
@@ -543,9 +631,56 @@ contract DealFactory is Ownable {
         IDealPairInit(pair).setFee(newNum, 10000);
         emit PairFeeUpdated(pair, newNum, 10000);
     }
+    function setPairVirtualReserves(
+        address pair,
+        uint256 virtualReserve0,
+        bool enable0,
+        uint256 virtualReserve1,
+        bool enable1
+    ) external onlyOwner {
+        _assertDlPair(pair);
+        IDealPairInit(pair).setVirtualReserves(
+            virtualReserve0,
+            virtualReserve1,
+            enable0,
+            enable1
+        );
+        emit PairVirtualReservesUpdated(
+            pair,
+            virtualReserve0,
+            enable0 && virtualReserve0 > 0,
+            virtualReserve1,
+            enable1 && virtualReserve1 > 0
+        );
+    }
+    function setPairVirtualReservesByBps(
+        address pair,
+        uint32 bps0,
+        bool enable0,
+        uint32 bps1,
+        bool enable1
+    ) external onlyOwner {
+        if (bps0 > 10_000 || bps1 > 10_000) revert RatioInvalid();
+        _assertDlPair(pair);
+        IDealPairInit(pair).setVirtualReservesByBps(
+            bps0,
+            bps1,
+            enable0,
+            enable1
+        );
+        (uint256 v0, uint256 v1) = IDealPairVirtualView(pair)
+            .getVirtualReserves();
+        emit PairVirtualReservesUpdated(
+            pair,
+            v0,
+            enable0 && v0 > 0,
+            v1,
+            enable1 && v1 > 0
+        );
+    }
     function mapExistingPair(address tokenOther, address pair) external onlyOwner {
-        require(tokenOther != address(0) && pair != address(0), "ZERO");
-        require(pairForToken[tokenOther] == address(0), "PAIR_EXISTS");
+        if (tokenOther == address(0) || pair == address(0)) revert ZeroAddress();
+        if (pairForToken[tokenOther] != address(0)) revert PairExists();
         _assertDlPair(pair);
         pairForToken[tokenOther] = pair;
         emit PairMapped(tokenOther, pair);
@@ -565,7 +700,8 @@ contract DealFactory is Ownable {
         address pair,
         uint256 amountIn
     ) external returns (uint256 dlOut) {
-        require(isDeal[msg.sender] || infoNft == msg.sender);
+        if (!isDeal[msg.sender] && infoNft != msg.sender)
+            revert UnauthorizedQuoteCaller();
         _assertDlPair(pair);
         return _updateAndQuoteInternal(pair, amountIn);
     }
@@ -573,12 +709,12 @@ contract DealFactory is Ownable {
         address pair
     ) internal view returns (uint256 p1CumNow, uint32 nowTs, uint256 spotQ112) {
         (, p1CumNow, ) = IDealPairLight(pair).getPriceCumulatives();
-        (uint112 r0, uint112 r1, uint32 tsRes) = IDealPairLight(pair)
-            .getReserves();
+        (uint256 r0, uint256 r1, uint32 tsRes) = IDealPairLight(pair)
+            .getEffectiveReserves();
         require(r0 > 0 && r1 > 0);
         nowTs = uint32(block.timestamp);
         uint32 elapsed = nowTs - tsRes;
-        spotQ112 = (uint256(uint224(r0)) << 112) / uint256(uint224(r1));
+        spotQ112 = (r0 << 112) / r1;
         if (elapsed > 0) {
             unchecked {
                 p1CumNow += spotQ112 * elapsed;
@@ -623,160 +759,22 @@ contract DealFactory is Ownable {
     function createDeal(
         CreateParams calldata p
     ) external returns (address deal) {
-        require(dealImplementation != address(0));
-        require(!p.init.isDomainDeal && bytes(p.init.domainName).length == 0, "USE_DOMAIN_ENTRY");
-        require(p.init.timeoutSeconds >= minTimeoutSeconds);
-        require(dlToken != address(0) && wrappedNative != address(0));
-        _assertTemplate(p.init);
-        _assertMarginTokenAllowed(p.init.aMarginToken, p.init.aMarginAmount);
-        _assertMarginTokenAllowed(p.init.bMarginToken, p.init.bMarginAmount);
-
-        if (createBurnEnabled) {
-            address pricingNormC = (createBurnPricingToken == address(0))
-                ? wrappedNative
-                : createBurnPricingToken;
-            address pairC = pairForToken[pricingNormC];
-            require(pairC != address(0), "CREATE_BURN_NO_PAIR");
-            _assertDlPair(pairC);
-            uint256 dlNeed = _updateAndQuoteInternal(
-                pairC,
-                createBurnAmountInToken
-            );
-            require(dlNeed > 0, "CREATE_BURN_QTY_0");
-            IDLBurnFrom(dlToken).burnFrom(msg.sender, dlNeed);
-            emit CreateBurnExecuted(
-                msg.sender,
-                pairC,
-                pricingNormC,
-                createBurnAmountInToken,
-                dlNeed
-            );
-        }
-
-        deal = dealImplementation.clone();
-        require(deal != address(0), "CLONE_FAILED");
-        require(deal.code.length > 0, "CLONE_NO_CODE");
-        isDeal[deal] = true;
-
-        address aNorm = (p.init.aSwapToken == address(0))
-            ? wrappedNative
-            : p.init.aSwapToken;
-        address bNorm = (p.init.bSwapToken == address(0))
-            ? wrappedNative
-            : p.init.bSwapToken;
-        _assertRewardPairConfigured(aNorm, p.init.aSwapAmount);
-        _assertRewardPairConfigured(bNorm, p.init.bSwapAmount);
-
-        address msgNorm = (msgPriceToken == address(0))
-            ? wrappedNative
-            : msgPriceToken;
-        address msgPair = (msgNorm == dlToken)
-            ? address(0)
-            : pairForToken[msgNorm];
-
-        IDeal.ConfigParams memory cfg = IDeal.ConfigParams({
-            dl: dlToken,
-            infoNft: infoNft,
-            treasury: treasury,
-            WNATIVE: wrappedNative,
-            recognizedToken0: recognizedToken0,
-            recognizedToken1: recognizedToken1,
-            aTokenNorm: aNorm,
-            bTokenNorm: bNorm,
-            aPair: pairForToken[aNorm],
-            bPair: pairForToken[bNorm],
-            feeNonDLNum: defaultFeeNonDL.num,
-            feeNonDLDen: defaultFeeNonDL.den,
-            mintOnFeesNum: defaultMintOnFees.num,
-            mintOnFeesDen: defaultMintOnFees.den,
-            specialNoFeeToken: specialNoFeeToken,
-            trackCreator: p.trackCreator,
-            msgPriceEnabled: msgPriceEnabled,
-            msgPriceTokenNorm: msgNorm,
-            msgPricePair: msgPair,
-            msgPriceAmountInToken: msgPriceAmountInToken
-        });
-
-        IDeal(deal).initialize(address(this), msg.sender, p.init, cfg);
-
-        emit DealCreated(deal, msg.sender);
-        emit DealCreatedV2(msg.sender, deal, p.init.aNftId);
-        emit DealTemplateTagged(deal, p.init.templateType);
+        deal = _createDeal(msg.sender, p, true);
     }
 
     function createDealFor(
         address initiator,
         CreateParams calldata p
     ) external returns (address deal) {
-        require(isAllowedCreateFor[msg.sender], "NOT_ALLOWED_CREATE_FOR");
-        require(initiator != address(0), "INITIATOR_0");
-        require(dealImplementation != address(0));
-        require(p.init.timeoutSeconds >= minTimeoutSeconds);
-        require(dlToken != address(0) && wrappedNative != address(0));
-        _assertTemplate(p.init);
-        _assertMarginTokenAllowed(p.init.aMarginToken, p.init.aMarginAmount);
-        _assertMarginTokenAllowed(p.init.bMarginToken, p.init.bMarginAmount);
-
-        if (createBurnEnabled) {
-            address pricingNormC = (createBurnPricingToken == address(0))
-                ? wrappedNative
-                : createBurnPricingToken;
-            address pairC = pairForToken[pricingNormC];
-            require(pairC != address(0), "CREATE_BURN_NO_PAIR");
-            _assertDlPair(pairC);
-            uint256 dlNeed = _updateAndQuoteInternal(pairC, createBurnAmountInToken);
-            require(dlNeed > 0, "CREATE_BURN_QTY_0");
-            IDLBurnFrom(dlToken).burnFrom(initiator, dlNeed);
-            emit CreateBurnExecuted(initiator, pairC, pricingNormC, createBurnAmountInToken, dlNeed);
-        }
-
-        deal = dealImplementation.clone();
-        require(deal != address(0), "CLONE_FAILED");
-        require(deal.code.length > 0, "CLONE_NO_CODE");
-        isDeal[deal] = true;
-
-        address aNorm = (p.init.aSwapToken == address(0)) ? wrappedNative : p.init.aSwapToken;
-        address bNorm = (p.init.bSwapToken == address(0)) ? wrappedNative : p.init.bSwapToken;
-        _assertRewardPairConfigured(aNorm, p.init.aSwapAmount);
-        _assertRewardPairConfigured(bNorm, p.init.bSwapAmount);
-
-        address msgNorm = (msgPriceToken == address(0)) ? wrappedNative : msgPriceToken;
-        address msgPair = (msgNorm == dlToken) ? address(0) : pairForToken[msgNorm];
-
-        IDeal.ConfigParams memory cfg = IDeal.ConfigParams({
-            dl: dlToken,
-            infoNft: infoNft,
-            treasury: treasury,
-            WNATIVE: wrappedNative,
-            recognizedToken0: recognizedToken0,
-            recognizedToken1: recognizedToken1,
-            aTokenNorm: aNorm,
-            bTokenNorm: bNorm,
-            aPair: pairForToken[aNorm],
-            bPair: pairForToken[bNorm],
-            feeNonDLNum: defaultFeeNonDL.num,
-            feeNonDLDen: defaultFeeNonDL.den,
-            mintOnFeesNum: defaultMintOnFees.num,
-            mintOnFeesDen: defaultMintOnFees.den,
-            specialNoFeeToken: specialNoFeeToken,
-            trackCreator: p.trackCreator,
-            msgPriceEnabled: msgPriceEnabled,
-            msgPriceTokenNorm: msgNorm,
-            msgPricePair: msgPair,
-            msgPriceAmountInToken: msgPriceAmountInToken
-        });
-
-        IDeal(deal).initialize(address(this), initiator, p.init, cfg);
-
-        emit DealCreated(deal, initiator);
-        emit DealCreatedV2(initiator, deal, p.init.aNftId);
-        emit DealTemplateTagged(deal, p.init.templateType);
+        if (!isAllowedCreateFor[msg.sender]) revert NotAllowedCreateFor();
+        if (initiator == address(0)) revert InitiatorZero();
+        deal = _createDeal(initiator, p, false);
     }
 
     function chargeMessageFeeFrom(address payer) external {
-        require(isAllowedCreateFor[msg.sender], "NOT_ALLOWED");
+        if (!isAllowedCreateFor[msg.sender]) revert NotAllowedCreateFor();
         if (!msgPriceEnabled || msgPriceAmountInToken == 0) return;
-        address msgNorm = (msgPriceToken == address(0)) ? wrappedNative : msgPriceToken;
+        address msgNorm = _normalizeToken(msgPriceToken);
         uint256 dlNeed;
         if (msgNorm == dlToken) {
             dlNeed = msgPriceAmountInToken;
@@ -791,8 +789,9 @@ contract DealFactory is Ownable {
     }
 
     function _assertTemplate(IDeal.InitParams calldata p) internal pure {
-        require(p.templateType <= uint8(IDeal.TemplateType.NftToEmpty), "TEMPLATE");
-        require(p.joinMode <= 3, "JOIN_MODE");
+        if (p.templateType > uint8(IDeal.TemplateType.NftToEmpty))
+            revert InvalidTemplateType();
+        if (p.joinMode > 3) revert InvalidJoinMode();
 
         bool aHasSwap = p.aSwapAmount > 0;
         bool bHasSwap = p.bSwapAmount > 0;
@@ -801,58 +800,62 @@ contract DealFactory is Ownable {
         bool aHasAssetNftAddr = p.aAssetNft != address(0);
         bool bHasAssetNftAddr = p.bAssetNft != address(0);
 
-        require(aHasAssetNft == aHasAssetNftAddr, "A_ASSET_NFT_PAIR");
-        require(bHasAssetNft == bHasAssetNftAddr, "B_ASSET_NFT_PAIR");
+        if (aHasAssetNft != aHasAssetNftAddr || bHasAssetNft != bHasAssetNftAddr)
+            revert InvalidAssetNftPairing();
 
-        if (p.joinMode == 1 || p.joinMode == 3) require(p.expectedB != address(0), "EXPECTED_B_0");
-        if (p.joinMode == 2 || p.joinMode == 3) require(p.gateNftId != 0, "GATE_ID_0");
-        if (p.timeStart != 0 || p.timeEnd != 0) require(p.timeEnd > p.timeStart, "TIME_RANGE");
+        if ((p.joinMode == 1 || p.joinMode == 3) && p.expectedB == address(0))
+            revert ExpectedBZero();
+        if ((p.joinMode == 2 || p.joinMode == 3) && p.gateNftId == 0)
+            revert GateIdZero();
+        if ((p.timeStart != 0 || p.timeEnd != 0) && p.timeEnd <= p.timeStart)
+            revert InvalidTimeRange();
 
         if (p.templateType == uint8(IDeal.TemplateType.TokenToToken)) {
-            require(aHasSwap && bHasSwap, "TEMPLATE_TOKEN_TOKEN");
-            require(!aHasAssetNft && !bHasAssetNft, "TEMPLATE_TOKEN_TOKEN");
+            if (!(aHasSwap && bHasSwap && !aHasAssetNft && !bHasAssetNft))
+                revert InvalidTemplateShape();
             return;
         }
 
         if (p.templateType == uint8(IDeal.TemplateType.TokenToNft)) {
-            require(
-                (aHasSwap && !bHasSwap && !aHasAssetNft && bHasAssetNft) ||
-                (bHasSwap && !aHasSwap && !bHasAssetNft && aHasAssetNft),
-                "TEMPLATE_TOKEN_NFT"
-            );
+            if (
+                !(
+                    (aHasSwap && !bHasSwap && !aHasAssetNft && bHasAssetNft) ||
+                    (bHasSwap && !aHasSwap && !bHasAssetNft && aHasAssetNft)
+                )
+            ) revert InvalidTemplateShape();
             return;
         }
 
         if (p.templateType == uint8(IDeal.TemplateType.NftToEmpty)) {
-            require(
-                (aHasAssetNft && !bHasAssetNft && !aHasSwap && !bHasSwap) ||
-                (bHasAssetNft && !aHasAssetNft && !aHasSwap && !bHasSwap),
-                "TEMPLATE_NFT_EMPTY"
-            );
+            if (
+                !(
+                    (aHasAssetNft && !bHasAssetNft && !aHasSwap && !bHasSwap) ||
+                    (bHasAssetNft && !aHasAssetNft && !aHasSwap && !bHasSwap)
+                )
+            ) revert InvalidTemplateShape();
             return;
         }
 
         if (p.templateType == uint8(IDeal.TemplateType.TokenToEmpty)) {
-            require(aHasSwap != bHasSwap, "TEMPLATE_TOKEN_EMPTY");
-            require(!aHasAssetNft && !bHasAssetNft, "TEMPLATE_TOKEN_EMPTY");
+            if (!(aHasSwap != bHasSwap && !aHasAssetNft && !bHasAssetNft))
+                revert InvalidTemplateShape();
             return;
         }
 
-        require(!aHasSwap && !bHasSwap, "TEMPLATE_EMPTY_EMPTY");
-        require(!aHasAssetNft && !bHasAssetNft, "TEMPLATE_EMPTY_EMPTY");
+        if (aHasSwap || bHasSwap || aHasAssetNft || bHasAssetNft)
+            revert InvalidTemplateShape();
     }
 
     function _assertMarginTokenAllowed(address token, uint256 amount) internal view {
         if (amount == 0) return;
-        address tokenNorm = token == address(0) ? wrappedNative : token;
-        require(
-            tokenNorm == dlToken ||
-            tokenNorm == wrappedNative ||
-            tokenNorm == recognizedToken0 ||
-            tokenNorm == recognizedToken1 ||
-            allowedMarginToken[tokenNorm],
-            "MARGIN_TOKEN_NOT_ALLOWED"
-        );
+        address tokenNorm = _normalizeToken(token);
+        if (
+            tokenNorm != dlToken &&
+            tokenNorm != wrappedNative &&
+            tokenNorm != recognizedToken0 &&
+            tokenNorm != recognizedToken1 &&
+            !allowedMarginToken[tokenNorm]
+        ) revert MarginTokenNotAllowed();
     }
 
     /* ========== 代理：增发 DL（仅 Deal） ========== */
@@ -864,24 +867,24 @@ contract DealFactory is Ownable {
 
     /* ========== 代理：写 InfoNFT（仅 Deal） ========== */
     function infoAddMinted(uint256 tokenId, uint256 amount) external onlyDeal {
-        require(infoNft != address(0) && amount > 0, "INFO_NFT/AMOUNT");
+        if (infoNft == address(0) || amount == 0) revert InfoNftAmountInvalid();
         IDealInfoNFT(infoNft).addMinted(tokenId, amount);
     }
     function infoSetMaxPartnerOf(
         uint256 tokenId,
         uint256 partnerTokenId
     ) external onlyDeal {
-        require(infoNft != address(0), "INFO_NFT_ZERO");
+        if (infoNft == address(0)) revert InfoNftZero();
         IDealInfoNFT(infoNft).setMaxPartnerOf(tokenId, partnerTokenId);
     }
 
     /* ========= InfoNFT 锁代理（仅 Deal） ========= */
     function infoLock(uint256 tokenId, address holder) external onlyDeal {
-        require(infoNft != address(0), "INFO_NFT_ZERO");
+        if (infoNft == address(0)) revert InfoNftZero();
         IDealInfoNFTLock(infoNft).lockByFactory(tokenId, msg.sender, holder);
     }
     function infoUnlock(uint256 tokenId) external onlyDeal {
-        require(infoNft != address(0), "INFO_NFT_ZERO");
+        if (infoNft == address(0)) revert InfoNftZero();
         IDealInfoNFTLock(infoNft).unlockByFactory(tokenId, msg.sender);
     }
 
@@ -1028,7 +1031,8 @@ contract DealFactory is Ownable {
     }
 
     function _assertDlPair(address pair) internal view {
-        require(pair != address(0) && IDealPairLight(pair).token0() == dlToken);
+        if (pair == address(0) || IDealPairLight(pair).token0() != dlToken)
+            revert InvalidDlPair();
     }
 
     function _assertRewardPairConfigured(
@@ -1041,7 +1045,102 @@ contract DealFactory is Ownable {
             tokenNorm == recognizedToken0 ||
             tokenNorm == recognizedToken1
         ) {
-            require(pairForToken[tokenNorm] != address(0), "REWARD_NO_PAIR");
+            if (pairForToken[tokenNorm] == address(0)) revert RewardPairMissing();
         }
+    }
+
+    function _assertClone(address instance) internal view {
+        if (instance == address(0)) revert CloneFailed();
+        if (instance.code.length == 0) revert CloneNoCode();
+    }
+
+    function _normalizeToken(address token) internal view returns (address) {
+        return token == address(0) ? wrappedNative : token;
+    }
+
+    function _assertCreateDealConfig(
+        IDeal.InitParams calldata init,
+        bool rejectDomainEntry
+    ) internal view {
+        if (dealImplementation == address(0)) revert DealImplementationUnset();
+        if (rejectDomainEntry && (init.isDomainDeal || bytes(init.domainName).length != 0))
+            revert UseDomainEntry();
+        require(init.timeoutSeconds >= minTimeoutSeconds);
+        if (dlToken == address(0) || wrappedNative == address(0))
+            revert CoreGlobalsUnset();
+        _assertTemplate(init);
+        _assertMarginTokenAllowed(init.aMarginToken, init.aMarginAmount);
+        _assertMarginTokenAllowed(init.bMarginToken, init.bMarginAmount);
+    }
+
+    function _applyCreateBurn(address payer) internal {
+        address pricingNorm = _normalizeToken(createBurnPricingToken);
+        address pair = pairForToken[pricingNorm];
+        if (pair == address(0)) revert CreateBurnNoPair();
+        _assertDlPair(pair);
+        uint256 dlNeed = _updateAndQuoteInternal(pair, createBurnAmountInToken);
+        if (dlNeed == 0) revert CreateBurnQuantityZero();
+        IDLBurnFrom(dlToken).burnFrom(payer, dlNeed);
+        emit CreateBurnExecuted(
+            payer,
+            pair,
+            pricingNorm,
+            createBurnAmountInToken,
+            dlNeed
+        );
+    }
+
+    function _buildDealConfig(
+        CreateParams calldata p
+    ) internal view returns (IDeal.ConfigParams memory cfg) {
+        address aNorm = _normalizeToken(p.init.aSwapToken);
+        address bNorm = _normalizeToken(p.init.bSwapToken);
+        _assertRewardPairConfigured(aNorm, p.init.aSwapAmount);
+        _assertRewardPairConfigured(bNorm, p.init.bSwapAmount);
+
+        address msgNorm = _normalizeToken(msgPriceToken);
+        address msgPair = msgNorm == dlToken ? address(0) : pairForToken[msgNorm];
+
+        cfg = IDeal.ConfigParams({
+            dl: dlToken,
+            infoNft: infoNft,
+            treasury: treasury,
+            WNATIVE: wrappedNative,
+            recognizedToken0: recognizedToken0,
+            recognizedToken1: recognizedToken1,
+            aTokenNorm: aNorm,
+            bTokenNorm: bNorm,
+            aPair: pairForToken[aNorm],
+            bPair: pairForToken[bNorm],
+            feeNonDLNum: defaultFeeNonDL.num,
+            feeNonDLDen: defaultFeeNonDL.den,
+            mintOnFeesNum: defaultMintOnFees.num,
+            mintOnFeesDen: defaultMintOnFees.den,
+            specialNoFeeToken: specialNoFeeToken,
+            trackCreator: p.trackCreator,
+            msgPriceEnabled: msgPriceEnabled,
+            msgPriceTokenNorm: msgNorm,
+            msgPricePair: msgPair,
+            msgPriceAmountInToken: msgPriceAmountInToken
+        });
+    }
+
+    function _createDeal(
+        address initiator,
+        CreateParams calldata p,
+        bool rejectDomainEntry
+    ) internal returns (address deal) {
+        _assertCreateDealConfig(p.init, rejectDomainEntry);
+        if (createBurnEnabled) _applyCreateBurn(initiator);
+
+        deal = dealImplementation.clone();
+        _assertClone(deal);
+        isDeal[deal] = true;
+
+        IDeal(deal).initialize(address(this), initiator, p.init, _buildDealConfig(p));
+
+        emit DealCreated(deal, initiator);
+        emit DealCreatedV2(initiator, deal, p.init.aNftId);
+        emit DealTemplateTagged(deal, p.init.templateType);
     }
 }

@@ -68,6 +68,7 @@ async function deployFixture() {
     pairImpl.address,
     3600,
   ]);
+  const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
     zeroAddress,
@@ -80,6 +81,7 @@ async function deployFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(
     publicClient,
     await factory.write.setRecognizedTokens([ausd.address, usdt.address]),
@@ -143,6 +145,7 @@ async function deployFixture() {
     bad,
     wrappedNative,
     factory,
+    dealMessageHub,
     infoNft,
     createAndInitPair,
     mintInfoNft,
@@ -526,7 +529,7 @@ describe("Deal Rules", async function () {
           trackCreator: false,
         },
       ]),
-      /REWARD_NO_PAIR/,
+      /RewardPairMissing/,
     );
   });
 
@@ -576,6 +579,111 @@ describe("Deal Rules", async function () {
     assert.equal(await deal.read.timeStart(), 1_700_000_000n);
     assert.equal(await deal.read.timeEnd(), 1_800_000_000n);
     assert.equal(await ausd.read.balanceOf([ausdPair]), pairBalanceBefore + ((aSwapAmount * 3n) / 1000n));
+  });
+
+  it("preserves deal chat through the external message hub", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, bad, alice, bob, dealMessageHub } = fixture;
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: bad.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_TOKEN_TO_EMPTY,
+      title: "chat deal",
+    });
+
+    const dealAsAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealAsBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+
+    await waitFor(publicClient, await dealAsAlice.write.postMessage(["hello from a"]));
+    await waitFor(publicClient, await dealAsBob.write.join([0n, false]));
+    await waitFor(publicClient, await dealAsBob.write.postMessage(["hello from b"]));
+
+    const count = await dealMessageHub.read.messagesCount([dealAddress]);
+    const [contents, , senders] = await dealMessageHub.read.getMessages([dealAddress, 0n, 10n]);
+
+    assert.equal(count, 2n);
+    assert.deepEqual(contents, ["hello from a", "hello from b"]);
+    assert.equal(getAddress(senders[0]), getAddress(alice.account.address));
+    assert.equal(getAddress(senders[1]), getAddress(bob.account.address));
+  });
+
+  it("allows approved createDealFor callers to create and track deals for the initiator", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, factory, alice } = fixture;
+    const helper = await viem.deployContract("TestFactoryCaller");
+
+    await waitFor(publicClient, await factory.write.setAllowedCreateFor([helper.address, true]));
+
+    const createHash = await helper.write.createDealFor([
+      factory.address,
+      alice.account.address,
+      {
+        init: {
+          aSwapToken: zeroAddress,
+          aSwapAmount: 0n,
+          aMarginToken: zeroAddress,
+          aMarginAmount: 0n,
+          bSwapToken: zeroAddress,
+          bSwapAmount: 0n,
+          bMarginToken: zeroAddress,
+          bMarginAmount: 0n,
+          aAssetNft: zeroAddress,
+          aAssetNftId: 0n,
+          bAssetNft: zeroAddress,
+          bAssetNftId: 0n,
+          templateType: TEMPLATE_EMPTY_TO_EMPTY,
+          joinMode: OPEN_JOIN,
+          expectedB: zeroAddress,
+          gateNftId: 0n,
+          aNftId: 0n,
+          title: "create for",
+          timeoutSeconds: 3600n,
+          timeStart: 0n,
+          timeEnd: 0n,
+          isDomainDeal: false,
+          domainName: "",
+        },
+        trackCreator: true,
+      },
+    ]);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+    const events = await publicClient.getContractEvents({
+      address: factory.address,
+      abi: factory.abi,
+      eventName: "DealCreated",
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+      strict: true,
+    });
+
+    assert.equal(events.length, 1);
+    const dealAddress = events[0].args.deal;
+    assert.equal(await factory.read.isDeal([dealAddress]), true);
+    assert.equal(await factory.read.trackedCount([getAddress(alice.account.address)]), 1n);
+    assert.equal(await factory.read.isTracked([getAddress(alice.account.address), dealAddress]), true);
+  });
+
+  it("charges message fees through allowed external callers using the configured pricing pair", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, factory, dl, ausd, alice } = fixture;
+    const helper = await viem.deployContract("TestFactoryCaller");
+
+    await fixture.createAndInitPair(ausd.address);
+    await waitFor(publicClient, await factory.write.setAllowedCreateFor([helper.address, true]));
+    await waitFor(publicClient, await factory.write.setMessagePriceRule([true, ausd.address, ONE]));
+
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+    const aliceBefore = await dl.read.balanceOf([alice.account.address]);
+    const supplyBefore = await dl.read.totalSupply();
+
+    await waitFor(publicClient, await dlAlice.write.approve([factory.address, ONE]));
+    await waitFor(publicClient, await helper.write.chargeMessageFeeFrom([factory.address, alice.account.address]));
+
+    assert.equal(await dl.read.balanceOf([alice.account.address]), aliceBefore - ONE);
+    assert.equal(await dl.read.totalSupply(), supplyBefore - ONE);
   });
 
   it("supports dual designation by requiring both the expected address and the specified identity nft", async function () {
@@ -674,7 +782,7 @@ describe("Deal Rules", async function () {
           trackCreator: false,
         },
       ]),
-      /MARGIN_TOKEN_NOT_ALLOWED/,
+      /MarginTokenNotAllowed/,
     );
   });
 
