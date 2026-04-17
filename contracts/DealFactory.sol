@@ -93,6 +93,10 @@ interface IDealPairLight {
         external
         view
         returns (uint112 r0, uint112 r1, uint32 ts);
+    function getEffectiveReserves()
+        external
+        view
+        returns (uint256 e0, uint256 e1, uint32 ts);
 }
 interface IDealPairInit {
     function initialize(
@@ -107,6 +111,18 @@ interface IDealPairInit {
     function mintInitial(
         uint256 _b1
     ) external returns (uint amountDL, uint amountOther);
+    function setVirtualReserves(
+        uint256 newVirtualReserve0,
+        uint256 newVirtualReserve1,
+        bool enable0,
+        bool enable1
+    ) external;
+    function setVirtualReservesByBps(
+        uint32 bps0,
+        uint32 bps1,
+        bool enable0,
+        bool enable1
+    ) external;
 }
 
 /* ---------------- DealInfoNFT (写操作由 Factory 代理) ---------------- */
@@ -133,6 +149,9 @@ interface IOrderBookSettle {
 }
 interface IDealPairOtherLiquidity {
     function mintOtherOnly() external returns (uint256 amountOther);
+}
+interface IDealPairVirtualView {
+    function getVirtualReserves() external view returns (uint256 v0, uint256 v1);
 }
 /* ========================================================== */
 contract DealFactory is Ownable {
@@ -243,6 +262,13 @@ contract DealFactory is Ownable {
         uint32 feeDen
     );
     event PairFeeUpdated(address indexed pair, uint32 newNum, uint32 newDen);
+    event PairVirtualReservesUpdated(
+        address indexed pair,
+        uint256 virtualReserve0,
+        bool virtualReserve0Enabled,
+        uint256 virtualReserve1,
+        bool virtualReserve1Enabled
+    );
     event PairMapped(address indexed otherToken, address indexed pair);
     event PairOtherLiquidityAddedAndSettled(
         address indexed pair,
@@ -605,6 +631,53 @@ contract DealFactory is Ownable {
         IDealPairInit(pair).setFee(newNum, 10000);
         emit PairFeeUpdated(pair, newNum, 10000);
     }
+    function setPairVirtualReserves(
+        address pair,
+        uint256 virtualReserve0,
+        bool enable0,
+        uint256 virtualReserve1,
+        bool enable1
+    ) external onlyOwner {
+        _assertDlPair(pair);
+        IDealPairInit(pair).setVirtualReserves(
+            virtualReserve0,
+            virtualReserve1,
+            enable0,
+            enable1
+        );
+        emit PairVirtualReservesUpdated(
+            pair,
+            virtualReserve0,
+            enable0 && virtualReserve0 > 0,
+            virtualReserve1,
+            enable1 && virtualReserve1 > 0
+        );
+    }
+    function setPairVirtualReservesByBps(
+        address pair,
+        uint32 bps0,
+        bool enable0,
+        uint32 bps1,
+        bool enable1
+    ) external onlyOwner {
+        if (bps0 > 10_000 || bps1 > 10_000) revert RatioInvalid();
+        _assertDlPair(pair);
+        IDealPairInit(pair).setVirtualReservesByBps(
+            bps0,
+            bps1,
+            enable0,
+            enable1
+        );
+        (uint256 v0, uint256 v1) = IDealPairVirtualView(pair)
+            .getVirtualReserves();
+        emit PairVirtualReservesUpdated(
+            pair,
+            v0,
+            enable0 && v0 > 0,
+            v1,
+            enable1 && v1 > 0
+        );
+    }
     function mapExistingPair(address tokenOther, address pair) external onlyOwner {
         if (tokenOther == address(0) || pair == address(0)) revert ZeroAddress();
         if (pairForToken[tokenOther] != address(0)) revert PairExists();
@@ -636,12 +709,12 @@ contract DealFactory is Ownable {
         address pair
     ) internal view returns (uint256 p1CumNow, uint32 nowTs, uint256 spotQ112) {
         (, p1CumNow, ) = IDealPairLight(pair).getPriceCumulatives();
-        (uint112 r0, uint112 r1, uint32 tsRes) = IDealPairLight(pair)
-            .getReserves();
+        (uint256 r0, uint256 r1, uint32 tsRes) = IDealPairLight(pair)
+            .getEffectiveReserves();
         require(r0 > 0 && r1 > 0);
         nowTs = uint32(block.timestamp);
         uint32 elapsed = nowTs - tsRes;
-        spotQ112 = (uint256(uint224(r0)) << 112) / uint256(uint224(r1));
+        spotQ112 = (r0 << 112) / r1;
         if (elapsed > 0) {
             unchecked {
                 p1CumNow += spotQ112 * elapsed;

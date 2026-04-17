@@ -85,6 +85,27 @@ contract DealRouter is ReentrancyGuard {
         uint256 feeInDL;
         uint256 dlRefund;   // 仅 exact-out 路径会用
     }
+    struct PreviewExactIn {
+        uint256 immediateIn;
+        uint256 immediateOut;
+        uint256 queuedIn;
+        bool fullyImmediate;
+    }
+    struct PreviewExactOut {
+        bool fullyImmediate;
+        uint256 immediateOutCap;
+        uint256 queuedOut;
+        uint256 requiredInForTarget;
+        uint256 requiredInForImmediateCap;
+    }
+    struct ResQueued {
+        uint256 immediateIn;
+        uint256 immediateOut;
+        uint256 outGross;
+        uint256 feeSide;
+        uint256 queuedIn;
+        uint256 orderId;
+    }
 
     /* -------------- internal quote wrappers -------------- */
     function _qBuyNet(address pair, uint256 netDL) internal view returns (QBuyNet memory q) {
@@ -114,6 +135,11 @@ contract DealRouter is ReentrancyGuard {
         IERC20(token).safeTransferFrom(from, address(this), amount);
         unchecked { actual = _balanceOf(token, address(this)) - b; }
     }
+    function _pushFromSelfToPairAndGetIn(address token, address pair, uint256 amount) internal returns (uint256 actual) {
+        uint256 b = _balanceOf(token, pair);
+        IERC20(token).safeTransfer(pair, amount);
+        unchecked { actual = _balanceOf(token, pair) - b; }
+    }
     function _pullToPairMin(address token, address pair, address from, uint256 minAmount, string memory err) internal {
         uint256 b = _balanceOf(token, pair);
         IERC20(token).safeTransferFrom(from, pair, minAmount);
@@ -133,26 +159,108 @@ contract DealRouter is ReentrancyGuard {
             IDealSwapOrderBookHook(ORDER_BOOK).settlePair(pair, 1, 1);
         }
     }
+    function _maxImmediateSellIn(address pair) internal view returns (uint256 cap) {
+        if (ORDER_BOOK != address(0)) {
+            return IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
+        }
+        (, uint112 reserve1,) = IDealPair(pair).getReserves();
+        if (reserve1 <= 1) return 0;
+        (cap,,) = IDealPair(pair).quoteSellGivenOut1(uint256(reserve1) - 1);
+    }
+    function _maxImmediateBuyIn(address pair) internal view returns (uint256 cap) {
+        if (ORDER_BOOK != address(0)) {
+            return IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
+        }
+        (uint112 reserve0,,) = IDealPair(pair).getReserves();
+        if (reserve0 <= 1) return 0;
+        (cap,,) = IDealPair(pair).quoteBuyGivenGross(uint256(reserve0) - 1);
+    }
+    function _maxImmediateSellOut(address pair) internal view returns (uint256 capOut) {
+        (, uint112 reserve1,) = IDealPair(pair).getReserves();
+        if (reserve1 <= 1) return 0;
+        return uint256(reserve1) - 1;
+    }
+    function _maxImmediateBuyGrossOut(address pair) internal view returns (uint256 capOut) {
+        (uint112 reserve0,,) = IDealPair(pair).getReserves();
+        if (reserve0 <= 1) return 0;
+        return uint256(reserve0) - 1;
+    }
+
+    /* -------------- preview helpers -------------- */
+    function previewExact0For1(address pair, uint256 amount0In)
+        external
+        view
+        returns (PreviewExactIn memory p)
+    {
+        uint256 cap = _maxImmediateSellIn(pair);
+        p.immediateIn = amount0In < cap ? amount0In : cap;
+        if (p.immediateIn > 0) {
+            if (amount0In > cap) {
+                (, uint112 reserve1_, ) = IDealPair(pair).getReserves();
+                if (reserve1_ > 1) {
+                    p.immediateOut = uint256(reserve1_) - 1;
+                }
+            } else {
+                (, p.immediateOut) = IDealPair(pair).quoteSell(p.immediateIn);
+            }
+        }
+        p.queuedIn = amount0In - p.immediateIn;
+        p.fullyImmediate = p.queuedIn == 0;
+    }
+    function previewExact1For0(address pair, uint256 amount1In)
+        external
+        view
+        returns (PreviewExactIn memory p)
+    {
+        uint256 cap = _maxImmediateBuyIn(pair);
+        p.immediateIn = amount1In < cap ? amount1In : cap;
+        if (p.immediateIn > 0) {
+            if (amount1In > cap) {
+                (uint112 reserve0_, , ) = IDealPair(pair).getReserves();
+                if (reserve0_ > 1) {
+                    (, , p.immediateOut) = IDealPair(pair).quoteBuyGivenGross(uint256(reserve0_) - 1);
+                }
+            } else {
+                (, , p.immediateOut) = IDealPair(pair).quoteBuyGivenIn1(p.immediateIn);
+            }
+        }
+        p.queuedIn = amount1In - p.immediateIn;
+        p.fullyImmediate = p.queuedIn == 0;
+    }
+    function preview0ForExact1(address pair, uint256 out1Target)
+        external
+        view
+        returns (PreviewExactOut memory p)
+    {
+        p.immediateOutCap = _maxImmediateSellOut(pair);
+        p.fullyImmediate = out1Target <= p.immediateOutCap;
+        p.queuedOut = p.fullyImmediate ? 0 : out1Target - p.immediateOutCap;
+        if (p.fullyImmediate && out1Target > 0) {
+            (p.requiredInForTarget,,) = IDealPair(pair).quoteSellGivenOut1(out1Target);
+        }
+        if (p.immediateOutCap > 0) {
+            (p.requiredInForImmediateCap,,) = IDealPair(pair).quoteSellGivenOut1(p.immediateOutCap);
+        }
+    }
+    function preview1ForExact0Net(address pair, uint256 out0NetTarget)
+        external
+        view
+        returns (PreviewExactOut memory p)
+    {
+        uint256 grossCap = _maxImmediateBuyGrossOut(pair);
+        if (grossCap > 0) {
+            (p.requiredInForImmediateCap, , p.immediateOutCap) = IDealPair(pair).quoteBuyGivenGross(grossCap);
+        }
+        p.fullyImmediate = out0NetTarget <= p.immediateOutCap;
+        p.queuedOut = p.fullyImmediate ? 0 : out0NetTarget - p.immediateOutCap;
+        if (p.fullyImmediate && out0NetTarget > 0) {
+            (, , p.requiredInForTarget) = IDealPair(pair).quoteBuyGivenNet(out0NetTarget);
+        }
+    }
 
     /* ===================================================== *
      *                INTERNAL EXEC (单跳)                   *
      * ===================================================== */
-
-    // OTHER exact-in -> DL min-out
-    function _execExact1For0(address pair, uint256 amount1In, address from, address to, uint256 minOut0Net)
-        internal
-        returns (ResSingle memory r)
-    {
-        address t1 = IDealPair(pair).token1();
-        r.inAmt = _pullToPairAndGetIn(t1, pair, from, amount1In); // 实际到帐 in1
-        require(r.inAmt > 0, "NO_IN");
-        QBuyIn1 memory q = _qBuyIn1(pair, r.inAmt);
-        require(q.out0Net >= minOut0Net, "SLIPPAGE");
-        IDealPair(pair).swap(q.gross, 0, to);
-        r.outAmt   = q.out0Net;
-        r.outGross = q.gross;
-        r.feeSide  = q.feeOut;
-    }
 
     // DL net exact-out -> OTHER max-in
     function _exec1ForExact0Net(address pair, address from, address to, uint256 out0NetTarget, uint256 maxAmount1In)
@@ -168,21 +276,6 @@ contract DealRouter is ReentrancyGuard {
         r.outAmt  = out0NetTarget;
         r.outGross= q.gross;
         r.feeSide = q.feeOut;
-    }
-
-    // DL exact-in -> OTHER min-out
-    function _execExact0For1(address pair, uint256 amount0In, address from, address to, uint256 minOut1)
-        internal
-        returns (ResSingle memory r)
-    {
-        address t0 = IDealPair(pair).token0();
-        r.inAmt = _pullToPairAndGetIn(t0, pair, from, amount0In);
-        require(r.inAmt > 0, "NO_IN");
-        QSellIn0 memory q = _qSellIn0(pair, r.inAmt);
-        require(q.out1 >= minOut1, "SLIPPAGE");
-        IDealPair(pair).swap(0, q.out1, to);
-        r.outAmt  = q.out1;
-        r.feeSide = q.feeIn;
     }
 
     // OTHER exact-out -> DL max-in
@@ -202,23 +295,6 @@ contract DealRouter is ReentrancyGuard {
 
     /* ============== INTERNAL EXEC（ETH 单跳） ============== */
 
-    // ETH exact-in -> DL min-out（pair 必须 DL/WNATIVE）
-    function _execExactETHFor0(address pair, address to, uint256 ethIn, uint256 minOut0Net)
-        internal
-        returns (ResSingle memory r)
-    {
-        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
-        require(ethIn > 0, "ZERO_ETH");
-        _wrapToPair(pair, ethIn);
-        QBuyIn1 memory q = _qBuyIn1(pair, ethIn);
-        require(q.out0Net >= minOut0Net, "SLIPPAGE");
-        IDealPair(pair).swap(q.gross, 0, to);
-        r.inAmt   = ethIn;
-        r.outAmt  = q.out0Net;
-        r.outGross= q.gross;
-        r.feeSide = q.feeOut;
-    }
-
     // DL net exact-out -> ETH max-in（退回多余 ETH）
     function _execETHForExact0Net(address pair, address to, uint256 out0NetTarget, uint256 ethMax)
         internal
@@ -235,24 +311,6 @@ contract DealRouter is ReentrancyGuard {
         r.outGross = q.gross;
         r.feeSide  = q.feeOut;
         r.refund   = ethMax - q.in1Min; // 由外层退回
-    }
-
-    // DL exact-in -> ETH min-out
-    function _execExact0ForETH(address pair, uint256 amount0In, address from, address to, uint256 minOutETH)
-        internal
-        returns (ResSingle memory r)
-    {
-        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
-        address t0 = IDealPair(pair).token0();
-        r.inAmt = _pullToPairAndGetIn(t0, pair, from, amount0In);
-        require(r.inAmt > 0, "NO_IN");
-        QSellIn0 memory q = _qSellIn0(pair, r.inAmt);
-        require(q.out1 >= minOutETH, "SLIPPAGE");
-        IDealPair(pair).swap(0, q.out1, address(this)); // Router 收 WNATIVE
-        IWNative(WNATIVE).withdraw(q.out1);
-        _sendETH(to, q.out1);
-        r.outAmt  = q.out1;
-        r.feeSide = q.feeIn;
     }
 
     // OTHER exact-out(ETH) -> DL max-in
@@ -466,6 +524,175 @@ contract DealRouter is ReentrancyGuard {
         if (r.dlRefund > 0) IERC20(dl).safeTransfer(from, r.dlRefund);
     }
 
+    function _execExact0For1Hybrid(address pair, uint256 amount0In, address from, address to, uint256 minImmediateOut1)
+        internal
+        returns (ResQueued memory r)
+    {
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        address token0 = IDealPair(pair).token0();
+        uint256 actualIn = _pullToSelfAndGetIn(token0, from, amount0In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
+        r.immediateIn = actualIn < cap ? actualIn : cap;
+        if (r.immediateIn > 0) {
+            if (actualIn > cap) {
+                (, uint112 reserve1,) = IDealPair(pair).getReserves();
+                uint256 outTarget = uint256(reserve1) - 1;
+                (uint256 in0Min, uint256 feeIn,) = IDealPair(pair).quoteSellGivenOut1(outTarget);
+                IERC20(token0).safeTransfer(pair, in0Min);
+                IDealPair(pair).swap(0, outTarget, to);
+                r.immediateIn = in0Min;
+                r.immediateOut = outTarget;
+                r.feeSide = feeIn;
+            } else {
+                QSellIn0 memory q = _qSellIn0(pair, r.immediateIn);
+                IERC20(token0).safeTransfer(pair, r.immediateIn);
+                IDealPair(pair).swap(0, q.out1, to);
+                r.immediateOut = q.out1;
+                r.feeSide = q.feeIn;
+            }
+        }
+        require(r.immediateOut >= minImmediateOut1, "SLIPPAGE");
+
+        r.queuedIn = actualIn - r.immediateIn;
+        if (r.queuedIn > 0) {
+            IERC20(token0).safeApprove(ORDER_BOOK, 0);
+            IERC20(token0).safeApprove(ORDER_BOOK, r.queuedIn);
+            r.orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, from, r.queuedIn, false);
+        }
+        _maybeSettle(pair);
+    }
+
+    function _execExact1For0Hybrid(address pair, uint256 amount1In, address from, address to, uint256 minImmediateOut0Net)
+        internal
+        returns (ResQueued memory r)
+    {
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        address token1 = IDealPair(pair).token1();
+        uint256 actualIn = _pullToSelfAndGetIn(token1, from, amount1In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
+        r.immediateIn = actualIn < cap ? actualIn : cap;
+        if (r.immediateIn > 0) {
+            uint256 actualPairIn = _pushFromSelfToPairAndGetIn(token1, pair, r.immediateIn);
+            if (actualPairIn > 0) {
+                if (actualIn > cap && actualPairIn == r.immediateIn) {
+                    (uint112 reserve0,,) = IDealPair(pair).getReserves();
+                    uint256 grossTarget = uint256(reserve0) - 1;
+                    (, uint256 feeOut, uint256 netOutTarget) = IDealPair(pair).quoteBuyGivenGross(grossTarget);
+                    IDealPair(pair).swap(grossTarget, 0, to);
+                    r.immediateOut = netOutTarget;
+                    r.outGross = grossTarget;
+                    r.feeSide = feeOut;
+                } else {
+                    QBuyIn1 memory q = _qBuyIn1(pair, actualPairIn);
+                    IDealPair(pair).swap(q.gross, 0, to);
+                    r.immediateOut = q.out0Net;
+                    r.outGross = q.gross;
+                    r.feeSide = q.feeOut;
+                }
+            }
+        }
+        require(r.immediateOut >= minImmediateOut0Net, "SLIPPAGE");
+
+        r.queuedIn = actualIn - r.immediateIn;
+        if (r.queuedIn > 0) {
+            IERC20(token1).safeApprove(ORDER_BOOK, 0);
+            IERC20(token1).safeApprove(ORDER_BOOK, r.queuedIn);
+            r.orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, from, r.queuedIn, false);
+        }
+        _maybeSettle(pair);
+    }
+
+    function _execExactETHFor0Hybrid(address pair, address to, uint256 ethIn, uint256 minImmediateOut0Net)
+        internal
+        returns (ResQueued memory r)
+    {
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
+        require(ethIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
+        r.immediateIn = ethIn < cap ? ethIn : cap;
+        if (r.immediateIn > 0) {
+            if (ethIn > cap) {
+                (uint112 reserve0,,) = IDealPair(pair).getReserves();
+                uint256 grossTarget = uint256(reserve0) - 1;
+                (uint256 in1Min, uint256 feeOut, uint256 netOutTarget) = IDealPair(pair).quoteBuyGivenGross(grossTarget);
+                _wrapToPair(pair, in1Min);
+                IDealPair(pair).swap(grossTarget, 0, to);
+                r.immediateIn = in1Min;
+                r.immediateOut = netOutTarget;
+                r.outGross = grossTarget;
+                r.feeSide = feeOut;
+            } else {
+                _wrapToPair(pair, r.immediateIn);
+                QBuyIn1 memory q = _qBuyIn1(pair, r.immediateIn);
+                IDealPair(pair).swap(q.gross, 0, to);
+                r.immediateOut = q.out0Net;
+                r.outGross = q.gross;
+                r.feeSide = q.feeOut;
+            }
+        }
+        require(r.immediateOut >= minImmediateOut0Net, "SLIPPAGE");
+
+        r.queuedIn = ethIn - r.immediateIn;
+        if (r.queuedIn > 0) {
+            IWNative(WNATIVE).deposit{value: r.queuedIn}();
+            IERC20(WNATIVE).safeApprove(ORDER_BOOK, 0);
+            IERC20(WNATIVE).safeApprove(ORDER_BOOK, r.queuedIn);
+            r.orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, to, r.queuedIn, true);
+        }
+        _maybeSettle(pair);
+    }
+
+    function _execExact0ForETHHybrid(address pair, uint256 amount0In, address from, address to, uint256 minImmediateOutETH)
+        internal
+        returns (ResQueued memory r)
+    {
+        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
+        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
+        address token0 = IDealPair(pair).token0();
+        uint256 actualIn = _pullToSelfAndGetIn(token0, from, amount0In);
+        require(actualIn > 0, "NO_IN");
+
+        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
+        r.immediateIn = actualIn < cap ? actualIn : cap;
+        if (r.immediateIn > 0) {
+            if (actualIn > cap) {
+                (, uint112 reserve1,) = IDealPair(pair).getReserves();
+                uint256 outTarget = uint256(reserve1) - 1;
+                (uint256 in0Min, uint256 feeIn,) = IDealPair(pair).quoteSellGivenOut1(outTarget);
+                IERC20(token0).safeTransfer(pair, in0Min);
+                IDealPair(pair).swap(0, outTarget, address(this));
+                IWNative(WNATIVE).withdraw(outTarget);
+                _sendETH(to, outTarget);
+                r.immediateIn = in0Min;
+                r.immediateOut = outTarget;
+                r.feeSide = feeIn;
+            } else {
+                QSellIn0 memory q = _qSellIn0(pair, r.immediateIn);
+                IERC20(token0).safeTransfer(pair, r.immediateIn);
+                IDealPair(pair).swap(0, q.out1, address(this));
+                IWNative(WNATIVE).withdraw(q.out1);
+                _sendETH(to, q.out1);
+                r.immediateOut = q.out1;
+                r.feeSide = q.feeIn;
+            }
+        }
+        require(r.immediateOut >= minImmediateOutETH, "SLIPPAGE");
+
+        r.queuedIn = actualIn - r.immediateIn;
+        if (r.queuedIn > 0) {
+            IERC20(token0).safeApprove(ORDER_BOOK, 0);
+            IERC20(token0).safeApprove(ORDER_BOOK, r.queuedIn);
+            r.orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, from, r.queuedIn, true);
+        }
+        _maybeSettle(pair);
+    }
+
     /* ===================================================== *
      *                EXTERNAL / EMIT ONLY                   *
      * ===================================================== */
@@ -473,9 +700,9 @@ contract DealRouter is ReentrancyGuard {
     // —— 单跳（ERC20） —— //
     function swapExact1For0(address pair, uint256 amount1In, uint256 minOut0Net, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        ResSingle memory r = _execExact1For0(pair, amount1In, msg.sender, msg.sender, minOut0Net);
-        _maybeSettle(pair);
-        emit SwapExact1For0(pair, msg.sender, r.inAmt, r.outAmt, r.outGross, r.feeSide, msg.sender);
+        ResQueued memory r = _execExact1For0Hybrid(pair, amount1In, msg.sender, msg.sender, minOut0Net);
+        emit SwapExact1For0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap1ForExact0Net(address pair, uint256 out0NetTarget, uint256 maxAmount1In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
@@ -485,9 +712,9 @@ contract DealRouter is ReentrancyGuard {
     }
     function swapExact0For1(address pair, uint256 amount0In, uint256 minOut1, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        ResSingle memory r = _execExact0For1(pair, amount0In, msg.sender, msg.sender, minOut1);
-        _maybeSettle(pair);
-        emit SwapExact0For1(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
+        ResQueued memory r = _execExact0For1Hybrid(pair, amount0In, msg.sender, msg.sender, minOut1);
+        emit SwapExact0For1(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap0ForExact1(address pair, uint256 out1Target, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
@@ -500,9 +727,9 @@ contract DealRouter is ReentrancyGuard {
     function swapExactETHFor0(address pair, uint256 minOut0Net, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
         uint256 ethIn = msg.value;
-        ResSingle memory r = _execExactETHFor0(pair, msg.sender, ethIn, minOut0Net);
-        _maybeSettle(pair);
-        emit SwapExactETHFor0(pair, msg.sender, ethIn, r.outAmt, r.outGross, r.feeSide, msg.sender);
+        ResQueued memory r = _execExactETHFor0Hybrid(pair, msg.sender, ethIn, minOut0Net);
+        emit SwapExactETHFor0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swapETHForExact0Net(address pair, uint256 out0NetTarget, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
@@ -514,9 +741,9 @@ contract DealRouter is ReentrancyGuard {
     }
     function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        ResSingle memory r = _execExact0ForETH(pair, amount0In, msg.sender, msg.sender, minOutETH);
-        _maybeSettle(pair);
-        emit SwapExact0ForETH(pair, msg.sender, r.inAmt, r.outAmt, r.feeSide, msg.sender);
+        ResQueued memory r = _execExact0ForETHHybrid(pair, amount0In, msg.sender, msg.sender, minOutETH);
+        emit SwapExact0ForETH(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap0ForExactETH(address pair, uint256 outETHTarget, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
@@ -580,119 +807,29 @@ contract DealRouter is ReentrancyGuard {
 
     function swapExact0For1OrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
-        address token0 = IDealPair(pair).token0();
-        uint256 actualIn = _pullToSelfAndGetIn(token0, msg.sender, amount0In);
-        require(actualIn > 0, "NO_IN");
-
-        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
-        uint256 immediateIn = actualIn < cap ? actualIn : cap;
-        uint256 immediateOut;
-        if (immediateIn > 0) {
-            QSellIn0 memory q = _qSellIn0(pair, immediateIn);
-            IERC20(token0).safeTransfer(pair, immediateIn);
-            IDealPair(pair).swap(0, q.out1, msg.sender);
-            immediateOut = q.out1;
-        }
-
-        uint256 queuedIn = actualIn - immediateIn;
-        uint256 orderId;
-        if (queuedIn > 0) {
-            IERC20(token0).safeApprove(ORDER_BOOK, 0);
-            IERC20(token0).safeApprove(ORDER_BOOK, queuedIn);
-            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, msg.sender, queuedIn, false);
-        }
-        _maybeSettle(pair);
-        emit SwapQueuedRemainder(pair, msg.sender, true, immediateIn, immediateOut, queuedIn, orderId);
+        ResQueued memory r = _execExact0For1Hybrid(pair, amount0In, msg.sender, msg.sender, 0);
+        emit SwapExact0For1(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
 
     function swapExact1For0OrQueue(address pair, uint256 amount1In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
-        address token1 = IDealPair(pair).token1();
-        uint256 actualIn = _pullToSelfAndGetIn(token1, msg.sender, amount1In);
-        require(actualIn > 0, "NO_IN");
-
-        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
-        uint256 immediateIn = actualIn < cap ? actualIn : cap;
-        uint256 immediateOut;
-        if (immediateIn > 0) {
-            QBuyIn1 memory q = _qBuyIn1(pair, immediateIn);
-            IERC20(token1).safeTransfer(pair, immediateIn);
-            IDealPair(pair).swap(q.gross, 0, msg.sender);
-            immediateOut = q.out0Net;
-        }
-
-        uint256 queuedIn = actualIn - immediateIn;
-        uint256 orderId;
-        if (queuedIn > 0) {
-            IERC20(token1).safeApprove(ORDER_BOOK, 0);
-            IERC20(token1).safeApprove(ORDER_BOOK, queuedIn);
-            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, msg.sender, queuedIn, false);
-        }
-        _maybeSettle(pair);
-        emit SwapQueuedRemainder(pair, msg.sender, false, immediateIn, immediateOut, queuedIn, orderId);
+        ResQueued memory r = _execExact1For0Hybrid(pair, amount1In, msg.sender, msg.sender, 0);
+        emit SwapExact1For0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
 
     function swapExactETHFor0OrQueue(address pair, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
-        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
-        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
-
-        uint256 actualIn = msg.value;
-        require(actualIn > 0, "NO_IN");
-
-        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateBuyIn(pair);
-        uint256 immediateIn = actualIn < cap ? actualIn : cap;
-        uint256 immediateOut;
-        if (immediateIn > 0) {
-            _wrapToPair(pair, immediateIn);
-            QBuyIn1 memory q = _qBuyIn1(pair, immediateIn);
-            IDealPair(pair).swap(q.gross, 0, msg.sender);
-            immediateOut = q.out0Net;
-        }
-
-        uint256 queuedIn = actualIn - immediateIn;
-        uint256 orderId;
-        if (queuedIn > 0) {
-            IWNative(WNATIVE).deposit{value: queuedIn}();
-            IERC20(WNATIVE).safeApprove(ORDER_BOOK, 0);
-            IERC20(WNATIVE).safeApprove(ORDER_BOOK, queuedIn);
-            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueBuyDLFromRouter(pair, msg.sender, queuedIn, true);
-        }
-        _maybeSettle(pair);
-        emit SwapQueuedRemainder(pair, msg.sender, false, immediateIn, immediateOut, queuedIn, orderId);
+        ResQueued memory r = _execExactETHFor0Hybrid(pair, msg.sender, msg.value, 0);
+        emit SwapExactETHFor0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
 
     function swapExact0ForETHOrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
-        require(ORDER_BOOK != address(0), "NO_ORDER_BOOK");
-        require(IDealPair(pair).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
-
-        address token0 = IDealPair(pair).token0();
-        uint256 actualIn = _pullToSelfAndGetIn(token0, msg.sender, amount0In);
-        require(actualIn > 0, "NO_IN");
-
-        uint256 cap = IDealSwapOrderBookHook(ORDER_BOOK).maxImmediateSellIn(pair);
-        uint256 immediateIn = actualIn < cap ? actualIn : cap;
-        uint256 immediateOut;
-        if (immediateIn > 0) {
-            QSellIn0 memory q = _qSellIn0(pair, immediateIn);
-            IERC20(token0).safeTransfer(pair, immediateIn);
-            IDealPair(pair).swap(0, q.out1, address(this));
-            IWNative(WNATIVE).withdraw(q.out1);
-            _sendETH(msg.sender, q.out1);
-            immediateOut = q.out1;
-        }
-
-        uint256 queuedIn = actualIn - immediateIn;
-        uint256 orderId;
-        if (queuedIn > 0) {
-            IERC20(token0).safeApprove(ORDER_BOOK, 0);
-            IERC20(token0).safeApprove(ORDER_BOOK, queuedIn);
-            orderId = IDealSwapOrderBookHook(ORDER_BOOK).enqueueSellDLFromRouter(pair, msg.sender, queuedIn, true);
-        }
-        _maybeSettle(pair);
-        emit SwapQueuedRemainder(pair, msg.sender, true, immediateIn, immediateOut, queuedIn, orderId);
+        ResQueued memory r = _execExact0ForETHHybrid(pair, amount0In, msg.sender, msg.sender, 0);
+        emit SwapExact0ForETH(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
+        if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
 }

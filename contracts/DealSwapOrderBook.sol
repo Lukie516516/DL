@@ -39,7 +39,7 @@ contract DealSwapOrderBook is ReentrancyGuard {
     mapping(uint256 => Order) public orders;
 
     mapping(address => uint256[]) private _sellQueues; // DL -> OTHER
-    mapping(address => uint256[]) private _buyQueues;  // OTHER -> DL
+    mapping(address => uint256[]) private _buyQueues; // OTHER -> DL
     mapping(address => uint256) public sellHead;
     mapping(address => uint256) public buyHead;
 
@@ -93,6 +93,28 @@ contract DealSwapOrderBook is ReentrancyGuard {
         emit RouterUpdated(router_);
     }
 
+    function _pullToSelfAndGetIn(address token, address from, uint256 amount)
+        internal
+        returns (uint256 actual)
+    {
+        uint256 b = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransferFrom(from, address(this), amount);
+        unchecked {
+            actual = IERC20(token).balanceOf(address(this)) - b;
+        }
+    }
+
+    function _pushToPairAndGetIn(address token, address pair, uint256 amount)
+        internal
+        returns (uint256 actual)
+    {
+        uint256 b = IERC20(token).balanceOf(pair);
+        IERC20(token).safeTransfer(pair, amount);
+        unchecked {
+            actual = IERC20(token).balanceOf(pair) - b;
+        }
+    }
+
     function placeSellDL(address pair, uint256 amount0In)
         external
         nonReentrant
@@ -117,14 +139,15 @@ contract DealSwapOrderBook is ReentrancyGuard {
     {
         require(pair != address(0) && amount1In > 0, "BAD_ORDER");
         address token1 = IDealPair(pair).token1();
-        IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1In);
+        uint256 actualIn = _pullToSelfAndGetIn(token1, msg.sender, amount1In);
+        require(actualIn > 0, "NO_IN");
 
-        (filledIn, filledOut) = _executeBuyDL(pair, msg.sender, amount1In);
-        uint256 remainingIn = amount1In - filledIn;
+        (filledIn, filledOut) = _executeBuyDL(pair, msg.sender, actualIn);
+        uint256 remainingIn = actualIn - filledIn;
         if (remainingIn == 0) return (0, filledIn, filledOut);
 
         orderId = _enqueue(pair, false, msg.sender, remainingIn, false, false);
-        emit OrderPlaced(orderId, msg.sender, pair, false, amount1In, filledIn, filledOut, remainingIn);
+        emit OrderPlaced(orderId, msg.sender, pair, false, actualIn, filledIn, filledOut, remainingIn);
     }
 
     function cancelOrder(uint256 orderId) external nonReentrant {
@@ -201,9 +224,11 @@ contract DealSwapOrderBook is ReentrancyGuard {
     {
         require(amount1In > 0 && owner_ != address(0), "BAD_QUEUE");
         if (refundNativeIn) require(IDealPair(pair).token1() != address(0), "BAD_NATIVE_PAIR");
-        IERC20(IDealPair(pair).token1()).safeTransferFrom(msg.sender, address(this), amount1In);
-        orderId = _enqueue(pair, false, owner_, amount1In, false, refundNativeIn);
-        emit OrderPlaced(orderId, owner_, pair, false, amount1In, 0, 0, amount1In);
+        address token1 = IDealPair(pair).token1();
+        uint256 actualIn = _pullToSelfAndGetIn(token1, msg.sender, amount1In);
+        require(actualIn > 0, "NO_IN");
+        orderId = _enqueue(pair, false, owner_, actualIn, false, refundNativeIn);
+        emit OrderPlaced(orderId, owner_, pair, false, actualIn, 0, 0, actualIn);
     }
 
     function _enqueue(
@@ -293,7 +318,8 @@ contract DealSwapOrderBook is ReentrancyGuard {
         (uint112 r0, uint112 r1,) = IDealPairReserves(pair).getReserves();
         if (r0 == 0 || r1 <= 1) return (0, 0);
 
-        if (amount0In < _maxSellInForCurrentReserves(pair, r1)) {
+        uint256 cap = _maxSellInForCurrentReserves(pair, r1);
+        if (amount0In <= cap) {
             (uint256 feeIn, uint256 out1) = IDealPair(pair).quoteSell(amount0In);
             feeIn;
             IERC20(IDealPair(pair).token0()).safeTransfer(pair, amount0In);
@@ -301,7 +327,7 @@ contract DealSwapOrderBook is ReentrancyGuard {
             return (amount0In, out1);
         }
 
-        uint256 outTarget = uint256(r1) / 2;
+        uint256 outTarget = uint256(r1) - 1;
         (uint256 in0Min,,) = IDealPair(pair).quoteSellGivenOut1(outTarget);
         if (in0Min == 0) return (0, 0);
         IERC20(IDealPair(pair).token0()).safeTransfer(pair, in0Min);
@@ -317,29 +343,38 @@ contract DealSwapOrderBook is ReentrancyGuard {
         (uint112 r0, uint112 r1,) = IDealPairReserves(pair).getReserves();
         if (r1 == 0 || r0 <= 1) return (0, 0);
 
-        if (amount1In < _maxBuyInForCurrentReserves(pair, r0)) {
-            (uint256 grossOut,, uint256 netOut) = IDealPair(pair).quoteBuyGivenIn1(amount1In);
-            IERC20(IDealPair(pair).token1()).safeTransfer(pair, amount1In);
-            IDealPair(pair).swap(grossOut, 0, to);
-            return (amount1In, netOut);
+        uint256 cap = _maxBuyInForCurrentReserves(pair, r0);
+        if (amount1In <= cap) {
+            uint256 actualPairInDirect = _pushToPairAndGetIn(IDealPair(pair).token1(), pair, amount1In);
+            if (actualPairInDirect == 0) return (0, 0);
+            (uint256 grossOutDirect,, uint256 netOutDirect) = IDealPair(pair).quoteBuyGivenIn1(actualPairInDirect);
+            IDealPair(pair).swap(grossOutDirect, 0, to);
+            return (amount1In, netOutDirect);
         }
 
-        uint256 grossTarget = uint256(r0) / 2;
-        (uint256 in1Min,, uint256 netOutTarget) = IDealPair(pair).quoteBuyGivenGross(grossTarget);
-        if (in1Min == 0) return (0, 0);
-        IERC20(IDealPair(pair).token1()).safeTransfer(pair, in1Min);
-        IDealPair(pair).swap(grossTarget, 0, to);
-        return (in1Min, netOutTarget);
+        uint256 actualPairIn = _pushToPairAndGetIn(IDealPair(pair).token1(), pair, cap);
+        if (actualPairIn == 0) return (0, 0);
+        if (actualPairIn == cap) {
+            uint256 grossTarget = uint256(r0) - 1;
+            (, , uint256 netOutTarget) = IDealPair(pair).quoteBuyGivenGross(grossTarget);
+            IDealPair(pair).swap(grossTarget, 0, to);
+            return (cap, netOutTarget);
+        }
+        (uint256 grossOutTaxed,, uint256 netOutTaxed) = IDealPair(pair).quoteBuyGivenIn1(actualPairIn);
+        IDealPair(pair).swap(grossOutTaxed, 0, to);
+        return (cap, netOutTaxed);
     }
 
     function _maxSellInForCurrentReserves(address pair, uint112 reserve1) internal view returns (uint256 maxIn) {
-        uint256 outTarget = uint256(reserve1) / 2;
+        if (reserve1 <= 1) return 0;
+        uint256 outTarget = uint256(reserve1) - 1;
         if (outTarget == 0) return 0;
         (maxIn,,) = IDealPair(pair).quoteSellGivenOut1(outTarget);
     }
 
     function _maxBuyInForCurrentReserves(address pair, uint112 reserve0) internal view returns (uint256 maxIn) {
-        uint256 grossTarget = uint256(reserve0) / 2;
+        if (reserve0 <= 1) return 0;
+        uint256 grossTarget = uint256(reserve0) - 1;
         if (grossTarget == 0) return 0;
         (maxIn,,) = IDealPair(pair).quoteBuyGivenGross(grossTarget);
     }
