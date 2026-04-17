@@ -78,6 +78,23 @@ async function deployDexFixture() {
     return { pairAddress, pair };
   }
 
+  /** `initPair` 的 `_b1` 写入 `token1BalanceInit`，抬高 r1（“虚拟 OTHER 深度”），真实 OTHER 仅 `otherReal`。 */
+  async function createPairWithVirtualDepth(
+    dlAmount: bigint,
+    otherReal: bigint,
+    virtualB1: bigint,
+  ) {
+    await waitFor(publicClient, await factory.write.createPair([other.address, 3, 1000]));
+    const pairAddress = await factory.read.pairForToken([other.address]);
+    const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
+
+    await waitFor(publicClient, await dl.write.transfer([pairAddress, dlAmount]));
+    await waitFor(publicClient, await other.write.transfer([pairAddress, otherReal]));
+    await waitFor(publicClient, await factory.write.initPair([pairAddress, virtualB1]));
+
+    return { pairAddress, pair };
+  }
+
   return {
     viem,
     publicClient,
@@ -92,6 +109,7 @@ async function deployDexFixture() {
     router,
     wrappedNative,
     createPairWithReserves,
+    createPairWithVirtualDepth,
   };
 }
 
@@ -387,6 +405,76 @@ describe("DealSwapOrderBook", async function () {
     assert.ok(balanceAfterSettle + settleGas > balanceAfterFirst);
     assert.equal(order[3], false);
     assert.equal(order[4], 0n);
+  });
+
+  it("reverts on sell when virtual OTHER depth implies out1 above real token1 balance (砸穿虚拟深度)", async function () {
+    const fixture = await deployDexFixture();
+    const { viem, publicClient, alice, dl, other, orderBook, createPairWithVirtualDepth } = fixture;
+    const { pairAddress, pair } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);
+
+    const realOnPair = await other.read.balanceOf([pairAddress]);
+    assert.equal(realOnPair, 10n * ONE);
+
+    const [, r1] = await pair.read.getReserves();
+    assert.ok(r1 > 50n * ONE, "reserves r1 should include virtual init");
+
+    const probeIn = 200n * ONE;
+    const [, qOut1] = await pair.read.quoteSell([probeIn]);
+    assert.ok(
+      qOut1 > realOnPair,
+      "quote uses r1 with virtual depth so implied OTHER out can exceed real backing",
+    );
+
+    const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
+      client: { wallet: alice },
+    });
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+
+    await waitFor(publicClient, await dlAlice.write.approve([orderBook.address, probeIn]));
+    await assert.rejects(
+      async () => {
+        await orderBookAlice.write.placeSellDL([pairAddress, probeIn]);
+      },
+      /ERC20|revert|insufficient|Insufficient|execution reverted/i,
+    );
+  });
+
+  it("when reserve1 is 1 wei, queued sells never settle (filledIn=0 breaks queue scan)", async function () {
+    const fixture = await deployDexFixture();
+    const { viem, publicClient, alice, bob, dl, orderBook, createPairWithVirtualDepth } = fixture;
+    const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 1n, 0n);
+
+    const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
+      client: { wallet: alice },
+    });
+    const orderBookBob = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
+      client: { wallet: bob },
+    });
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+    const dlBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
+
+    const aliceOrderId = await orderBook.read.nextOrderId();
+    await waitFor(publicClient, await dlAlice.write.approve([orderBook.address, 10n * ONE]));
+    await waitFor(publicClient, await orderBookAlice.write.placeSellDL([pairAddress, 10n * ONE]));
+
+    const bobOrderId = await orderBook.read.nextOrderId();
+    await waitFor(publicClient, await dlBob.write.approve([orderBook.address, 5n * ONE]));
+    await waitFor(publicClient, await orderBookBob.write.placeSellDL([pairAddress, 5n * ONE]));
+
+    const maxSell = await orderBook.read.maxImmediateSellIn([pairAddress]);
+    assert.equal(maxSell, 0n, "no executable sell chunk when r1<=1 guard trips");
+
+    await waitFor(publicClient, await orderBook.write.settlePair([pairAddress, 0n, 10n]));
+
+    const aliceOrder = await orderBook.read.orders([aliceOrderId]);
+    const bobOrder = await orderBook.read.orders([bobOrderId]);
+    assert.equal(aliceOrder[3], true);
+    assert.equal(aliceOrder[4], 10n * ONE);
+    assert.equal(bobOrder[3], true);
+    assert.equal(bobOrder[4], 5n * ONE);
+
+    const [, sellHead] = await orderBook.read.getQueue([pairAddress, true]);
+    assert.equal(sellHead, 0n, "head must not advance when filledIn stays 0");
   });
 
   it("factory initPair auto-settles queued orders when swapOrderBook is configured", async function () {
