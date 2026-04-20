@@ -12,25 +12,27 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
 import { defineChain, type Address, type Hex } from "viem";
+import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
 
+const a = loadAgikingDeploymentAddresses();
 const EXISTING = {
-  dlToken: "0x39f27267184d3ff8522d5ed209fbf32fc7cbf3bb" as Address,
-  ausd: "0xe2ba57ad85b33a3e2e09b69175974e7315264179" as Address,
-  usdt: "0xedc6e1ebc966f19a32ac58b09fe667ba59ec149a" as Address,
-  wrappedNative: "0x298d8871bfa6129a74d1ab324f4728794848c5b3" as Address,
-  dealLib: "0x38edeb51ef5a502a1c1c6829059edcbdccf3f928" as Address,
-  pairImplementation: "0x6613540b2451ced2dd8a7a48db89ca2c8414b163" as Address,
-  dealInfoNFT: "0x00fcc7f1a406ebfe6e5a1077821cc53c6752c789" as Address,
-  pairDlAusd: "0xc48b652C9c240FB18aFCf4ADac67471f28fb70e5" as Address,
-  pairDlUsdt: "0x8ca50e47b9a142bE5665E35d4697f475eC93C765" as Address,
-  dealSwapOrderBook: "0xb43ad4748459d82cf59efb56aca96fdf1d2d82f3" as Address,
-  dealRouter: "0x1e957fa8e7cf3e927398f4305b06e7c000101aea" as Address,
-  dToken: "0x7a4a195bac5ff77af01fc1ce13f1fc5a1770b429" as Address,
-  dealTimelock: "0xaad9988a5f6fcb3cf3f0ab8f9730592eb3826468" as Address,
-  dealGovernor: "0xc51da2df1f71ad40b5d9560b85ca89a3454e436c" as Address,
-  voteDividendClaimer: "0x9c348e5955f2e9634645a26e2e4eb9f770f7d4ca" as Address,
+  dlToken: a.dlToken,
+  ausd: a.ausd,
+  usdt: a.usdt,
+  wrappedNative: a.wrappedNative,
+  dealLib: a.dealLib,
+  pairImplementation: a.pairImplementation,
+  dealInfoNFT: a.dealInfoNFT,
+  pairDlAusd: a.pairDlAusd,
+  pairDlUsdt: a.pairDlUsdt,
+  dealSwapOrderBook: a.dealSwapOrderBook,
+  dealRouter: a.dealRouter,
+  dToken: a.dToken,
+  dealTimelock: a.dealTimelock,
+  dealGovernor: a.dealGovernor,
+  voteDividendClaimer: a.voteDividendClaimer,
 };
 
 function agikingChain(rpcUrl: string) {

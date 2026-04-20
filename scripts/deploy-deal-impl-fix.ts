@@ -6,13 +6,12 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
 import { defineChain, type Address, type Hex } from "viem";
+import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
 
-const EXISTING = {
-  dealLib: "0x38edeb51ef5a502a1c1c6829059edcbdccf3f928" as Address,
-  dealFactory: "0xeff049080340c98e298f0903a72ff9c99ecf4ab8" as Address,
-};
+const a = loadAgikingDeploymentAddresses();
+const EXISTING = { dealLib: a.dealLib, dealFactory: a.dealFactory };
 
 function agikingChain(rpcUrl: string) {
   return defineChain({

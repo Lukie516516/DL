@@ -5,15 +5,13 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { defineChain, type Address } from "viem";
+import { defineChain } from "viem";
+import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
 
-const EXISTING = {
-  dcDomain: "0xb68b18ef2df7b39d315bf67e6df1d9343f2fec7a" as Address,
-  dcDomainRank: "0x970303bcf10d9d864b93bc8c5b3e1f134bce0538" as Address,
-  dealFactory: "0xb59b21bab4ad5a011d6976e0a4ed66721fcd5985" as Address,
-};
+const a = loadAgikingDeploymentAddresses();
+const EXISTING = { dcDomain: a.dcDomain, dcDomainRank: a.dcDomainRank, dealFactory: a.dealFactory };
 
 function agikingChain(rpcUrl: string) {
   return defineChain({

@@ -21,16 +21,29 @@
 来源：
 - `deployments/agiking-31415926.json`
 
+**重新部署域名四件套并写回地址（Rank / Market / Swap / Hall）**
+
+1. 使用 **在 Agiking 上有原生 gas**、且为 **DealFactory owner**（能对工厂 `setAllowedCreateFor`）的私钥。
+2. 配置 Hardhat 变量（PowerShell 示例）：
+
+```powershell
+$env:AGIKING_RPC_URL="https://rpc.agikingrpc.shop"
+$env:AGIKING_PRIVATE_KEY="0x..."   # 勿提交到仓库
+npm run deploy:domain-upgrade
+```
+
+3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与四份合约 ABI），并在控制台打印 **§1 应用到的地址行**；请把下面 §1 的静态列表改成与 JSON 一致（或直接从 JSON 复制）。
+
 当前域名相关地址：
 
-- `DL / DC`: `0x39f27267184d3ff8522d5ed209fbf32fc7cbf3bb`
-- `DCDomain`: `0x23b5249472516c358a8f517a5ca915a996c09a20`
-- `DCDomainRank`: `0x59c59fb6f3100e523f741dcf6c4db7ba84ceef22`
-- `DCDomainMarket`: `0xd6505d27191fc4609dbd4051d69a1c9b8a20997f`
-- `DCDomainSwap`: `0x9841e4e3abad48dae5d9c80f8c53bd8ff7fc5e28`
-- `DCDomainHall`: `0x43b0a8fa4313766f09f511f0b1bac7b1d9700ccc`
-- `DealFactory`: `0x2ce2648c77cefb528e8e4a489764c9418cf6538d`
-- `DealReader`: `0x11d1bcfa4e80969b351401d3e69329be8a69f8e1`
+- `DL / DC`: `0x6894652a26fe39b75194067527b6ad1abc2e9e8e`
+- `DCDomain`: `0xe065d4d7a69117d033410042c59baa61b410e4fa`
+- `DCDomainRank`: `0x3d2478427666fe3cdc320ad72dff8d57a39750c0`
+- `DCDomainMarket`: `0x009980b0b329bcf59718971a5ca87d299e3a3989`
+- `DCDomainSwap`: `0xa5ee6168e315c5c7d7eda62df0f857970fcd1a06`
+- `DCDomainHall`: `0xef0660b47e611702bdcff55b00f79e42a2cd296a`
+- `DealFactory`: `0x6c80549b1a2bfa3c943c61e43e87e6233e605aa4`
+- `DealReader`: `0x41eb2b2096b207c5cc6d3e91bdab7fee47e4829d`
 
 ---
 
@@ -106,7 +119,7 @@
 
 作用：
 - 访客进入 / 离开域名
-- 黑名单
+- 黑名单（含 `blacklistedAddresses` 列表查询，见 §6.9）
 - 域名内交易排行榜
 - 域名总榜
 - 对某笔交易做 DL 充值并按小时消耗
@@ -348,7 +361,24 @@ await dcDomain.register("abc123");
 - 这里只是读当前访客状态
 - 如果前端想做“先判断再 enter”，最好先额外调用 `dcDomain.isRegistered(domainName)`
 
-### 6.4 `deposit(domainName, deal, amount)`
+### 6.4 域名广告费策略（域名 NFT 持有人）
+
+作用：
+- 控制该域名下商家排行榜「广告费 / 时间扣费」是否开启及扣法
+
+方法：
+- `setDomainAdFeePolicy(domainName, mode, proportionalBpsPerHour, fixedHourlyRateWei)`：仅域名 NFT 持有人可调用
+- `getDomainAdFeePolicy(domainName)`：读当前策略，返回 `(mode, proportionalBpsPerHour, fixedHourlyRateWei)`
+
+`mode`（`uint8`）：
+- `0` = **None（默认）**：不收取广告费，**禁止** `deposit`（会 `DCDomainRank: ad fees disabled`），前端可不展示充值入口
+- `1` = **等比（Proportional）**：按「计费整点小时」对**当前余额**复利扣 `proportionalBpsPerHour`（万分比 / 小时），须 `1..9999`，余额理论上可无限趋近 0 但单小时不会 100% 扣光
+- `2` = **等差（Fixed）**：按固定 `fixedHourlyRateWei`（DL，wei）× 经过时间折算扣费（与旧版线性逻辑一致），余额可被扣至 0
+
+注意：
+- 新注册域名默认 `mode = 0`，持有人必须先设策略，商家才能 `deposit`
+
+### 6.5 `deposit(domainName, deal, amount)`
 
 作用：
 - 给某笔 deal 的排行榜充值
@@ -365,8 +395,9 @@ await dcDomain.register("abc123");
 - 这不是合同保证金
 - 这是排行榜充值
 - 目前仍有最小充值门槛 `minDeposit`
+- 若域名 `mode = 0`，会 revert：`DCDomainRank: ad fees disabled`
 
-### 6.5 `withdraw(domainName, deal)`
+### 6.6 `withdraw(domainName, deal)`
 
 作用：
 - 取回这笔 deal 尚未消耗完的充值
@@ -375,7 +406,7 @@ await dcDomain.register("abc123");
 - `domainName: string`
 - `deal: address`
 
-### 6.6 `settle(domainName, deal, merchantAddr)`
+### 6.7 `settle(domainName, deal, merchantAddr)`
 
 作用：
 - 主动结算当前应扣的排行消耗
@@ -385,7 +416,7 @@ await dcDomain.register("abc123");
 - `deal: address`
 - `merchantAddr: address`
 
-### 6.7 排行榜查询
+### 6.8 排行榜查询
 
 常用：
 - `getLeaderboard(domainName, limit)`
@@ -393,18 +424,50 @@ await dcDomain.register("abc123");
 - `getGlobalLeaderboard(limit)`
 - `globalDomainCount()`
 
-### 6.8 充值状态查询
+### 6.9 充值状态查询
 
 常用：
-- `myDealStatus(domainName, deal)`
+- `myDealStatus(domainName, deal)`：依赖 `msg.sender` 作为商家；链下 `eth_call` 若未带 `from`，请改用 `myDealStatusOf`
+- `myDealStatusOf(domainName, deal, merchant)`：**推荐**前端 / 索引器使用，显式传入商家地址
 - `lastDepositAt(domainName, deal, merchant)`
 - `lastDepositAmount(domainName, deal, merchant)`
 - `depositPercent(domainName, deal, merchant)`
-- `previewHourlyRate(depositAmount)`
+- `previewHourlyRate(depositAmount)`：合约内历史「全局」公式预览；实际扣费以域名 `setDomainAdFeePolicy` 为准
 
 说明：
 - `depositPercent`：当前余额相对最近一次充值基准的百分比
 - `lastDepositAmount`：上一次充值了多少 `DL`
+
+### 6.10 黑名单（列表查询与地址展示）
+
+链上方法：
+
+- `setBlacklisted(domainName, account, banned)`：仅域名 NFT 持有人可调用；`banned = true` 拉黑，`false` 解除。
+- `isBlacklisted(domainName, account)`：是否仍被拉黑。
+- `blacklistedCount(domainName)`：当前该域名下拉黑人数。
+- `blacklistedAddresses(domainName)`：返回 `address[]`，即当前所有仍被拉黑的地址（顺序随解除/再拉黑可能变化，不要当稳定排序用）。
+
+**升级 / 旧部署说明**：若在增加 `blacklistedAddresses` 之前已有拉黑数据，旧记录只在 `mapping` 里、未进入枚举数组；需持有人对相关地址再执行一次 `setBlacklisted(..., true)` 才会出现在列表中，或自行用历史 `BlacklistedSet` 事件在链下回放还原。
+
+**前端「解析」地址（展示用）**：
+
+1. **校验和地址（推荐）**：用 viem 的 `getAddress(raw)`，得到 EIP-55 混写地址，避免大小写抄错。
+2. **可选展示主域名**：若该地址在 `DCDomain` 上设过主域名，可读 `primaryDomain(user)`；空字符串表示未设置。主域名是「标签」不是通行证，权限仍以钱包地址为准。
+
+示例（读取列表并格式化）：
+
+```ts
+import { getAddress, type Address } from "viem";
+
+const addrs = (await dcRank.read.blacklistedAddresses([domainName])) as Address[];
+const rows = await Promise.all(
+  addrs.map(async (a) => {
+    const checksum = getAddress(a);
+    const primary = await dcDomain.read.primaryDomain([a]);
+    return { address: checksum, primaryDomain: primary as string };
+  })
+);
+```
 
 ---
 
