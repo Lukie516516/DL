@@ -516,6 +516,20 @@ describe("Domain Flows", async function () {
     await fixture.registerDomain(alice, "rank11");
     await fixture.registerDomain(alice, "rank22");
 
+    const rankAsAlicePolicy = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: alice },
+    });
+    const AD_FEE_FIXED = 2;
+    const fixedHourly = 600n * ONE;
+    await waitFor(
+      publicClient,
+      await rankAsAlicePolicy.write.setDomainAdFeePolicy(["rank11", AD_FEE_FIXED, 0n, fixedHourly]),
+    );
+    await waitFor(
+      publicClient,
+      await rankAsAlicePolicy.write.setDomainAdFeePolicy(["rank22", AD_FEE_FIXED, 0n, fixedHourly]),
+    );
+
     const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
       client: { wallet: bob },
     });
@@ -576,7 +590,11 @@ describe("Domain Flows", async function () {
     const settled = await rankAsBob.write.settle(["rank11", deal1, bob.account.address]);
     await waitFor(publicClient, settled);
 
-    const statusAfter = await rankAsBob.read.myDealStatus(["rank11", deal1]);
+    const statusAfter = await rankAsBob.read.myDealStatusOf([
+      "rank11",
+      deal1,
+      bob.account.address,
+    ]);
     assert.ok(statusAfter[0] < depositAmount);
     assert.ok(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]) < 100n);
     assert.equal(await dcDomainRank.read.lastDepositAmount(["rank11", deal1, bob.account.address]), depositAmount);
@@ -586,9 +604,133 @@ describe("Domain Flows", async function () {
     assert.ok(rankedAfter[0].score > 0n);
 
     await waitFor(publicClient, await rankAsBob.write.withdraw(["rank11", deal1]));
-    const withdrawnStatus = await rankAsBob.read.myDealStatus(["rank11", deal1]);
+    const withdrawnStatus = await rankAsBob.read.myDealStatusOf([
+      "rank11",
+      deal1,
+      bob.account.address,
+    ]);
     assert.equal(withdrawnStatus[0], 0n);
     assert.equal(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]), 0n);
+  });
+
+  it("rejects rank deposit until domain holder enables an ad fee policy", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
+
+    await fixture.registerDomain(alice, "pol000");
+
+    const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
+      client: { wallet: bob },
+    });
+    const createHash = await swapAsBob.write.createDeal([
+      "pol000",
+      ausd.address,
+      1n * ONE,
+      usdt.address,
+      2n * ONE,
+      "",
+      zeroAddress,
+    ]);
+    const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+    const createEvents = await publicClient.getContractEvents({
+      address: dcDomainSwap.address,
+      abi: dcDomainSwap.abi,
+      eventName: "DealCreated",
+      fromBlock: createReceipt.blockNumber,
+      toBlock: createReceipt.blockNumber,
+      strict: true,
+    });
+    const dealAddr = createEvents[0].args.deal as Address;
+
+    const rankAsBob = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: bob },
+    });
+    const dlAsBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, 2000n * ONE]));
+    await assert.rejects(
+      rankAsBob.write.deposit(["pol000", dealAddr, 1000n * ONE]),
+      /ad fees disabled/,
+    );
+
+    const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: alice },
+    });
+    await waitFor(
+      publicClient,
+      await rankAsAlice.write.setDomainAdFeePolicy(["pol000", 2, 0n, 500n * ONE]),
+    );
+    await waitFor(publicClient, await rankAsBob.write.deposit(["pol000", dealAddr, 1000n * ONE]));
+  });
+
+  it("applies proportional ad fee as a fraction of balance per hour", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
+    const testClient = await viem.getTestClient();
+
+    await fixture.registerDomain(alice, "prop01");
+
+    const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: alice },
+    });
+    await waitFor(
+      publicClient,
+      await rankAsAlice.write.setDomainAdFeePolicy(["prop01", 1, 100n, 0n]),
+    );
+    const policy = await dcDomainRank.read.getDomainAdFeePolicy(["prop01"]);
+    assert.equal(Number(policy[0]), 1, "mode proportional");
+    assert.equal(policy[1], 100n);
+    assert.equal(policy[2], 0n);
+
+    const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
+      client: { wallet: bob },
+    });
+    const createHash = await swapAsBob.write.createDeal([
+      "prop01",
+      ausd.address,
+      1n * ONE,
+      usdt.address,
+      2n * ONE,
+      "",
+      zeroAddress,
+    ]);
+    const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+    const createEvents = await publicClient.getContractEvents({
+      address: dcDomainSwap.address,
+      abi: dcDomainSwap.abi,
+      eventName: "DealCreated",
+      fromBlock: createReceipt.blockNumber,
+      toBlock: createReceipt.blockNumber,
+      strict: true,
+    });
+    const dealAddr = createEvents[0].args.deal as Address;
+
+    const rankAsBob = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: bob },
+    });
+    const dlAsBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
+    const depositAmount = 10_000n * ONE;
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
+    await waitFor(publicClient, await rankAsBob.write.deposit(["prop01", dealAddr, depositAmount]));
+
+    const stRightAfter = await rankAsBob.read.myDealStatusOf([
+      "prop01",
+      dealAddr,
+      bob.account.address,
+    ]);
+    assert.equal(stRightAfter[0], depositAmount, "deposit should be credited for this deal");
+
+    const blockBefore = await publicClient.getBlock();
+    // One billing hour for proportional: H = floor((elapsed + 3599) / 3600) must be 1 → elapsed <= 3600
+    await testClient.setNextBlockTimestamp({ timestamp: blockBefore.timestamp + 3599n });
+    await testClient.mine({ blocks: 1 });
+
+    await waitFor(publicClient, await rankAsBob.write.settle(["prop01", dealAddr, bob.account.address]));
+    const after = await rankAsBob.read.myDealStatusOf([
+      "prop01",
+      dealAddr,
+      bob.account.address,
+    ]);
+    assert.equal(after[0], 9900n * ONE);
   });
 
   it("matches a visitor in DCDomainHall for token-to-token deals and settles end-to-end", async function () {
@@ -886,6 +1028,11 @@ describe("Domain Flows", async function () {
 
     await waitFor(publicClient, await rankAsAlice.write.setBlacklisted(["hallbl", carol.account.address, true]));
 
+    assert.equal(await rankAsAlice.read.blacklistedCount(["hallbl"]), 1n);
+    const blAfterAdd = await rankAsAlice.read.blacklistedAddresses(["hallbl"]);
+    assert.equal(blAfterAdd.length, 1);
+    assert.equal(getAddress(blAfterAdd[0]!), getAddress(carol.account.address));
+
     await assert.rejects(
       hallAsCarol.write.postMessageOnDeal(["hallbl", dealAddress, "blocked"]),
       /blacklisted/,
@@ -895,7 +1042,61 @@ describe("Domain Flows", async function () {
       /picked bl/,
     );
 
+    await waitFor(publicClient, await rankAsAlice.write.setBlacklisted(["hallbl", carol.account.address, false]));
+    assert.equal(await rankAsAlice.read.blacklistedCount(["hallbl"]), 0n);
+    assert.deepEqual(await rankAsAlice.read.blacklistedAddresses(["hallbl"]), []);
+
     assert.equal(getAddress(await dcDomain.read.resolve(["hallbl"])), getAddress(alice.account.address));
+  });
+
+  it("blacklistedAddresses stays in sync when multiple addresses are banned and one is removed", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, publicClient, alice, bob, carol, dcDomainRank } = fixture;
+
+    await fixture.registerDomain(alice, "blist2");
+
+    const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: alice },
+    });
+
+    await waitFor(
+      publicClient,
+      await rankAsAlice.write.setBlacklisted(["blist2", bob.account.address, true]),
+    );
+    await waitFor(
+      publicClient,
+      await rankAsAlice.write.setBlacklisted(["blist2", carol.account.address, true]),
+    );
+    assert.equal(await rankAsAlice.read.blacklistedCount(["blist2"]), 2n);
+    const two = (await rankAsAlice.read.blacklistedAddresses(["blist2"])) as `0x${string}`[];
+    assert.equal(two.length, 2);
+    const set2 = new Set(two.map((a) => getAddress(a)));
+    assert.ok(set2.has(getAddress(bob.account.address)));
+    assert.ok(set2.has(getAddress(carol.account.address)));
+
+    await waitFor(
+      publicClient,
+      await rankAsAlice.write.setBlacklisted(["blist2", bob.account.address, false]),
+    );
+    assert.equal(await rankAsAlice.read.blacklistedCount(["blist2"]), 1n);
+    const one = await rankAsAlice.read.blacklistedAddresses(["blist2"]);
+    assert.equal(one.length, 1);
+    assert.equal(getAddress(one[0]!), getAddress(carol.account.address));
+    assert.equal(await rankAsAlice.read.isBlacklisted(["blist2", bob.account.address]), false);
+    assert.equal(await rankAsAlice.read.isBlacklisted(["blist2", carol.account.address]), true);
+  });
+
+  it("rejects domain owner blacklisting their own address", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, alice, dcDomainRank } = fixture;
+    await fixture.registerDomain(alice, "noself");
+    const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: alice },
+    });
+    await assert.rejects(
+      rankAsAlice.write.setBlacklisted(["noself", alice.account.address, true]),
+      /cannot blacklist self/,
+    );
   });
 
   it("creates exact-address hall deals with pickUserAndCreateDeal and blocks other joiners", async function () {

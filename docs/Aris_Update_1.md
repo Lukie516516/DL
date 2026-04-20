@@ -57,10 +57,10 @@
 
 ### 3.2 认可币
 
-当前默认认可币：
+Agiking（`chainId = 31415926`）当前默认认可币以 [`deployments/agiking-31415926.json`](../deployments/agiking-31415926.json) 为准，例如：
 
-- `AUSD = 0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123`
-- `USDT = 0x1035F65fc63342F9878C4D03e4372718Dbb33d32`
+- `AUSD = 0x63b477617669c0e62914951b1a1cc61b315af9e5`
+- `USDT = 0x3bb6ed33bd4453189a1d79feab6583d103d8cb08`
 
 并且原生币会归一化到 `WNATIVE` 路径。
 

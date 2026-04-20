@@ -54,7 +54,15 @@ async function main() {
   console.log("Chain", chain.id, "deployer", dep);
 
   // —— Core AMM + Deal ——
-  const dealImpl = await viem.deployContract("Deal", [], { client });
+  const dealLib = await viem.deployContract("DealLib", [], { client });
+  console.log("DealLib", dealLib.address);
+
+  const dealImpl = await viem.deployContract("Deal", [], {
+    client,
+    libraries: {
+      DealLib: dealLib.address,
+    },
+  });
   console.log("Deal impl", dealImpl.address);
 
   const pairImpl = await viem.deployContract("DealSwapTemplate", [], { client });
@@ -185,6 +193,7 @@ async function main() {
     ausd: ausd.address,
     usdt: usdt.address,
     wrappedNative: wrappedNative.address,
+    dealLib: dealLib.address,
     dealImplementation: dealImpl.address,
     pairImplementation: pairImpl.address,
     dealFactory: factory.address,
@@ -213,6 +222,7 @@ async function main() {
     deployer: dep,
     addresses,
     abi: {
+      DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
       DCToken: loadAbi("DL.sol/DCToken.json"),

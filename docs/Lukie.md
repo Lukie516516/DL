@@ -49,9 +49,9 @@
 
 | 角色 | 链上行为 |
 |------|----------|
-| **访客** | `enterDomain` **不扣费**；`VisitorEntered` 里 `feePaid` 恒为 0。 |
-| **商家** | 首次 **`deposit`** 扣 **`entryFee` → treasury**，其余进押金。 |
-| **扣时间费** | 按 **`hourlyRate`** 从押金里扣给 **域名 NFT 持有人**（`_pendingConsume`，按小时取整，在 `deposit/withdraw/settle` 等时结算；不是每个区块打一笔）。 |
+| **访客** | `enterDomain` **不扣费**。 |
+| **域名持有人** | `setDomainAdFeePolicy`：`None`（默认，禁止 `deposit`）/ `Proportional`（按余额万分比/计费小时）/ `Fixed`（固定每小时 wei，可扣光）。广告费先记入合约，持有人 `withdraw(domainName)` 领 DL。 |
+| **商家** | 域名非 `None` 时 **`deposit`** 入押金；结算时从押金扣广告费（模式见上），在 `deposit/withdraw/settle` 等触发；不是每块自动扣。 |
 | **排行** | `getLeaderboard`：按 `totalConsumed + pendingConsume` 降序。 |
 
 黑名单、踢访客、踢长期未 `deposit` 的商家等：见合约注释。
