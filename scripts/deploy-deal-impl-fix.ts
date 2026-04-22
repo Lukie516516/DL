@@ -2,10 +2,10 @@
  * Deploy new Deal implementation (added openJoinFor) and update DealFactory pointer.
  * DealLib is unchanged, reuse existing address.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { defineChain, type Address, type Hex } from "viem";
+import { defineChain, type Address } from "viem";
 import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
@@ -37,23 +37,22 @@ async function main() {
 
   console.log("Chain", chain.id, "deployer", dep);
 
-  // ═══════════════ 1. Deploy Deal implementation (linked to existing DealLib) ═══════════════
+  // ═══════════════ 1. Deploy DealAssetNftLib + Deal implementation (reuse existing DealLib) ═══════════════
+  console.log("\n--- Deploying DealAssetNftLib ---");
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib", [], {
+    client: { public: publicClient, wallet: deployer },
+  });
+  console.log("DealAssetNftLib:", dealAssetNftLib.address);
+
   console.log("\n--- Deploying Deal implementation (with openJoinFor) ---");
-  const dealArtifact = JSON.parse(
-    readFileSync(join(process.cwd(), "artifacts/contracts/Deal.sol/Deal.json"), "utf8"),
-  );
-  const rawBytecode: string = dealArtifact.bytecode;
-
-  const libAddrHex = EXISTING.dealLib.slice(2).toLowerCase().padStart(40, "0");
-  const linkedBytecode = rawBytecode.replace(/__\$[a-f0-9]{34}\$__/g, libAddrHex) as Hex;
-
-  if (linkedBytecode.includes("__$")) {
-    throw new Error("Unresolved library placeholder in Deal bytecode");
-  }
-
-  const deployHash = await deployer.sendTransaction({ data: linkedBytecode, chain });
-  const deployReceipt = await publicClient.waitForTransactionReceipt({ hash: deployHash });
-  const newDealImpl = deployReceipt.contractAddress as Address;
+  const dealImpl = await viem.deployContract("Deal", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: {
+      DealLib: EXISTING.dealLib,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const newDealImpl = dealImpl.address;
   console.log("New Deal implementation:", newDealImpl);
 
   // ═══════════════ 2. Update DealFactory's dealImplementation ═══════════════
@@ -69,6 +68,7 @@ async function main() {
   console.log("New Deal implementation:", newDealImpl);
   console.log("DealFactory (unchanged):", EXISTING.dealFactory);
   console.log("DealLib (unchanged):", EXISTING.dealLib);
+  console.log("DealAssetNftLib (new):", dealAssetNftLib.address);
 
   const dir = join(process.cwd(), "deployments");
   mkdirSync(dir, { recursive: true });
@@ -79,6 +79,7 @@ async function main() {
     newDealImplementation: newDealImpl,
     dealFactory: EXISTING.dealFactory,
     dealLib: EXISTING.dealLib,
+    dealAssetNftLib: dealAssetNftLib.address,
   }, null, 2), "utf8");
   console.log("Wrote", file);
 }

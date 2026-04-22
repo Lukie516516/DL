@@ -1,0 +1,6 @@
+{
+  "filter_paths": "node_modules|forge-test",
+  "exclude_dependencies": true,
+  "detectors_to_exclude": "naming-convention,similar-names,solc-version,pragma",
+  "foundry_out_directory": "cache/forge-out"
+}

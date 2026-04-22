@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {DealError} from "./DealErrors.sol";
+
 /* 外提库：通过 external 函数让实现字节码落在独立部署地址，供 Deal 代理/克隆 delegatecall 使用。 */
 
 interface IDealInfoNFTView {
@@ -13,9 +17,74 @@ interface IFactoryInfoSetMax {
     function infoSetMaxPartnerOf(uint256 tokenId, uint256 partnerTokenId) external;
 }
 
+interface IFactoryTwapLib {
+    function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
+}
+
+interface IWNATIVELib is IERC20 {
+    function deposit() external payable;
+}
+
+interface IDLBurnLib {
+    function burn(uint256 amount) external;
+}
+
 library DealLib {
+    using SafeERC20 for IERC20;
     uint32 private constant DL_TO_DL_FEE_NUM = 1;
     uint32 private constant DL_TO_DL_FEE_DEN = 1000;
+
+    struct ProcessDealFeesParams {
+        address NATIVE;
+        address factory;
+        address dl;
+        address treasury;
+        address WNATIVE;
+        address recognizedToken0;
+        address recognizedToken1;
+        uint256 aSwapAmount;
+        address aTokenNorm;
+        uint256 bSwapAmount;
+        address bTokenNorm;
+        address aSwapToken;
+        address bSwapToken;
+        address aPair;
+        address bPair;
+        uint256 aFee;
+        uint256 bFee;
+        address infoNft;
+        address partyA;
+        address partyB;
+        bool aNftLocked;
+        uint256 aNftId;
+        bool bNftLocked;
+        uint256 bNftId;
+    }
+
+    struct ComputeDealRewardsParams {
+        uint32 mintOnFeesNum;
+        uint32 mintOnFeesDen;
+        uint256 aSwapAmount;
+        address aTokenNorm;
+        address aSwapToken;
+        address aPair;
+        uint256 bSwapAmount;
+        address bTokenNorm;
+        address bSwapToken;
+        address bPair;
+        address dl;
+        address WNATIVE;
+        address recognizedToken0;
+        address recognizedToken1;
+        address factory;
+        address infoNft;
+        address partyA;
+        address partyB;
+        bool aNftLocked;
+        uint256 aNftId;
+        bool bNftLocked;
+        uint256 bNftId;
+    }
 
     function computeSwapFeesAndNets(
         uint256 aSwapAmount,
@@ -184,6 +253,18 @@ library DealLib {
         bool bNftLocked,
         uint256 bNftId
     ) external view returns (uint256 cToken, address cAddr) {
+        return _resolveCRewardTargetView(infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
+    }
+
+    function _resolveCRewardTargetView(
+        address infoNft,
+        address partyA,
+        address partyB,
+        bool aNftLocked,
+        uint256 aNftId,
+        bool bNftLocked,
+        uint256 bNftId
+    ) internal view returns (uint256 cToken, address cAddr) {
         if (infoNft == address(0)) return (0, address(0));
         bool hasA = aNftLocked && aNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(aNftId) == partyA;
         bool hasB = bNftLocked && bNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(bNftId) == partyB;
@@ -285,5 +366,234 @@ library DealLib {
                 );
             if (winB != curMaxB) fi.infoSetMaxPartnerOf(bNftId, winB);
         }
+    }
+
+    /* ---------- 手续费 / 入池 / 奖励 / TWAP（Deal 与 DealOpenTokenToken 共用） ---------- */
+
+    function _quoteAggToDLImpl(address factory_, address dl, address token, address pair, uint256 amountIn)
+        private
+        returns (uint256 dlOut)
+    {
+        if (amountIn == 0) return 0;
+        if (token == dl) return amountIn;
+        if (pair == address(0)) return 0;
+        try IFactoryTwapLib(factory_).updateAndQuoteToDL(pair, amountIn) returns (uint256 x) {
+            return x;
+        } catch {
+            return 0;
+        }
+    }
+
+    function quoteAggToDL(address factory_, address dl, address token, address pair, uint256 amountIn)
+        external
+        returns (uint256 dlOut)
+    {
+        return _quoteAggToDLImpl(factory_, dl, token, pair, amountIn);
+    }
+
+    function _handleDlToDlFees(
+        address dl,
+        address infoNft,
+        address partyA,
+        address partyB,
+        bool aNftLocked,
+        uint256 aNftId,
+        bool bNftLocked,
+        uint256 bNftId,
+        uint256 fee
+    ) private {
+        if (fee == 0) return;
+        (uint256 cToken, address cAddr) =
+            _resolveCRewardTargetView(infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
+        if (cToken != 0 && cAddr != address(0)) {
+            IERC20(dl).safeTransfer(cAddr, fee);
+        } else {
+            IDLBurnLib(dl).burn(fee);
+        }
+    }
+
+    function _handleOneSideFees(
+        address NATIVE,
+        address treasury_,
+        address WNATIVE_,
+        address recognizedToken0,
+        address recognizedToken1,
+        address token,
+        address tokenNorm,
+        address pair,
+        uint256 fee
+    ) private {
+        if (fee == 0) return;
+        if (_isRecognizedToken(tokenNorm, WNATIVE_, recognizedToken0, recognizedToken1) && pair != address(0)) {
+            if (token == NATIVE) {
+                IWNATIVELib(WNATIVE_).deposit{value: fee}();
+                IERC20(WNATIVE_).safeTransfer(pair, fee);
+            } else {
+                IERC20(tokenNorm).safeTransfer(pair, fee);
+            }
+            (bool okPair, bytes memory data) = pair.call(abi.encodeWithSignature("mintOtherOnly()"));
+            if (!(okPair && (data.length == 32 || data.length == 0))) revert DealError(34);
+            return;
+        }
+        if (treasury_ == address(0)) revert DealError(53);
+        if (token == NATIVE) {
+            (bool ok,) = payable(treasury_).call{value: fee}("");
+            if (!ok) revert DealError(35);
+        } else IERC20(tokenNorm).safeTransfer(treasury_, fee);
+    }
+
+    function _processDealFeesImpl(ProcessDealFeesParams calldata p) private {
+        if (p.aSwapAmount > 0 && p.aTokenNorm == p.dl && p.bSwapAmount > 0 && p.bTokenNorm == p.dl) {
+            _handleDlToDlFees(
+                p.dl,
+                p.infoNft,
+                p.partyA,
+                p.partyB,
+                p.aNftLocked,
+                p.aNftId,
+                p.bNftLocked,
+                p.bNftId,
+                p.aFee + p.bFee
+            );
+            return;
+        }
+        _handleOneSideFees(
+            p.NATIVE,
+            p.treasury,
+            p.WNATIVE,
+            p.recognizedToken0,
+            p.recognizedToken1,
+            p.aSwapToken,
+            p.aTokenNorm,
+            p.aPair,
+            p.aFee
+        );
+        _handleOneSideFees(
+            p.NATIVE,
+            p.treasury,
+            p.WNATIVE,
+            p.recognizedToken0,
+            p.recognizedToken1,
+            p.bSwapToken,
+            p.bTokenNorm,
+            p.bPair,
+            p.bFee
+        );
+    }
+
+    function processDealFees(ProcessDealFeesParams calldata p) external {
+        _processDealFeesImpl(p);
+    }
+
+    function _rewardFromRecognizedSide(
+        address factory_,
+        address dl,
+        address WNATIVE_,
+        address recognizedToken0,
+        address recognizedToken1,
+        uint32 mintOnFeesNum,
+        uint32 mintOnFeesDen,
+        address token,
+        address tokenNorm,
+        address pair,
+        uint256 amount
+    ) private returns (uint256 dlOut) {
+        if (amount == 0) return 0;
+        if (!_isRecognizedToken(tokenNorm, WNATIVE_, recognizedToken0, recognizedToken1)) return 0;
+        uint256 rewardBasis = (amount * mintOnFeesNum) / mintOnFeesDen;
+        return _quoteAggToDLImpl(factory_, dl, token, pair, rewardBasis);
+    }
+
+    function _dealRewardFromRecognizedSideA(ComputeDealRewardsParams calldata p) private returns (uint256) {
+        return _rewardFromRecognizedSide(
+            p.factory,
+            p.dl,
+            p.WNATIVE,
+            p.recognizedToken0,
+            p.recognizedToken1,
+            p.mintOnFeesNum,
+            p.mintOnFeesDen,
+            p.aSwapToken,
+            p.aTokenNorm,
+            p.aPair,
+            p.aSwapAmount
+        );
+    }
+
+    function _dealRewardFromRecognizedSideB(ComputeDealRewardsParams calldata p) private returns (uint256) {
+        return _rewardFromRecognizedSide(
+            p.factory,
+            p.dl,
+            p.WNATIVE,
+            p.recognizedToken0,
+            p.recognizedToken1,
+            p.mintOnFeesNum,
+            p.mintOnFeesDen,
+            p.bSwapToken,
+            p.bTokenNorm,
+            p.bPair,
+            p.bSwapAmount
+        );
+    }
+
+    function _computeDealRewardsFinalize(ComputeDealRewardsParams calldata p)
+        private
+        returns (uint256 toA, uint256 toB, uint256 toC, address cAddr, uint256 cToken)
+    {
+        (cToken, cAddr) = _resolveCRewardTargetView(
+            p.infoNft, p.partyA, p.partyB, p.aNftLocked, p.aNftId, p.bNftLocked, p.bNftId
+        );
+        uint256 perRoleA = _dealRewardFromRecognizedSideA(p);
+        uint256 perRoleB = _dealRewardFromRecognizedSideB(p);
+        uint256 perRole = perRoleA + perRoleB;
+        if (perRole == 0) return (0, 0, 0, address(0), 0);
+
+        toA = perRole;
+        toB = perRole;
+        if (cToken != 0) {
+            toC = perRole;
+        }
+    }
+
+    function _computeDealRewardsImpl(ComputeDealRewardsParams calldata p)
+        private
+        returns (uint256 toA, uint256 toB, uint256 toC, address cAddr, uint256 cToken)
+    {
+        if (p.mintOnFeesNum == 0) return (0, 0, 0, address(0), 0);
+
+        bool aHasSwap = p.aSwapAmount > 0;
+        bool bHasSwap = p.bSwapAmount > 0;
+
+        if (
+            (aHasSwap && !_isRecognizedOrDL(p.aTokenNorm, p.dl, p.WNATIVE, p.recognizedToken0, p.recognizedToken1))
+                || (bHasSwap
+                    && !_isRecognizedOrDL(p.bTokenNorm, p.dl, p.WNATIVE, p.recognizedToken0, p.recognizedToken1))
+        ) {
+            return (0, 0, 0, address(0), 0);
+        }
+
+        if (aHasSwap && p.aTokenNorm == p.dl && bHasSwap && p.bTokenNorm == p.dl) {
+            return (0, 0, 0, address(0), 0);
+        }
+
+        return _computeDealRewardsFinalize(p);
+    }
+
+    function computeDealRewards(ComputeDealRewardsParams calldata p)
+        external
+        returns (uint256 toA, uint256 toB, uint256 toC, address cAddr, uint256 cToken)
+    {
+        return _computeDealRewardsImpl(p);
+    }
+
+    function _isRecognizedOrDL(
+        address tokenNorm,
+        address dl_,
+        address WNATIVE_,
+        address recognizedToken0,
+        address recognizedToken1
+    ) private pure returns (bool) {
+        return tokenNorm == dl_
+            || _isRecognizedToken(tokenNorm, WNATIVE_, recognizedToken0, recognizedToken1);
     }
 }

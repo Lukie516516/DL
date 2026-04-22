@@ -12,6 +12,9 @@ const TEMPLATE_TOKEN_TO_TOKEN = 0;
 const TEMPLATE_TOKEN_TO_NFT = 1;
 const TEMPLATE_TOKEN_TO_EMPTY = 2;
 
+const DEFAULT_TIME_START = 1_700_000_000n;
+const DEFAULT_TIME_END = 1_800_000_000n;
+
 type Address = `0x${string}`;
 
 async function waitFor(
@@ -65,7 +68,14 @@ async function deployDomainFixture() {
   ]);
 
   const dealLib = await viem.deployContract("DealLib");
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
   const dealImpl = await viem.deployContract("Deal", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealOpenTTImpl = await viem.deployContract("DealOpenTokenToken", [], {
     libraries: {
       DealLib: dealLib.address,
     },
@@ -76,6 +86,7 @@ async function deployDomainFixture() {
     pairImpl.address,
     3600,
   ]);
+  await waitFor(publicClient, await factory.write.setDealOpenTokenTokenImplementation([dealOpenTTImpl.address]));
   const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
@@ -248,10 +259,11 @@ async function createDealAndGetAddress(
         aNftId: 0n,
         title: init.title ?? "domain sale",
         timeoutSeconds: 3600n,
-        timeStart: 0n,
-        timeEnd: 0n,
+        timeStart: DEFAULT_TIME_START,
+        timeEnd: DEFAULT_TIME_END,
         isDomainDeal: init.isDomainDeal ?? false,
         domainName: init.domainName ?? "",
+        openTokenTokenFast: false,
       },
       trackCreator: false,
     },
@@ -900,7 +912,7 @@ describe("Domain Flows", async function () {
       1n * ONE,
       0n,
       3600n,
-      0n,
+      DEFAULT_TIME_START,
       "",
       false,
     ]);
@@ -1183,7 +1195,7 @@ describe("Domain Flows", async function () {
         0n,
         0n,
         3600n,
-        0n,
+        DEFAULT_TIME_START,
         "bad tte",
         false,
       ]),
@@ -1203,7 +1215,7 @@ describe("Domain Flows", async function () {
       0n,
       0n,
       3600n,
-      0n,
+      DEFAULT_TIME_START,
       "zero margin ete",
       false,
     ]);
@@ -1300,10 +1312,11 @@ describe("Domain Flows", async function () {
             aNftId: 0n,
             title: "fake domain deal",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: true,
             domainName: "fake12",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },

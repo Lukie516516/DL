@@ -56,11 +56,14 @@ async function main() {
   // —— Core AMM + Deal ——
   const dealLib = await viem.deployContract("DealLib", [], { client });
   console.log("DealLib", dealLib.address);
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib", [], { client });
+  console.log("DealAssetNftLib", dealAssetNftLib.address);
 
   const dealImpl = await viem.deployContract("Deal", [], {
     client,
     libraries: {
       DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
     },
   });
   console.log("Deal impl", dealImpl.address);
@@ -194,6 +197,7 @@ async function main() {
     usdt: usdt.address,
     wrappedNative: wrappedNative.address,
     dealLib: dealLib.address,
+    dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: dealImpl.address,
     pairImplementation: pairImpl.address,
     dealFactory: factory.address,
@@ -223,6 +227,7 @@ async function main() {
     addresses,
     abi: {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
+      DealAssetNftLib: loadAbi("utils/DealAssetNftLib.sol/DealAssetNftLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
       DCToken: loadAbi("DL.sol/DCToken.json"),
