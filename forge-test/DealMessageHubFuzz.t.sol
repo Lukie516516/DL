@@ -36,4 +36,26 @@ contract DealMessageHubFuzz is Test {
             assertTrue(bytes(contents[j]).length > 0);
         }
     }
+
+    function test_postFromDeal_revertsWhenCallerNotRegisteredDeal() public {
+        MockFactoryHub f = new MockFactoryHub();
+        DealMessageHub hub = new DealMessageHub(address(f));
+        address rogue = address(uint160(uint256(keccak256("rogue"))));
+        vm.prank(rogue);
+        vm.expectRevert(DealMessageHub.NotDeal.selector);
+        hub.postFromDeal(rogue, "nope");
+    }
+
+    function testFuzz_postFromDeal_revertsUnauthorized(address rogue, bytes32 salt) public {
+        vm.assume(rogue != address(0));
+        MockFactoryHub f = new MockFactoryHub();
+        DealMessageHub hub = new DealMessageHub(address(f));
+        address allowed = address(uint160(uint256(keccak256(abi.encode(salt, "ok")))));
+        f.set(allowed, true);
+        vm.assume(rogue != allowed);
+
+        vm.prank(rogue);
+        vm.expectRevert(DealMessageHub.NotDeal.selector);
+        hub.postFromDeal(rogue, "x");
+    }
 }

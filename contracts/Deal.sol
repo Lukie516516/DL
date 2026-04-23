@@ -14,6 +14,16 @@ import {DealError} from "./utils/DealErrors.sol";
 /* ---------- 工厂侧接口（最小化） ---------- */
 interface IFactoryAuth   { function isAllowedCreateFor(address) external view returns (bool); }
 interface IFactoryMinter { function mintDL(address to, uint256 amount) external; }
+interface IFactoryDealRewardsLog {
+    function logDealRewards(
+        address partyA,
+        uint256 toA,
+        address partyB,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    ) external;
+}
 interface IFactoryMessageHub { function dealMessageHub() external view returns (address); }
 interface IFactoryIndex {
     function onCreated(address creator, bool trackCreator) external;
@@ -154,8 +164,15 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
 
     /* 事件 */
     event Initialized(address indexed initiator, address indexed factory);
-    event Joined(address indexed b, bool nftLockedB);
-    event Locked();
+    event Joined(address indexed b, bool nftLockedB, uint64 when);
+    event Locked(uint64 when);
+    /// @notice Locked 态投票（单方同意/拒绝）；终局仍见 `Completed` / `Canceled`
+    event VoteCast(address indexed who, bool indexed isPartyA, Vote vote, uint64 when);
+    /// @dev reason: 1 = B `exitByB`，2 = A `kickBByA`
+    event ActivePartnerCleared(address indexed prevB, uint8 reason, uint64 when);
+    event DealAbandoned(address indexed initiator, uint64 when);
+    /// @notice `forceComplete`：对侧超时未投票后单方推进；`completed` 为 true 则成交，false 则取消
+    event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
     event Completed(CompletionReason reason);
     event Canceled();
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
@@ -166,9 +183,9 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     event MessagePosted(address indexed sender, uint256 indexed index);
     event MessageFeeCharged(address indexed sender, uint256 dlBurned);
     /// @notice Active 下成功注入（pay）：便于前端时间线索引
-    event Paid(address indexed payer, bool indexed isPartyA);
+    event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
     /// @notice Active 下 withdrawInActive 撤回已注入资产
-    event WithdrawnInActive(address indexed payer, bool indexed isPartyA);
+    event WithdrawnInActive(address indexed payer, bool indexed isPartyA, uint64 when);
 
     modifier onlyA()  { _check(msg.sender == a, 1); _; }
     modifier onlyAB() { _check(msg.sender == a || msg.sender == b, 2); _; }
@@ -301,6 +318,7 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
         _trackA=false; _trackBActive=false;
 
         status = Status.Abandoned;
+        emit DealAbandoned(a, uint64(block.timestamp));
     }
 
     /* ========== A 或授权合约：指定 B（供 DCDomainHall 等调用） ========== */
@@ -338,7 +356,7 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
 
         _trackBActive = trackMe;
         status = Status.Active;
-        emit Joined(b, bNftLocked);
+        emit Joined(b, bNftLocked, uint64(block.timestamp));
         if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         _tryLock();
     }
@@ -367,7 +385,7 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
                 injected = true;
             }
         }
-        if (injected) emit Paid(msg.sender, msg.sender == a);
+        if (injected) emit Paid(msg.sender, msg.sender == a, uint64(block.timestamp));
         _tryLock();
     }
 
@@ -377,13 +395,13 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
             _sendOutAssetNftToA();
-            emit WithdrawnInActive(a, true);
+            emit WithdrawnInActive(a, true, uint64(block.timestamp));
         } else {
             _check(bPaid, 28); bPaid = false;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
             _sendOutAssetNftToB();
-            emit WithdrawnInActive(b, false);
+            emit WithdrawnInActive(b, false, uint64(block.timestamp));
         }
     }
 
@@ -394,7 +412,9 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
         _unlockNftIfLocked(false);
         bNftId = 0;
         if (_trackBActive) { IFactoryIndex(factory).onParticipantRemoved(prevB); _trackBActive = false; }
-        b = address(0); status = Status.Ready;
+        b = address(0);
+        status = Status.Ready;
+        emit ActivePartnerCleared(prevB, 1, uint64(block.timestamp));
     }
 
     function kickBByA() external nonReentrant onlyA inState(Status.Active) {
@@ -403,36 +423,49 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
         _unlockNftIfLocked(false);
         bNftId = 0;
         if (_trackBActive) { IFactoryIndex(factory).onParticipantRemoved(prevB); _trackBActive = false; }
-        b = address(0); status = Status.Ready;
+        b = address(0);
+        status = Status.Ready;
+        emit ActivePartnerCleared(prevB, 2, uint64(block.timestamp));
     }
 
     /* ========== Locked：投票 / 强制完成 / 取消 ========== */
     function setMyVote(Vote v) external nonReentrant inState(Status.Locked) onlyAB {
         _check(v == Vote.Accept || v == Vote.Reject, 30);
-        if (msg.sender == a) { aVote = v; aAt = uint64(block.timestamp); }
-        else { bVote = v; bAt = uint64(block.timestamp); }
+        uint64 ts = uint64(block.timestamp);
+        if (msg.sender == a) { aVote = v; aAt = ts; }
+        else { bVote = v; bAt = ts; }
+        emit VoteCast(msg.sender, msg.sender == a, v, ts);
 
         if (aVote == Vote.Accept && bVote == Vote.Accept) _complete(CompletionReason.BothAccepted);
         else if (aVote == Vote.Reject && bVote == Vote.Reject) _cancel();
     }
 
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {
+        uint64 ts = uint64(block.timestamp);
         if (msg.sender == a && bVote == Vote.Unset) {
             _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
-                _complete(CompletionReason.ForcedByA); return;
+                emit ForcedAfterTimeout(msg.sender, true, ts);
+                _complete(CompletionReason.ForcedByA);
+                return;
             } else if (aVote == Vote.Reject) {
-                _cancel(); return;
+                emit ForcedAfterTimeout(msg.sender, false, ts);
+                _cancel();
+                return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
-                _complete(CompletionReason.ForcedByB); return;
+                emit ForcedAfterTimeout(msg.sender, true, ts);
+                _complete(CompletionReason.ForcedByB);
+                return;
             } else if (bVote == Vote.Reject) {
-                _cancel(); return;
+                emit ForcedAfterTimeout(msg.sender, false, ts);
+                _cancel();
+                return;
             }
-        } 
-        
+        }
+
         revert DealError(33);
     }
 
@@ -588,6 +621,7 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
         if (r.toB > 0) IFactoryMinter(factory).mintDL(b, r.toB);
         if (r.toC > 0 && r.cAddr != address(0)) IFactoryMinter(factory).mintDL(r.cAddr, r.toC);
         emit RewardsMinted(a, r.toA, b, r.toB, r.cAddr, r.toC);
+        IFactoryDealRewardsLog(factory).logDealRewards(a, r.toA, b, r.toB, r.cAddr, r.toC);
 
         if (infoNft != address(0)) {
             if (aNftLocked && aNftId != 0 && r.toA > 0) IFactoryInfo(factory).infoAddMinted(aNftId, r.toA);
@@ -613,7 +647,7 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
             status = Status.Locked;
             lockedAt = uint64(block.timestamp);
             aVote = Vote.Unset; bVote = Vote.Unset; aAt = 0; bAt = 0;
-            emit Locked();
+            emit Locked(lockedAt);
         }
     }
     function _isSideReadyA() internal view returns (bool) {
@@ -779,9 +813,11 @@ contract Deal is Initializable, ReentrancyGuard, IERC721Receiver {
     }
 
     /* ========== 链上聊天 ========== */
+    /// @notice 任意 Deal 状态下均可向 DealMessageHub 追加留言（仅 A/B；需已设置 hub）。含 Completed / Canceled / Abandoned。
     function postMessage(string calldata content) external nonReentrant onlyAB {
         _check(
-            status == Status.Active || status == Status.Locked || status == Status.Ready,
+            status == Status.Ready || status == Status.Active || status == Status.Locked
+                || status == Status.Completed || status == Status.Canceled || status == Status.Abandoned,
             52
         );
         _chargeMessageFee(msg.sender);

@@ -320,6 +320,16 @@ contract DealFactory is Ownable {
     );
     event DealOpenTokenTokenCreated(address indexed deal);
     event DLMinted(address indexed to, uint256 amount, address indexed deal);
+    /// @notice 仅索引便利：每笔 Deal 成交奖励汇总（与 Deal 上 `RewardsMinted` 同数据；`deal` 为 msg.sender）
+    event DealRewardsLogged(
+        address indexed deal,
+        address indexed partyA,
+        address indexed partyB,
+        uint256 toA,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    );
     event MessagePriceRuleUpdated(
         bool enabled,
         address pricingToken,
@@ -879,6 +889,18 @@ contract DealFactory is Ownable {
         require(to != address(0) && amount > 0);
         IDLMint(dlToken).mint(to, amount);
         emit DLMinted(to, amount, msg.sender);
+    }
+
+    /// @dev Deal 成交后调用；前端/索引只订工厂时可筛 `DealRewardsLogged`，不必扫每个 clone。
+    function logDealRewards(
+        address partyA,
+        uint256 toA,
+        address partyB,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    ) external onlyDeal {
+        emit DealRewardsLogged(msg.sender, partyA, partyB, toA, toB, cAddr, toC);
     }
 
     /* ========== 代理：写 InfoNFT（仅 Deal） ========== */

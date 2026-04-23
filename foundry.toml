@@ -29,3 +29,15 @@ remappings = [
 [profile.oz]
 # 可选：与 Slither/CI 共用
 optimizer_runs = 1
+
+# ---- Fuzz / Invariant（深度跑：`forge test` 即生效；CLI 可覆盖如 `FOUNDRY_FUZZ_RUNS=2048 forge test`）----
+[fuzz]
+runs = 512
+max_test_rejects = 262_144
+
+[invariant]
+runs = 256
+depth = 32
+fail_on_revert = false
+call_override = false
+shrink_run_limit = 5000

@@ -15,6 +15,16 @@ interface IFactoryAuth {
 interface IFactoryMinter {
     function mintDL(address to, uint256 amount) external;
 }
+interface IFactoryDealRewardsLog {
+    function logDealRewards(
+        address partyA,
+        uint256 toA,
+        address partyB,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    ) external;
+}
 interface IFactoryMessageHub {
     function dealMessageHub() external view returns (address);
 }
@@ -147,8 +157,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     uint256 public msgPriceAmountInToken;
 
     event Initialized(address indexed initiator, address indexed factory);
-    event Joined(address indexed b, bool nftLocked);
-    event Locked();
+    event Joined(address indexed b, bool nftLocked, uint64 when);
+    event Locked(uint64 when);
+    event VoteCast(address indexed who, bool indexed isPartyA, Vote vote, uint64 when);
+    /// @dev reason: 1 = B `exitByB`，2 = A `kickBByA`
+    event ActivePartnerCleared(address indexed prevB, uint8 reason, uint64 when);
+    event DealAbandoned(address indexed initiator, uint64 when);
+    event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
     event Completed(CompletionReason reason);
     event Canceled();
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
@@ -156,10 +171,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address cAddr, uint256 toC);
     event MessagePosted(address indexed sender, uint256 indexed index);
     event MessageFeeCharged(address indexed sender, uint256 dlBurned);
-    event Paid(address indexed payer, bool indexed isPartyA);
-    event WithdrawnInActive(address indexed payer, bool indexed isPartyA);
+    event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
+    event WithdrawnInActive(address indexed payer, bool indexed isPartyA, uint64 when);
     event APreAccepted(address indexed a_, uint64 at);
-    event BExpelledOnReject(address indexed prevB);
+    event BExpelledOnReject(address indexed prevB, uint64 when);
 
     modifier onlyA() {
         _check(msg.sender == a, 1);
@@ -346,6 +361,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _trackBActive = false;
 
         status = Status.Abandoned;
+        emit DealAbandoned(a, uint64(block.timestamp));
     }
 
     function openJoinFor(address chosenB) external inState(Status.Ready) {
@@ -370,7 +386,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         _trackBActive = trackMe;
         status = Status.Active;
-        emit Joined(b, bNftLocked);
+        emit Joined(b, bNftLocked, uint64(block.timestamp));
         if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         _tryLock();
     }
@@ -388,7 +404,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 aPaid = true;
                 injectedReady = true;
             }
-            if (injectedReady) emit Paid(a, true);
+            if (injectedReady) emit Paid(a, true, uint64(block.timestamp));
             return;
         }
         _check(status == Status.Active, 3);
@@ -412,7 +428,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 injected = true;
             }
         }
-        if (injected) emit Paid(msg.sender, msg.sender == a);
+        if (injected) emit Paid(msg.sender, msg.sender == a, uint64(block.timestamp));
         _tryLock();
     }
 
@@ -429,7 +445,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         aPaid = false;
         _sendOut(aSwapToken, a, aSwapAmount);
         _sendOut(aMarginToken, a, aMarginAmount);
-        emit WithdrawnInActive(a, true);
+        emit WithdrawnInActive(a, true, uint64(block.timestamp));
     }
 
     function withdrawInActive() external nonReentrant inState(Status.Active) onlyAB {
@@ -438,13 +454,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             aPaid = false;
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
-            emit WithdrawnInActive(a, true);
+            emit WithdrawnInActive(a, true, uint64(block.timestamp));
         } else {
             _check(bPaid, 28);
             bPaid = false;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
-            emit WithdrawnInActive(b, false);
+            emit WithdrawnInActive(b, false, uint64(block.timestamp));
         }
     }
 
@@ -461,6 +477,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         }
         b = address(0);
         status = Status.Ready;
+        emit ActivePartnerCleared(prevB, 1, uint64(block.timestamp));
     }
 
     function kickBByA() external nonReentrant onlyA inState(Status.Active) {
@@ -475,28 +492,34 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         }
         b = address(0);
         status = Status.Ready;
+        emit ActivePartnerCleared(prevB, 2, uint64(block.timestamp));
     }
 
     function setMyVote(Vote v) external nonReentrant inState(Status.Locked) onlyAB {
         _check(v == Vote.Accept || v == Vote.Reject, 30);
+        uint64 ts = uint64(block.timestamp);
         if (msg.sender == b && v == Vote.Reject) {
             if (aVote == Vote.Reject) {
                 bVote = Vote.Reject;
-                bAt = uint64(block.timestamp);
+                bAt = ts;
+                emit VoteCast(b, false, v, ts);
                 _cancel();
                 return;
             }
+            emit VoteCast(b, false, v, ts);
             _expelBOnReject();
             return;
         }
         if (msg.sender == a) {
             if (!(v == Vote.Accept && aVote == Vote.Accept)) {
                 aVote = v;
-                aAt = uint64(block.timestamp);
+                aAt = ts;
+                emit VoteCast(a, true, v, ts);
             }
         } else {
             bVote = v;
-            bAt = uint64(block.timestamp);
+            bAt = ts;
+            emit VoteCast(b, false, v, ts);
         }
 
         if (aVote == Vote.Accept && bVote == Vote.Accept) _complete(CompletionReason.BothAccepted);
@@ -518,25 +541,30 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bVote = Vote.Unset;
         aAt = 0;
         bAt = 0;
-        emit BExpelledOnReject(prevB);
+        emit BExpelledOnReject(prevB, uint64(block.timestamp));
     }
 
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {
+        uint64 ts = uint64(block.timestamp);
         if (msg.sender == a && bVote == Vote.Unset) {
             _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
+                emit ForcedAfterTimeout(msg.sender, true, ts);
                 _complete(CompletionReason.ForcedByA);
                 return;
             } else if (aVote == Vote.Reject) {
+                emit ForcedAfterTimeout(msg.sender, false, ts);
                 _cancel();
                 return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
+                emit ForcedAfterTimeout(msg.sender, true, ts);
                 _complete(CompletionReason.ForcedByB);
                 return;
             } else if (bVote == Vote.Reject) {
+                emit ForcedAfterTimeout(msg.sender, false, ts);
                 _cancel();
                 return;
             }
@@ -703,6 +731,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         if (r.toB > 0) IFactoryMinter(factory).mintDL(b, r.toB);
         if (r.toC > 0 && r.cAddr != address(0)) IFactoryMinter(factory).mintDL(r.cAddr, r.toC);
         emit RewardsMinted(a, r.toA, b, r.toB, r.cAddr, r.toC);
+        IFactoryDealRewardsLog(factory).logDealRewards(a, r.toA, b, r.toB, r.cAddr, r.toC);
 
         if (infoNft != address(0)) {
             if (bNftLocked && bNftId != 0 && r.toB > 0) IFactoryInfo(factory).infoAddMinted(bNftId, r.toB);
@@ -743,7 +772,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             }
             bVote = Vote.Unset;
             bAt = 0;
-            emit Locked();
+            emit Locked(lockedAt);
         }
     }
 
@@ -814,8 +843,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         return bSwapAmount > 0 || bMarginAmount > 0;
     }
 
+    /// @notice 任意 Deal 状态下均可向 DealMessageHub 追加留言（仅 A/B；需已设置 hub）。含 Completed / Canceled / Abandoned。
     function postMessage(string calldata content) external nonReentrant onlyAB {
-        _check(status == Status.Active || status == Status.Locked || status == Status.Ready, 52);
+        _check(
+            status == Status.Ready || status == Status.Active || status == Status.Locked
+                || status == Status.Completed || status == Status.Canceled || status == Status.Abandoned,
+            52
+        );
         _chargeMessageFee(msg.sender);
         address hub = IFactoryMessageHub(factory).dealMessageHub();
         _check(hub != address(0), 54);

@@ -671,6 +671,41 @@ describe("Deal Rules", async function () {
     assert.equal(getAddress(senders[1]), getAddress(bob.account.address));
   });
 
+  it("allows deal chat after Completed via DealMessageHub", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, ausd, usdt, dealMessageHub, alice, bob } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const aSwapAmount = 100n * ONE;
+    const bSwapAmount = 100n * ONE;
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount,
+      bSwapToken: usdt.address,
+      bSwapAmount,
+      templateType: TEMPLATE_TOKEN_TO_TOKEN,
+    });
+
+    await completeOpenDeal(fixture, dealAddress, {
+      alice: [{ token: ausd, amount: aSwapAmount }],
+      bob: [{ token: usdt, amount: bSwapAmount }],
+    });
+
+    const deal = await viem.getContractAt("Deal", dealAddress);
+    assert.equal(Number(await deal.read.status()), 3);
+
+    const dealAsAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealAsBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+    await waitFor(publicClient, await dealAsAlice.write.postMessage(["post-complete a"]));
+    await waitFor(publicClient, await dealAsBob.write.postMessage(["post-complete b"]));
+
+    const count = await dealMessageHub.read.messagesCount([dealAddress]);
+    assert.equal(count, 2n);
+    const [contents] = await dealMessageHub.read.getMessages([dealAddress, 0n, 10n]);
+    assert.deepEqual(contents, ["post-complete a", "post-complete b"]);
+  });
+
   it("allows approved createDealFor callers to create and track deals for the initiator", async function () {
     const fixture = await deployFixture();
     const { viem, publicClient, factory, alice } = fixture;

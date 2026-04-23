@@ -91,6 +91,8 @@ contract MockOpenTTFactory {
 
     function mintDL(address, uint256) external pure {}
 
+    function logDealRewards(address, uint256, address, uint256, address, uint256) external pure {}
+
     function updateAndQuoteToDL(address, uint256) external pure returns (uint256) {
         return 0;
     }

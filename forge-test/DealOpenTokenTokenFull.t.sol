@@ -6,6 +6,7 @@ import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {DealOpenTokenToken} from "../contracts/DealOpenTokenToken.sol";
+import {DealError} from "../contracts/utils/DealErrors.sol";
 import {MockERC20Mint, MockInfoNFT, MockOpenTTFactory} from "./mocks/MockOpenTTStack.sol";
 import {DealMessageHub} from "../contracts/DealMessageHub.sol";
 
@@ -249,6 +250,74 @@ contract DealOpenTokenTokenFullTest is Test {
         openDeal.postMessage("hi");
     }
 
+    function test_postMessage_afterCompleted() public {
+        MockFactoryForHub mf = new MockFactoryForHub();
+        DealMessageHub hub2 = new DealMessageHub(address(mf));
+        mf.setDeal(address(openDeal), true);
+        factory.setHub(address(hub2));
+
+        _payAReady();
+        _preAccept();
+        _joinB(0);
+        _payB();
+        vm.prank(bob);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Accept);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Completed));
+
+        vm.prank(alice);
+        openDeal.postMessage("after done");
+        assertEq(hub2.messagesCount(address(openDeal)), 1);
+    }
+
+    function test_postMessage_afterCanceled() public {
+        MockFactoryForHub mf = new MockFactoryForHub();
+        DealMessageHub hub2 = new DealMessageHub(address(mf));
+        mf.setDeal(address(openDeal), true);
+        factory.setHub(address(hub2));
+
+        _payAReady();
+        _preAccept();
+        _joinB(0);
+        _payB();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Locked));
+
+        vm.prank(alice);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Reject);
+        vm.prank(bob);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Reject);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Canceled));
+
+        vm.prank(alice);
+        openDeal.postMessage("after cancel a");
+        vm.prank(bob);
+        openDeal.postMessage("after cancel b");
+        assertEq(hub2.messagesCount(address(openDeal)), 2);
+    }
+
+    function test_postMessage_afterAbandoned() public {
+        MockFactoryForHub mf = new MockFactoryForHub();
+        DealMessageHub hub2 = new DealMessageHub(address(mf));
+        mf.setDeal(address(openDeal), true);
+        factory.setHub(address(hub2));
+
+        _payAReady();
+        _preAccept();
+        _joinB(0);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Active));
+
+        vm.prank(alice);
+        openDeal.abandonByA();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Abandoned));
+
+        vm.prank(alice);
+        openDeal.postMessage("after abandon a");
+        // `abandonByA` → `_refundAllToParties` 会 `b = address(0)`，仅 A 仍满足 onlyAB
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(2)));
+        openDeal.postMessage("bob cannot");
+        assertEq(hub2.messagesCount(address(openDeal)), 1);
+    }
+
     /* ---------- Fuzz：金额与时间 ---------- */
 
     function testFuzz_happyPath_amounts(uint128 aRaw, uint128 bRaw) public {
@@ -365,6 +434,16 @@ contract DealOpenTokenTokenInvariantTest is StdInvariant, Test {
 
     function invariant_escrowSolvent() public view {
         handler.assertEscrowSolvent();
+    }
+
+    /// @dev `abandonByA` 必须清对手方，否则 `postMessage` onlyAB 与产品语义不一致
+    function invariant_abandonedClearsCounterparty() public view {
+        handler.assertAbandonedClearsB();
+    }
+
+    /// @dev Active / Locked 必须已有 B（OpenTT 状态机）
+    function invariant_activeOrLockedHasCounterparty() public view {
+        handler.assertActiveOrLockedHasB();
     }
 }
 
@@ -541,7 +620,9 @@ contract OpenTTHandler is Test {
         if (openDeal.status() != DealOpenTokenToken.Status.Locked) return;
         if (openDeal.aVote() != DealOpenTokenToken.Vote.Unset) return;
         if (openDeal.bVote() == DealOpenTokenToken.Vote.Unset) return;
-        vm.warp(block.timestamp + uint256(openDeal.bAt()) + uint256(openDeal.timeoutSeconds()) + 1);
+        // 与单元测试一致：绝对截止 = 投票时间 + timeout（勿再叠加 block.timestamp）
+        uint256 t = uint256(openDeal.bAt()) + uint256(openDeal.timeoutSeconds()) + 1;
+        vm.warp(t > block.timestamp ? t : block.timestamp);
         vm.prank(bob);
         try openDeal.forceComplete() {} catch {}
     }
@@ -552,7 +633,8 @@ contract OpenTTHandler is Test {
         if (openDeal.status() != DealOpenTokenToken.Status.Locked) return;
         if (openDeal.bVote() != DealOpenTokenToken.Vote.Unset) return;
         if (openDeal.aVote() != DealOpenTokenToken.Vote.Accept) return;
-        vm.warp(block.timestamp + uint256(openDeal.aAt()) + uint256(openDeal.timeoutSeconds()) + 1);
+        uint256 t = uint256(openDeal.aAt()) + uint256(openDeal.timeoutSeconds()) + 1;
+        vm.warp(t > block.timestamp ? t : block.timestamp);
         vm.prank(alice);
         try openDeal.forceComplete() {} catch {}
     }
@@ -580,5 +662,18 @@ contract OpenTTHandler is Test {
         uint256 bNeed = openDeal.bSwapAmount() + openDeal.bMarginAmount();
         assertLe(tokenA.balanceOf(address(openDeal)), aNeed + 1);
         assertLe(tokenB.balanceOf(address(openDeal)), bNeed + 1);
+    }
+
+    function assertAbandonedClearsB() external view {
+        if (openDeal.status() == DealOpenTokenToken.Status.Abandoned) {
+            assertEq(openDeal.b(), address(0), "abandoned must clear b");
+        }
+    }
+
+    function assertActiveOrLockedHasB() external view {
+        DealOpenTokenToken.Status s = openDeal.status();
+        if (s == DealOpenTokenToken.Status.Active || s == DealOpenTokenToken.Status.Locked) {
+            assertTrue(openDeal.b() != address(0), "active/locked needs counterparty");
+        }
     }
 }
