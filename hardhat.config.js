@@ -32,12 +32,14 @@ const config = {
         compilers: [solcDefault],
         overrides: {
           "contracts/Deal.sol": solcDealOnly,
+          "contracts/DealOpenTokenToken.sol": solcDealOnly,
         },
       },
       production: {
         compilers: [solcDefault],
         overrides: {
           "contracts/Deal.sol": solcDealOnly,
+          "contracts/DealOpenTokenToken.sol": solcDealOnly,
         },
       },
     },

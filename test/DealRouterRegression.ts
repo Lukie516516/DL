@@ -47,8 +47,12 @@ async function deployRouterFixture() {
   const wrappedNative = await viem.deployContract("TestWNative");
 
   const dealLib = await viem.deployContract("DealLib");
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
   const dealImpl = await viem.deployContract("Deal", [], {
-    libraries: { DealLib: dealLib.address },
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
   });
   const pairImpl = await viem.deployContract("DealSwapTemplate");
   const factory = await viem.deployContract("DealFactory", [

@@ -54,6 +54,7 @@ interface IDealFactoryForHall {
         uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
+        bool openTokenTokenFast;
     }
     struct CreateParams {
         InitParams init;
@@ -150,6 +151,13 @@ contract DCDomainHall is ReentrancyGuard {
         require(bytes(content).length <= MAX_MESSAGE_BYTES, "DCDomainHall: too long");
     }
 
+    /// @dev 与 DealFactory 一致：timeStart/timeEnd 均非零且 timeEnd > timeStart，供前端阶段时间轴
+    function _defaultPhaseTimestamps() internal view returns (uint64 tsStart, uint64 tsEnd) {
+        uint64 ts = uint64(block.timestamp);
+        tsStart = ts + DEAL_TIMEOUT;
+        tsEnd = tsStart + DEAL_TIMEOUT;
+    }
+
     function _threadId(
         string calldata domainName,
         address merchant,
@@ -207,6 +215,8 @@ contract DCDomainHall is ReentrancyGuard {
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
         require(timeoutSeconds_ >= 3600, "DCDomainHall: timeout");
+        require(timeStart_ > 0, "DCDomainHall: timeStart");
+        uint64 timeEnd_ = timeStart_ + DEAL_TIMEOUT;
 
         _assertTemplate2Or3(
             templateType,
@@ -237,9 +247,10 @@ contract DCDomainHall is ReentrancyGuard {
             title: title,
             timeoutSeconds: timeoutSeconds_,
             timeStart: timeStart_,
-            timeEnd: 0,
+            timeEnd: timeEnd_,
             isDomainDeal: true,
-            domainName: domainName
+            domainName: domainName,
+            openTokenTokenFast: false
         });
 
         deal = dealFactory.createDealFor(
@@ -353,6 +364,8 @@ contract DCDomainHall is ReentrancyGuard {
         require(!rank.isBlacklisted(domainName, pickedUser), "DCDomainHall: picked blacklisted");
         require(rank.isVisitorActive(domainName, pickedUser), "DCDomainHall: picked not visitor");
 
+        (uint64 tsStart, uint64 tsEnd) = _defaultPhaseTimestamps();
+
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
             aSwapAmount: aSwapAmount,
@@ -373,10 +386,11 @@ contract DCDomainHall is ReentrancyGuard {
             aNftId: 0,
             title: title,
             timeoutSeconds: DEAL_TIMEOUT,
-            timeStart: 0,
-            timeEnd: 0,
+            timeStart: tsStart,
+            timeEnd: tsEnd,
             isDomainDeal: true,
-            domainName: domainName
+            domainName: domainName,
+            openTokenTokenFast: false
         });
 
         deal = dealFactory.createDealFor(
@@ -414,6 +428,8 @@ contract DCDomainHall is ReentrancyGuard {
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
 
+        (uint64 tteStart, uint64 tteEnd) = _defaultPhaseTimestamps();
+
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
             aSwapAmount: aSwapAmount,
@@ -434,10 +450,11 @@ contract DCDomainHall is ReentrancyGuard {
             aNftId: 0,
             title: title,
             timeoutSeconds: DEAL_TIMEOUT,
-            timeStart: 0,
-            timeEnd: 0,
+            timeStart: tteStart,
+            timeEnd: tteEnd,
             isDomainDeal: true,
-            domainName: domainName
+            domainName: domainName,
+            openTokenTokenFast: false
         });
 
         deal = dealFactory.createDealFor(

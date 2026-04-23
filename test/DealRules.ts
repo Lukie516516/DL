@@ -14,6 +14,10 @@ const TEMPLATE_TOKEN_TO_EMPTY = 2;
 const TEMPLATE_EMPTY_TO_EMPTY = 3;
 const TEMPLATE_NFT_TO_EMPTY = 4;
 
+/** DealFactory / Deal 要求 timeStart、timeEnd 均非零且 timeEnd > timeStart */
+const DEFAULT_TIME_START = 1_700_000_000n;
+const DEFAULT_TIME_END = 1_800_000_000n;
+
 type Address = `0x${string}`;
 
 async function deployFixture() {
@@ -57,7 +61,14 @@ async function deployFixture() {
     owner.account.address,
   ]);
   const dealLib = await viem.deployContract("DealLib");
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
   const dealImpl = await viem.deployContract("Deal", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealOpenTTImpl = await viem.deployContract("DealOpenTokenToken", [], {
     libraries: {
       DealLib: dealLib.address,
     },
@@ -68,6 +79,7 @@ async function deployFixture() {
     pairImpl.address,
     3600,
   ]);
+  await waitFor(publicClient, await factory.write.setDealOpenTokenTokenImplementation([dealOpenTTImpl.address]));
   const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
@@ -189,6 +201,8 @@ async function createDealAndGetAddress(
     timeEnd?: bigint;
     isDomainDeal?: boolean;
     domainName?: string;
+    /** @default false */
+    openTokenTokenFast?: boolean;
   },
 ) {
   const { viem, factory, publicClient, alice, infoNft } = fixture;
@@ -228,10 +242,11 @@ async function createDealAndGetAddress(
         aNftId: init.aNftId ?? 0n,
         title: init.title ?? "test",
         timeoutSeconds: init.timeoutSeconds ?? 3600n,
-        timeStart: init.timeStart ?? 0n,
-        timeEnd: init.timeEnd ?? 0n,
+        timeStart: init.timeStart ?? DEFAULT_TIME_START,
+        timeEnd: init.timeEnd ?? DEFAULT_TIME_END,
         isDomainDeal: init.isDomainDeal ?? false,
         domainName: init.domainName ?? "",
+        openTokenTokenFast: init.openTokenTokenFast ?? false,
       },
       trackCreator: false,
     },
@@ -248,6 +263,51 @@ async function createDealAndGetAddress(
 
   assert.equal(events.length, 1);
   return events[0].args.deal;
+}
+
+async function createOpenTTDealAndSettle(
+  fixture: Awaited<ReturnType<typeof deployFixture>>,
+  init: {
+    aSwapToken: Address;
+    aSwapAmount: bigint;
+    bSwapToken: Address;
+    bSwapAmount: bigint;
+    joinMode?: number;
+    expectedB?: Address;
+  },
+) {
+  const { viem, publicClient, alice, bob, factory } = fixture;
+  const dealAddress = await createDealAndGetAddress(fixture, {
+    ...init,
+    templateType: TEMPLATE_TOKEN_TO_TOKEN,
+    openTokenTokenFast: true,
+  });
+  assert.equal(await factory.read.isDeal([dealAddress]), true);
+
+  const dealAlice = await viem.getContractAt("DealOpenTokenToken", dealAddress, { client: { wallet: alice } });
+  const dealBob = await viem.getContractAt("DealOpenTokenToken", dealAddress, { client: { wallet: bob } });
+
+  if (init.aSwapToken !== zeroAddress) {
+    const t = await viem.getContractAt("DCToken", init.aSwapToken, { client: { wallet: alice } });
+    await waitFor(publicClient, await t.write.approve([dealAddress, init.aSwapAmount]));
+  }
+  if (init.bSwapToken !== zeroAddress) {
+    const t = await viem.getContractAt("DCToken", init.bSwapToken, { client: { wallet: bob } });
+    await waitFor(publicClient, await t.write.approve([dealAddress, init.bSwapAmount]));
+  }
+
+  const bobInfoId = await fixture.mintInfoNft(bob);
+
+  await waitFor(publicClient, await dealAlice.write.pay([]));
+  await waitFor(publicClient, await dealAlice.write.preAccept([]));
+  await waitFor(publicClient, await dealBob.write.join([bobInfoId, false]));
+  assert.equal(await dealAlice.read.bNftId(), bobInfoId);
+  assert.equal(await dealAlice.read.bNftLocked(), true);
+  await waitFor(publicClient, await dealBob.write.pay([]));
+
+  assert.equal(Number(await dealAlice.read.status()), 2);
+  await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+  assert.equal(Number(await dealAlice.read.status()), 3);
 }
 
 async function completeOpenDeal(
@@ -521,10 +581,11 @@ describe("Deal Rules", async function () {
             aNftId: 0n,
             title: "missing pair",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },
@@ -610,6 +671,41 @@ describe("Deal Rules", async function () {
     assert.equal(getAddress(senders[1]), getAddress(bob.account.address));
   });
 
+  it("allows deal chat after Completed via DealMessageHub", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, ausd, usdt, dealMessageHub, alice, bob } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const aSwapAmount = 100n * ONE;
+    const bSwapAmount = 100n * ONE;
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount,
+      bSwapToken: usdt.address,
+      bSwapAmount,
+      templateType: TEMPLATE_TOKEN_TO_TOKEN,
+    });
+
+    await completeOpenDeal(fixture, dealAddress, {
+      alice: [{ token: ausd, amount: aSwapAmount }],
+      bob: [{ token: usdt, amount: bSwapAmount }],
+    });
+
+    const deal = await viem.getContractAt("Deal", dealAddress);
+    assert.equal(Number(await deal.read.status()), 3);
+
+    const dealAsAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealAsBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+    await waitFor(publicClient, await dealAsAlice.write.postMessage(["post-complete a"]));
+    await waitFor(publicClient, await dealAsBob.write.postMessage(["post-complete b"]));
+
+    const count = await dealMessageHub.read.messagesCount([dealAddress]);
+    assert.equal(count, 2n);
+    const [contents] = await dealMessageHub.read.getMessages([dealAddress, 0n, 10n]);
+    assert.deepEqual(contents, ["post-complete a", "post-complete b"]);
+  });
+
   it("allows approved createDealFor callers to create and track deals for the initiator", async function () {
     const fixture = await deployFixture();
     const { viem, publicClient, factory, alice } = fixture;
@@ -641,10 +737,11 @@ describe("Deal Rules", async function () {
           aNftId: 0n,
           title: "create for",
           timeoutSeconds: 3600n,
-          timeStart: 0n,
-          timeEnd: 0n,
+          timeStart: DEFAULT_TIME_START,
+          timeEnd: DEFAULT_TIME_END,
           isDomainDeal: false,
           domainName: "",
+          openTokenTokenFast: false,
         },
         trackCreator: true,
       },
@@ -774,10 +871,11 @@ describe("Deal Rules", async function () {
             aNftId: 0n,
             title: "bad margin token",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },
@@ -815,14 +913,15 @@ describe("Deal Rules", async function () {
           expectedB: zeroAddress,
           gateNftId: 0n,
           aNftId: 0n,
-          title: "extended margin whitelist",
-          timeoutSeconds: 3600n,
-          timeStart: 0n,
-          timeEnd: 0n,
-          isDomainDeal: false,
-          domainName: "",
-        },
-        trackCreator: false,
+            title: "extended margin whitelist",
+            timeoutSeconds: 3600n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
+            isDomainDeal: false,
+            domainName: "",
+            openTokenTokenFast: false,
+          },
+          trackCreator: false,
       },
     ]);
 
@@ -944,10 +1043,11 @@ describe("Deal Rules", async function () {
             aNftId: nftId,
             title: "conflict a",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },
@@ -1010,10 +1110,11 @@ describe("Deal Rules", async function () {
             aNftId: nftId,
             title: "lock source",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },
@@ -1043,15 +1144,30 @@ describe("Deal Rules", async function () {
             aNftId: 0n,
             title: "locked sell",
             timeoutSeconds: 3600n,
-            timeStart: 0n,
-            timeEnd: 0n,
+            timeStart: DEFAULT_TIME_START,
+            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
+            openTokenTokenFast: false,
           },
           trackCreator: false,
         },
       ]),
       /DealError\(42\)/,
     );
+  });
+
+  it("DealOpenTokenToken: A pays in Ready, preAccept, then B joins and both settle", async function () {
+    const fixture = await deployFixture();
+    const { bad, ausd } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(bad.address);
+
+    await createOpenTTDealAndSettle(fixture, {
+      aSwapToken: bad.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: ausd.address,
+      bSwapAmount: 5n * ONE,
+    });
   });
 });

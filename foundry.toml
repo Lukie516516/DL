@@ -1,0 +1,43 @@
+# Foundry: fuzz + invariant tests (Hardhat tests remain in test/*.ts)
+[profile.default]
+src = "contracts"
+test = "forge-test"
+out = "cache/forge-out"
+libs = ["node_modules"]
+solc_version = "0.8.28"
+optimizer = true
+optimizer_runs = 1
+via_ir = true
+evm_version = "cancun"
+
+# DealOpenTokenToken：restriction 要求 via_ir=false，由 additional profile 满足（与 Hardhat 一致，EIP-170）
+additional_compiler_profiles = [{ name = "no_via_ir", via_ir = false, optimizer_runs = 1 }]
+compilation_restrictions = [
+    { paths = "contracts/DealOpenTokenToken.sol", via_ir = false },
+    # 与 Hardhat Deal.sol override 一致：无 IR 才能压在 EIP-170 内
+    { paths = "contracts/Deal.sol", via_ir = false },
+]
+
+# `forge coverage` 会关闭优化/IR，仓库内部分大合约会 stack too deep；OpenTT 专项见 forge-test/DealOpenTokenTokenFull.t.sol（forge test --match-path ...）。
+
+# Align with @openzeppelin + forge-std (npm)
+remappings = [
+  "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+  "forge-std/=node_modules/forge-std/src/",
+]
+
+[profile.oz]
+# 可选：与 Slither/CI 共用
+optimizer_runs = 1
+
+# ---- Fuzz / Invariant（深度跑：`forge test` 即生效；CLI 可覆盖如 `FOUNDRY_FUZZ_RUNS=2048 forge test`）----
+[fuzz]
+runs = 512
+max_test_rejects = 262_144
+
+[invariant]
+runs = 256
+depth = 32
+fail_on_revert = false
+call_override = false
+shrink_run_limit = 5000

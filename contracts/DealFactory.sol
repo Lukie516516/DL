@@ -49,6 +49,8 @@ interface IDeal {
         uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
+        /// @dev true：clone DealOpenTokenToken（仅 TokenToToken）
+        bool openTokenTokenFast;
     }
     struct ConfigParams {
         address dl;
@@ -192,6 +194,8 @@ contract DealFactory is Ownable {
     error InfoNftAmountInvalid();
     error InfoNftZero();
     error RewardPairMissing();
+    error OpenTokenTokenFastNotTT();
+    error DealOpenTokenTokenUnset();
     struct Ratio {
         uint32 num;
         uint32 den;
@@ -202,6 +206,8 @@ contract DealFactory is Ownable {
 
     /* ---------- 实现地址 ---------- */
     address public dealImplementation;
+    /// @notice openTokenTokenFast 建单使用的 Deal 实现（Open 币币）
+    address public dealOpenTokenTokenImplementation;
     address public pairImplementation;
 
     /* ---------- Deal 控制 ---------- */
@@ -251,6 +257,7 @@ contract DealFactory is Ownable {
 
     /* ---------- 事件 ---------- */
     event DealImplUpdated(address indexed impl);
+    event DealOpenTokenTokenImplUpdated(address indexed impl);
     event PairImplUpdated(address indexed impl);
     event MinTimeoutUpdated(uint64 seconds_);
     event MinWindowSet(uint32 sec);
@@ -311,7 +318,18 @@ contract DealFactory is Ownable {
         address indexed deal,
         uint8 indexed templateType
     );
+    event DealOpenTokenTokenCreated(address indexed deal);
     event DLMinted(address indexed to, uint256 amount, address indexed deal);
+    /// @notice 仅索引便利：每笔 Deal 成交奖励汇总（与 Deal 上 `RewardsMinted` 同数据；`deal` 为 msg.sender）
+    event DealRewardsLogged(
+        address indexed deal,
+        address indexed partyA,
+        address indexed partyB,
+        uint256 toA,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    );
     event MessagePriceRuleUpdated(
         bool enabled,
         address pricingToken,
@@ -379,6 +397,11 @@ contract DealFactory is Ownable {
         require(impl != address(0));
         dealImplementation = impl;
         emit DealImplUpdated(impl);
+    }
+    function setDealOpenTokenTokenImplementation(address impl) external onlyOwner {
+        require(impl != address(0));
+        dealOpenTokenTokenImplementation = impl;
+        emit DealOpenTokenTokenImplUpdated(impl);
     }
     function setPairImplementation(address impl) external onlyOwner {
         require(impl != address(0));
@@ -807,7 +830,8 @@ contract DealFactory is Ownable {
             revert ExpectedBZero();
         if ((p.joinMode == 2 || p.joinMode == 3) && p.gateNftId == 0)
             revert GateIdZero();
-        if ((p.timeStart != 0 || p.timeEnd != 0) && p.timeEnd <= p.timeStart)
+        // 前端阶段时间轴：须均为非零且 timeEnd > timeStart（与 Deal.initialize 一致）
+        if (p.timeStart == 0 || p.timeEnd == 0 || p.timeEnd <= p.timeStart)
             revert InvalidTimeRange();
 
         if (p.templateType == uint8(IDeal.TemplateType.TokenToToken)) {
@@ -815,6 +839,8 @@ contract DealFactory is Ownable {
                 revert InvalidTemplateShape();
             return;
         }
+
+        if (p.openTokenTokenFast) revert OpenTokenTokenFastNotTT();
 
         if (p.templateType == uint8(IDeal.TemplateType.TokenToNft)) {
             if (
@@ -863,6 +889,18 @@ contract DealFactory is Ownable {
         require(to != address(0) && amount > 0);
         IDLMint(dlToken).mint(to, amount);
         emit DLMinted(to, amount, msg.sender);
+    }
+
+    /// @dev Deal 成交后调用；前端/索引只订工厂时可筛 `DealRewardsLogged`，不必扫每个 clone。
+    function logDealRewards(
+        address partyA,
+        uint256 toA,
+        address partyB,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    ) external onlyDeal {
+        emit DealRewardsLogged(msg.sender, partyA, partyB, toA, toB, cAddr, toC);
     }
 
     /* ========== 代理：写 InfoNFT（仅 Deal） ========== */
@@ -1133,7 +1171,15 @@ contract DealFactory is Ownable {
         _assertCreateDealConfig(p.init, rejectDomainEntry);
         if (createBurnEnabled) _applyCreateBurn(initiator);
 
-        deal = dealImplementation.clone();
+        address impl = dealImplementation;
+        if (p.init.openTokenTokenFast) {
+            impl = dealOpenTokenTokenImplementation;
+            if (impl == address(0)) revert DealOpenTokenTokenUnset();
+        } else if (dealImplementation == address(0)) {
+            revert DealImplementationUnset();
+        }
+
+        deal = impl.clone();
         _assertClone(deal);
         isDeal[deal] = true;
 
@@ -1142,5 +1188,6 @@ contract DealFactory is Ownable {
         emit DealCreated(deal, initiator);
         emit DealCreatedV2(initiator, deal, p.init.aNftId);
         emit DealTemplateTagged(deal, p.init.templateType);
+        if (p.init.openTokenTokenFast) emit DealOpenTokenTokenCreated(deal);
     }
 }

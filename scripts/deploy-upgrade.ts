@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { defineChain, type Address, type Hex } from "viem";
+import { defineChain, type Address } from "viem";
 import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
@@ -51,29 +51,24 @@ async function main() {
 
   console.log("Chain", chain.id, "deployer", dep);
 
-  // ═══════════════ 1. Deploy DealLib ═══════════════
+  // ═══════════════ 1. Deploy DealLib + DealAssetNftLib ═══════════════
   console.log("\n--- Deploying DealLib ---");
   const dealLib = await viem.deployContract("DealLib", [], { client });
   console.log("DealLib:", dealLib.address);
+  console.log("\n--- Deploying DealAssetNftLib ---");
+  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib", [], { client });
+  console.log("DealAssetNftLib:", dealAssetNftLib.address);
 
-  // ═══════════════ 2. Deploy Deal implementation (linked to DealLib) ═══════════════
-  console.log("\n--- Deploying Deal implementation (linked to DealLib) ---");
-  const dealArtifact = JSON.parse(
-    readFileSync(join(process.cwd(), "artifacts/contracts/Deal.sol/Deal.json"), "utf8"),
-  );
-  const rawBytecode: string = dealArtifact.bytecode;
-
-  // Library placeholder pattern: __$<34-char hash>$__
-  const libAddrHex = dealLib.address.slice(2).toLowerCase().padStart(40, "0");
-  const linkedBytecode = rawBytecode.replace(/__\$[a-f0-9]{34}\$__/g, libAddrHex) as Hex;
-
-  if (linkedBytecode.includes("__$")) {
-    throw new Error("Unresolved library placeholder in Deal bytecode");
-  }
-
-  const deployHash = await deployer.sendTransaction({ data: linkedBytecode, chain });
-  const deployReceipt = await publicClient.waitForTransactionReceipt({ hash: deployHash });
-  const newDealImpl = deployReceipt.contractAddress as Address;
+  // ═══════════════ 2. Deploy Deal implementation (linked libraries) ═══════════════
+  console.log("\n--- Deploying Deal implementation ---");
+  const dealImplContract = await viem.deployContract("Deal", [], {
+    client,
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const newDealImpl = dealImplContract.address;
   console.log("Deal implementation:", newDealImpl);
 
   // ═══════════════ 3. Deploy new DealFactory ═══════════════
@@ -127,6 +122,7 @@ async function main() {
   // ═══════════════ Summary ═══════════════
   const newAddresses = {
     dealLib: dealLib.address,
+    dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: newDealImpl,
     dealFactory: newFactory.address,
     dealMessageHub: dealMessageHub.address,
@@ -138,6 +134,7 @@ async function main() {
     usdt: EXISTING.usdt,
     wrappedNative: EXISTING.wrappedNative,
     dealLib: dealLib.address,
+    dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: newDealImpl,
     oldDealImplementation: EXISTING.oldDealImplementation,
     pairImplementation: EXISTING.pairImplementation,
@@ -178,6 +175,7 @@ async function main() {
     addresses: allAddresses,
     abi: {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
+      DealAssetNftLib: loadAbi("utils/DealAssetNftLib.sol/DealAssetNftLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
       DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
