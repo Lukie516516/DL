@@ -46,6 +46,25 @@ contract DealMessageHubFuzz is Test {
         hub.postFromDeal(rogue, "nope");
     }
 
+    function test_postFromDeal_revertsEmptyOrTooLong() public {
+        MockFactoryHub f = new MockFactoryHub();
+        DealMessageHub hub = new DealMessageHub(address(f));
+        address deal = address(uint160(uint256(keccak256("deal"))));
+        f.set(deal, true);
+
+        vm.startPrank(deal);
+        vm.expectRevert(DealMessageHub.EmptyMessage.selector);
+        hub.postFromDeal(address(1), "");
+
+        bytes memory longMsg = new bytes(hub.MAX_MESSAGE_BYTES() + 1);
+        for (uint256 i; i < longMsg.length; ++i) {
+            longMsg[i] = "a";
+        }
+        vm.expectRevert(DealMessageHub.MessageTooLong.selector);
+        hub.postFromDeal(address(1), string(longMsg));
+        vm.stopPrank();
+    }
+
     function testFuzz_postFromDeal_revertsUnauthorized(address rogue, bytes32 salt) public {
         vm.assume(rogue != address(0));
         MockFactoryHub f = new MockFactoryHub();

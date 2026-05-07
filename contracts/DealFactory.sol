@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface IDLMint {
     function mint(address to, uint256 amount) external;
@@ -146,6 +145,41 @@ interface IDealInfoNFTLock {
     function unlockByFactory(uint256 tokenId, address deal) external;
 }
 
+interface IDealCreditGraph {
+    function recordDeal(
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        bool aValid,
+        uint256 bTokenId,
+        bool bValid,
+        uint256 baseCredit
+    ) external returns (uint256 aDelta, uint256 bDelta);
+}
+
+interface IDealActivityIndex {
+    function addTracked(address user, address deal) external returns (bool changed);
+    function removeTracked(address user, address deal) external returns (bool changed);
+    function addCompleted(address user, address deal) external returns (bool changed);
+    function trackedCount(address user) external view returns (uint256);
+    function getTracked(address user, uint256 offset, uint256 limit) external view returns (address[] memory);
+    function isTracked(address user, address deal) external view returns (bool);
+    function completedCount(address user) external view returns (uint256);
+    function getCompleted(address user, uint256 offset, uint256 limit, bool newestFirst)
+        external
+        view
+        returns (address[] memory);
+}
+
+interface IDealImplementationRegistry {
+    function resolveImplementation(
+        uint8 templateType,
+        bool openTokenTokenFast,
+        uint256 aAssetNftId,
+        uint256 bAssetNftId
+    ) external view returns (address);
+}
+
 interface IOrderBookSettle {
     function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
 }
@@ -195,7 +229,12 @@ contract DealFactory is Ownable {
     error InfoNftZero();
     error RewardPairMissing();
     error OpenTokenTokenFastNotTT();
-    error DealOpenTokenTokenUnset();
+    error TitleTooLong();
+    error TimeoutTooLong();
+
+    uint256 public constant MAX_TITLE_BYTES = 96;
+    uint64 public constant MAX_TIMEOUT_SECONDS = 1 days;
+
     struct Ratio {
         uint32 num;
         uint32 den;
@@ -206,8 +245,6 @@ contract DealFactory is Ownable {
 
     /* ---------- 实现地址 ---------- */
     address public dealImplementation;
-    /// @notice openTokenTokenFast 建单使用的 Deal 实现（Open 币币）
-    address public dealOpenTokenTokenImplementation;
     address public pairImplementation;
 
     /* ---------- Deal 控制 ---------- */
@@ -222,6 +259,9 @@ contract DealFactory is Ownable {
     address public wrappedNative;
     address public swapOrderBook;
     address public dealMessageHub;
+    address public creditGraph;
+    address public dealActivityIndex;
+    address public dealImplementationRegistry;
 
     // 归一化 token(OTHER 或 WNATIVE) => pair(DL↔token)
     mapping(address => address) public pairForToken;
@@ -257,7 +297,6 @@ contract DealFactory is Ownable {
 
     /* ---------- 事件 ---------- */
     event DealImplUpdated(address indexed impl);
-    event DealOpenTokenTokenImplUpdated(address indexed impl);
     event PairImplUpdated(address indexed impl);
     event MinTimeoutUpdated(uint64 seconds_);
     event MinWindowSet(uint32 sec);
@@ -346,19 +385,6 @@ contract DealFactory is Ownable {
     event AllowedCreateForSet(address indexed caller, bool allowed);
     event MessageFeeCharged(address indexed payer, uint256 dlBurned);
 
-    /* ---------- 热索引（活跃） ---------- */
-    mapping(address => address[]) private _trackedDealsByUser;
-    mapping(address => mapping(address => uint256)) private _trackedIndexByUser;
-
-    /* ---------- 完成热索引（每用户固定 10 个，环形缓冲） ---------- */
-    uint8 public constant COMPLETED_MAX = 10;
-
-    struct CompletedRing {
-        address[COMPLETED_MAX] items; // 以逻辑顺序铺放在环上
-        uint8 start; // 指向最旧元素的位置
-        uint8 size; // 当前数量
-    }
-    mapping(address => CompletedRing) private _completedByUser;
     event CompletedAdded(address indexed user, address indexed deal);
 
     /* ---------------- Modifiers ---------------- */
@@ -398,11 +424,6 @@ contract DealFactory is Ownable {
         dealImplementation = impl;
         emit DealImplUpdated(impl);
     }
-    function setDealOpenTokenTokenImplementation(address impl) external onlyOwner {
-        require(impl != address(0));
-        dealOpenTokenTokenImplementation = impl;
-        emit DealOpenTokenTokenImplUpdated(impl);
-    }
     function setPairImplementation(address impl) external onlyOwner {
         require(impl != address(0));
         pairImplementation = impl;
@@ -410,6 +431,7 @@ contract DealFactory is Ownable {
     }
     function setMinTimeoutSeconds(uint64 s) external onlyOwner {
         require(s >= 1800);
+        if (s > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
         minTimeoutSeconds = s;
         emit MinTimeoutUpdated(s);
     }
@@ -420,11 +442,12 @@ contract DealFactory is Ownable {
     }
     function setMinTimeoutSecondsByAdmin(uint64 s) external onlyAdmin {
         require(s >= 3600);
+        if (s > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
         minTimeoutSeconds = s;
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","treasury","wrappedNative","swapOrderBook","dealMessageHub"}
+    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealImplementationRegistry"}
     function setGlobal(string calldata key, address value) external onlyOwner {
         if (value == address(0)) revert ZeroAddress();
         bytes32 k = keccak256(bytes(key));
@@ -433,6 +456,9 @@ contract DealFactory is Ownable {
         else if (k == keccak256("wrappedNative")) wrappedNative = value;
         else if (k == keccak256("swapOrderBook")) swapOrderBook = value;
         else if (k == keccak256("dealMessageHub")) dealMessageHub = value;
+        else if (k == keccak256("creditGraph")) creditGraph = value;
+        else if (k == keccak256("dealActivityIndex")) dealActivityIndex = value;
+        else if (k == keccak256("dealImplementationRegistry")) dealImplementationRegistry = value;
         else revert();
         if ((k == keccak256("dlToken") || k == keccak256("wrappedNative")) && value != address(0)) {
             allowedMarginToken[value] = true;
@@ -815,6 +841,7 @@ contract DealFactory is Ownable {
         if (p.templateType > uint8(IDeal.TemplateType.NftToEmpty))
             revert InvalidTemplateType();
         if (p.joinMode > 3) revert InvalidJoinMode();
+        if (bytes(p.title).length > MAX_TITLE_BYTES) revert TitleTooLong();
 
         bool aHasSwap = p.aSwapAmount > 0;
         bool bHasSwap = p.bSwapAmount > 0;
@@ -926,6 +953,20 @@ contract DealFactory is Ownable {
         IDealInfoNFTLock(infoNft).unlockByFactory(tokenId, msg.sender);
     }
 
+    function recordDealCredit(
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        bool aValid,
+        uint256 bTokenId,
+        bool bValid,
+        uint256 baseCredit
+    ) external onlyDeal {
+        address graph = creditGraph;
+        if (graph == address(0) || baseCredit == 0) return;
+        IDealCreditGraph(graph).recordDeal(partyA, partyB, aTokenId, aValid, bTokenId, bValid, baseCredit);
+    }
+
     /* ========== 热索引回调（仅 Deal） ========== */
     function onCreated(address creator, bool trackCreator) external onlyDeal {
         if (trackCreator) _addTracked(creator, msg.sender);
@@ -961,32 +1002,33 @@ contract DealFactory is Ownable {
 
     /* ========== 热索引只读（活跃） ========== */
     function trackedCount(address user) external view returns (uint256) {
-        return _trackedDealsByUser[user].length;
+        address index = dealActivityIndex;
+        if (index == address(0)) return 0;
+        return IDealActivityIndex(index).trackedCount(user);
     }
     function getTracked(
         address user,
         uint256 offset,
         uint256 limit
     ) external view returns (address[] memory list) {
-        address[] storage arr = _trackedDealsByUser[user];
-        uint256 len = arr.length;
-        if (offset >= len) return new address[](0);
-        uint256 end = offset + limit;
-        if (end > len) end = len;
-        uint256 n = end - offset;
-        list = new address[](n);
-        for (uint256 i = 0; i < n; ++i) list[i] = arr[offset + i];
+        address index = dealActivityIndex;
+        if (index == address(0)) return new address[](0);
+        return IDealActivityIndex(index).getTracked(user, offset, limit);
     }
     function isTracked(
         address user,
         address deal
     ) external view returns (bool) {
-        return _trackedIndexByUser[user][deal] != 0;
+        address index = dealActivityIndex;
+        if (index == address(0)) return false;
+        return IDealActivityIndex(index).isTracked(user, deal);
     }
 
     /* ========== 完成热索引只读 ========== */
     function completedCount(address user) external view returns (uint256) {
-        return _completedByUser[user].size;
+        address index = dealActivityIndex;
+        if (index == address(0)) return 0;
+        return IDealActivityIndex(index).completedCount(user);
     }
 
     /**
@@ -998,74 +1040,28 @@ contract DealFactory is Ownable {
         uint256 limit,
         bool newestFirst
     ) external view returns (address[] memory list) {
-        CompletedRing storage r = _completedByUser[user];
-        uint256 sz = r.size;
-        if (offset >= sz) return new address[](0);
-        uint256 end = offset + limit;
-        if (end > sz) end = sz;
-        uint256 n = end - offset;
-
-        list = new address[](n);
-        if (newestFirst) {
-            for (uint256 i = 0; i < n; ++i) {
-                uint256 logical = sz - 1 - (offset + i);
-                uint8 idx = uint8(
-                    (uint16(r.start) + uint16(logical)) % uint16(COMPLETED_MAX)
-                );
-                list[i] = r.items[idx];
-            }
-        } else {
-            for (uint256 i = 0; i < n; ++i) {
-                uint8 idx = uint8(
-                    (uint16(r.start) + uint16(offset + i)) %
-                        uint16(COMPLETED_MAX)
-                );
-                list[i] = r.items[idx];
-            }
-        }
+        address index = dealActivityIndex;
+        if (index == address(0)) return new address[](0);
+        return IDealActivityIndex(index).getCompleted(user, offset, limit, newestFirst);
     }
 
     /* ---------- 辅助（活跃热索引） ---------- */
     function _addTracked(address user, address deal) internal {
-        mapping(address => uint256) storage idx = _trackedIndexByUser[user];
-        if (idx[deal] != 0) return;
-        _trackedDealsByUser[user].push(deal);
-        idx[deal] = _trackedDealsByUser[user].length;
-        emit TrackedAdded(user, deal);
+        address index = dealActivityIndex;
+        if (index != address(0) && IDealActivityIndex(index).addTracked(user, deal))
+            emit TrackedAdded(user, deal);
     }
     function _removeTracked(address user, address deal) internal {
-        mapping(address => uint256) storage idx = _trackedIndexByUser[user];
-        uint256 pos = idx[deal];
-        if (pos == 0) return;
-        address[] storage arr = _trackedDealsByUser[user];
-        uint256 i = pos - 1;
-        uint256 last = arr.length - 1;
-        if (i != last) {
-            address lastDeal = arr[last];
-            arr[i] = lastDeal;
-            _trackedIndexByUser[user][lastDeal] = i + 1;
-        }
-        arr.pop();
-        delete _trackedIndexByUser[user][deal];
-        emit TrackedRemoved(user, deal);
+        address index = dealActivityIndex;
+        if (index != address(0) && IDealActivityIndex(index).removeTracked(user, deal))
+            emit TrackedRemoved(user, deal);
     }
 
     /* ---------- 辅助（完成热索引） ---------- */
     function _addCompleted(address user, address deal) internal {
-        CompletedRing storage r = _completedByUser[user];
-        if (r.size < COMPLETED_MAX) {
-            uint8 idx = uint8(
-                (uint16(r.start) + uint16(r.size)) % uint16(COMPLETED_MAX)
-            );
-            r.items[idx] = deal;
-            unchecked {
-                r.size += 1;
-            }
-        } else {
-            r.items[r.start] = deal;
-            r.start = uint8((r.start + 1) % uint16(COMPLETED_MAX));
-        }
-        emit CompletedAdded(user, deal);
+        address index = dealActivityIndex;
+        if (index != address(0) && IDealActivityIndex(index).addCompleted(user, deal))
+            emit CompletedAdded(user, deal);
     }
 
     function _assertDlPair(address pair) internal view {
@@ -1100,10 +1096,12 @@ contract DealFactory is Ownable {
         IDeal.InitParams calldata init,
         bool rejectDomainEntry
     ) internal view {
-        if (dealImplementation == address(0)) revert DealImplementationUnset();
+        if (dealImplementation == address(0) && dealImplementationRegistry == address(0))
+            revert DealImplementationUnset();
         if (rejectDomainEntry && (init.isDomainDeal || bytes(init.domainName).length != 0))
             revert UseDomainEntry();
         require(init.timeoutSeconds >= minTimeoutSeconds);
+        if (init.timeoutSeconds > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
         if (dlToken == address(0) || wrappedNative == address(0))
             revert CoreGlobalsUnset();
         _assertTemplate(init);
@@ -1171,11 +1169,16 @@ contract DealFactory is Ownable {
         _assertCreateDealConfig(p.init, rejectDomainEntry);
         if (createBurnEnabled) _applyCreateBurn(initiator);
 
-        address impl = dealImplementation;
-        if (p.init.openTokenTokenFast) {
-            impl = dealOpenTokenTokenImplementation;
-            if (impl == address(0)) revert DealOpenTokenTokenUnset();
-        } else if (dealImplementation == address(0)) {
+        address registry = dealImplementationRegistry;
+        address impl = registry == address(0)
+            ? dealImplementation
+            : IDealImplementationRegistry(registry).resolveImplementation(
+                p.init.templateType,
+                p.init.openTokenTokenFast,
+                p.init.aAssetNftId,
+                p.init.bAssetNftId
+            );
+        if (impl == address(0)) {
             revert DealImplementationUnset();
         }
 
@@ -1190,4 +1193,5 @@ contract DealFactory is Ownable {
         emit DealTemplateTagged(deal, p.init.templateType);
         if (p.init.openTokenTokenFast) emit DealOpenTokenTokenCreated(deal);
     }
+
 }

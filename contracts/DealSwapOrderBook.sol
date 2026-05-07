@@ -19,6 +19,7 @@ contract DealSwapOrderBook is ReentrancyGuard {
 
     uint256 public constant CANCEL_FEE_NUM = 1;
     uint256 public constant CANCEL_FEE_DEN = 1000;
+    uint256 public constant MAX_PAGE_SIZE = 100;
 
     struct Order {
         address owner;
@@ -193,6 +194,26 @@ contract DealSwapOrderBook is ReentrancyGuard {
             return (_sellQueues[pair], sellHead[pair]);
         }
         return (_buyQueues[pair], buyHead[pair]);
+    }
+
+    function getQueuePage(address pair, bool isSellDL, uint256 offset, uint256 limit)
+        external
+        view
+        returns (uint256[] memory ids, uint256 head, uint256 total)
+    {
+        uint256[] storage queue = isSellDL ? _sellQueues[pair] : _buyQueues[pair];
+        head = isSellDL ? sellHead[pair] : buyHead[pair];
+        total = queue.length;
+        if (offset >= total) return (new uint256[](0), head, total);
+
+        uint256 pageLimit = limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+        uint256 end = offset + pageLimit;
+        if (end > total) end = total;
+        uint256 len = end - offset;
+        ids = new uint256[](len);
+        for (uint256 i; i < len; ++i) {
+            ids[i] = queue[offset + i];
+        }
     }
 
     function maxImmediateSellIn(address pair) external view returns (uint256) {

@@ -47,25 +47,90 @@ async function main() {
   console.log("\n--- Deploying Deal implementation (with openJoinFor) ---");
   const dealImpl = await viem.deployContract("Deal", [], {
     client: { public: publicClient, wallet: deployer },
+  });
+  const newDealImpl = dealImpl.address;
+  console.log("New Deal implementation:", newDealImpl);
+  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: { DealLib: EXISTING.dealLib },
+  });
+  console.log("New DealNoAsset implementation:", dealNoAssetImpl.address);
+  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
+    client: { public: publicClient, wallet: deployer },
     libraries: {
       DealLib: EXISTING.dealLib,
       DealAssetNftLib: dealAssetNftLib.address,
     },
   });
-  const newDealImpl = dealImpl.address;
-  console.log("New Deal implementation:", newDealImpl);
+  console.log("New DealAAssetNft implementation:", dealAAssetNftImpl.address);
+  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: {
+      DealLib: EXISTING.dealLib,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  console.log("New DealBAssetNft implementation:", dealBAssetNftImpl.address);
+  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: { DealAssetNftLib: dealAssetNftLib.address },
+  });
+  console.log("New DealAAssetNftOnly implementation:", dealAAssetNftOnlyImpl.address);
+  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: { DealAssetNftLib: dealAssetNftLib.address },
+  });
+  console.log("New DealBAssetNftOnly implementation:", dealBAssetNftOnlyImpl.address);
+  const dealOpenTokenTokenImpl = await viem.deployContract("DealOpenTokenToken", [], {
+    client: { public: publicClient, wallet: deployer },
+    libraries: { DealLib: EXISTING.dealLib },
+  });
+  console.log("New DealOpenTokenToken implementation:", dealOpenTokenTokenImpl.address);
 
   // ═══════════════ 2. Update DealFactory's dealImplementation ═══════════════
   console.log("\n--- Updating DealFactory.dealImplementation ---");
   const factory = await viem.getContractAt("DealFactory", EXISTING.dealFactory, {
     client: { public: publicClient, wallet: deployer },
   });
+  const dealActivityIndex = await viem.deployContract("DealActivityIndex", [EXISTING.dealFactory], {
+    client: { public: publicClient, wallet: deployer },
+  });
+  console.log("New DealActivityIndex:", dealActivityIndex.address);
+  const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry", [], {
+    client: { public: publicClient, wallet: deployer },
+  });
+  console.log("New DealImplementationRegistry:", dealImplementationRegistry.address);
+  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  console.log("DealFactory.setGlobal(dealActivityIndex) OK");
   await waitFor(publicClient, await factory.write.setDealImplementation([newDealImpl]));
   console.log("DealFactory.setDealImplementation OK");
+  await waitFor(
+    publicClient,
+    await dealImplementationRegistry.write.setDealImplementations([
+      newDealImpl,
+      dealNoAssetImpl.address,
+      dealAAssetNftImpl.address,
+      dealBAssetNftImpl.address,
+      dealAAssetNftOnlyImpl.address,
+      dealBAssetNftOnlyImpl.address,
+      dealOpenTokenTokenImpl.address,
+    ]),
+  );
+  console.log("DealImplementationRegistry.setDealImplementations OK");
+  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  console.log("DealFactory.setGlobal(dealImplementationRegistry) OK");
 
   // ═══════════════ Summary ═══════════════
   console.log("\n========== RESULT ==========");
   console.log("New Deal implementation:", newDealImpl);
+  console.log("New DealNoAsset implementation:", dealNoAssetImpl.address);
+  console.log("New DealAAssetNft implementation:", dealAAssetNftImpl.address);
+  console.log("New DealBAssetNft implementation:", dealBAssetNftImpl.address);
+  console.log("New DealAAssetNftOnly implementation:", dealAAssetNftOnlyImpl.address);
+  console.log("New DealBAssetNftOnly implementation:", dealBAssetNftOnlyImpl.address);
+  console.log("New DealOpenTokenToken implementation:", dealOpenTokenTokenImpl.address);
+  console.log("New DealActivityIndex:", dealActivityIndex.address);
+  console.log("New DealImplementationRegistry:", dealImplementationRegistry.address);
   console.log("DealFactory (unchanged):", EXISTING.dealFactory);
   console.log("DealLib (unchanged):", EXISTING.dealLib);
   console.log("DealAssetNftLib (new):", dealAssetNftLib.address);
@@ -77,6 +142,14 @@ async function main() {
     chainId: AGIKING_CHAIN_ID,
     deployedAt: new Date().toISOString(),
     newDealImplementation: newDealImpl,
+    newDealNoAssetImplementation: dealNoAssetImpl.address,
+    newDealAAssetNftImplementation: dealAAssetNftImpl.address,
+    newDealBAssetNftImplementation: dealBAssetNftImpl.address,
+    newDealAAssetNftOnlyImplementation: dealAAssetNftOnlyImpl.address,
+    newDealBAssetNftOnlyImplementation: dealBAssetNftOnlyImpl.address,
+    newDealOpenTokenTokenImplementation: dealOpenTokenTokenImpl.address,
+    newDealActivityIndex: dealActivityIndex.address,
+    newDealImplementationRegistry: dealImplementationRegistry.address,
     dealFactory: EXISTING.dealFactory,
     dealLib: EXISTING.dealLib,
     dealAssetNftLib: dealAssetNftLib.address,

@@ -66,6 +66,13 @@ interface IERC20Metadata {
 }
 
 contract DealReader {
+    uint256 public constant MAX_BATCH = 100;
+    error BatchTooLarge();
+
+    function _assertBatch(uint256 n) internal pure {
+        if (n > MAX_BATCH) revert BatchTooLarge();
+    }
+
     /* --------------------------------- 原有结构 --------------------------------- */
     struct DealInfo {
         bool ok;
@@ -223,6 +230,7 @@ contract DealReader {
 
     function getDeals(address[] calldata deals) external view returns (DealInfo[] memory out) {
         uint256 n = deals.length;
+        _assertBatch(n);
         out = new DealInfo[](n);
         for (uint256 i = 0; i < n; ) {
             out[i] = this.getDeal(deals[i]);
@@ -232,6 +240,7 @@ contract DealReader {
 
     function getDealsSlim(address[] calldata deals) external view returns (DealInfoSlim[] memory out) {
         uint256 n = deals.length;
+        _assertBatch(n);
         out = new DealInfoSlim[](n);
         for (uint256 i = 0; i < n; ) {
             IDeal d = IDeal(deals[i]);
@@ -310,6 +319,7 @@ contract DealReader {
         returns (DealInfoPlus[] memory out)
     {
         uint256 n = deals.length;
+        _assertBatch(n);
         out = new DealInfoPlus[](n);
         for (uint256 i = 0; i < n; ) {
             out[i] = this.getDealPlus(deals[i], profileNft);

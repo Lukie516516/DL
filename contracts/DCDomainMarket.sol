@@ -27,6 +27,7 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
     address public feeRecipient;
     uint256 public feeBps;
     uint256 public constant MAX_FEE_BPS = 2500;
+    uint256 public constant MAX_PAGE_SIZE = 100;
 
     struct Listing {
         address seller;
@@ -199,7 +200,8 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
     {
         uint256 total = _activeTokenIds.length;
         if (offset >= total) return new uint256[](0);
-        uint256 end = offset + limit;
+        uint256 pageLimit = _pageLimit(limit);
+        uint256 end = offset + pageLimit;
         if (end > total) end = total;
         uint256 len = end - offset;
         tokenIds = new uint256[](len);
@@ -215,13 +217,18 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
         address buyer;
     }
 
+    function _pageLimit(uint256 limit) internal pure returns (uint256) {
+        return limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+    }
+
     /// @notice 分页获取活跃挂单完整信息（tokenId + seller + price + buyer）
     function getActiveListings(uint256 offset, uint256 limit)
         external view returns (ListingView[] memory result)
     {
         uint256 total = _activeTokenIds.length;
         if (offset >= total) return new ListingView[](0);
-        uint256 end = offset + limit;
+        uint256 pageLimit = _pageLimit(limit);
+        uint256 end = offset + pageLimit;
         if (end > total) end = total;
         uint256 len = end - offset;
         result = new ListingView[](len);
@@ -252,7 +259,8 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
             }
         }
         if (offset >= count) return new ListingView[](0);
-        uint256 end = offset + limit;
+        uint256 pageLimit = _pageLimit(limit);
+        uint256 end = offset + pageLimit;
         if (end > count) end = count;
         uint256 len = end - offset;
         ListingView[] memory result = new ListingView[](len);
@@ -260,6 +268,33 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
             result[i] = buf[offset + i];
         }
         return result;
+    }
+
+    /// @notice 游标式公开挂单查询：cursor 是 active 列表下标，最多返回 MAX_PAGE_SIZE 条。
+    function getPublicListingsPage(uint256 cursor, uint256 limit)
+        external
+        view
+        returns (ListingView[] memory result, uint256 nextCursor, bool hasMore)
+    {
+        uint256 total = _activeTokenIds.length;
+        if (cursor >= total) return (new ListingView[](0), total, false);
+
+        uint256 pageLimit = _pageLimit(limit);
+        ListingView[] memory buf = new ListingView[](pageLimit);
+        uint256 count;
+        uint256 i = cursor;
+        for (; i < total && count < pageLimit; ++i) {
+            uint256 tid = _activeTokenIds[i];
+            Listing storage L = listings[tid];
+            if (L.buyer == address(0)) {
+                buf[count++] = ListingView({ tokenId: tid, seller: L.seller, price: L.price, buyer: address(0) });
+            }
+        }
+
+        result = new ListingView[](count);
+        for (uint256 j; j < count; ++j) result[j] = buf[j];
+        nextCursor = i;
+        hasMore = i < total;
     }
 
     /// @notice 查询指定买家的所有 P2P 挂单
@@ -281,5 +316,32 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
             result[i] = buf[i];
         }
         return result;
+    }
+
+    /// @notice 游标式 P2P 挂单查询：cursor 是 active 列表下标，最多返回 MAX_PAGE_SIZE 条。
+    function getP2PListingsForBuyerPage(address _buyer, uint256 cursor, uint256 limit)
+        external
+        view
+        returns (ListingView[] memory result, uint256 nextCursor, bool hasMore)
+    {
+        uint256 total = _activeTokenIds.length;
+        if (cursor >= total) return (new ListingView[](0), total, false);
+
+        uint256 pageLimit = _pageLimit(limit);
+        ListingView[] memory buf = new ListingView[](pageLimit);
+        uint256 count;
+        uint256 i = cursor;
+        for (; i < total && count < pageLimit; ++i) {
+            uint256 tid = _activeTokenIds[i];
+            Listing storage L = listings[tid];
+            if (L.buyer == _buyer) {
+                buf[count++] = ListingView({ tokenId: tid, seller: L.seller, price: L.price, buyer: _buyer });
+            }
+        }
+
+        result = new ListingView[](count);
+        for (uint256 j; j < count; ++j) result[j] = buf[j];
+        nextCursor = i;
+        hasMore = i < total;
     }
 }

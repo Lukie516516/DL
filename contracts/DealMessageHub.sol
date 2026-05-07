@@ -6,8 +6,13 @@ interface IDealFactoryDealAuth {
 }
 
 contract DealMessageHub {
+    uint256 public constant MAX_MESSAGE_BYTES = 1500;
+    uint256 public constant MAX_PAGE_SIZE = 100;
+
     error ZeroAddress();
     error NotDeal();
+    error EmptyMessage();
+    error MessageTooLong();
 
     struct Thread {
         string[] contents;
@@ -33,6 +38,9 @@ contract DealMessageHub {
         string calldata content
     ) external returns (uint256 index) {
         if (!IDealFactoryDealAuth(factory).isDeal(msg.sender)) revert NotDeal();
+        uint256 contentLen = bytes(content).length;
+        if (contentLen == 0) revert EmptyMessage();
+        if (contentLen > MAX_MESSAGE_BYTES) revert MessageTooLong();
 
         Thread storage t = _threads[msg.sender];
         uint64 ts = uint64(block.timestamp);
@@ -66,7 +74,8 @@ contract DealMessageHub {
             return (new string[](0), new uint64[](0), new address[](0));
         }
 
-        uint256 end = offset + limit;
+        uint256 pageLimit = limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+        uint256 end = offset + pageLimit;
         if (end > total) end = total;
         uint256 len = end - offset;
 

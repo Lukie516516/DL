@@ -17,6 +17,21 @@ interface IFactoryInfoSetMax {
     function infoSetMaxPartnerOf(uint256 tokenId, uint256 partnerTokenId) external;
 }
 
+interface IFactoryCreditGraphView {
+    function creditGraph() external view returns (address);
+}
+
+interface IDealCreditGraphView {
+    function resolveCRewardTarget(
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        bool aValid,
+        uint256 bTokenId,
+        bool bValid
+    ) external view returns (uint256 cTokenId, address cOwner);
+}
+
 interface IFactoryTwapLib {
     function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
 }
@@ -233,6 +248,30 @@ library DealLib {
             || _isRecognizedToken(tokenNorm, WNATIVE, recognizedToken0, recognizedToken1);
     }
 
+    function feeCreditU(
+        address tokenNorm,
+        uint256 fee,
+        address recognizedToken0,
+        address recognizedToken1
+    ) external view returns (uint256) {
+        if (fee == 0) return 0;
+        if (tokenNorm != recognizedToken0 && tokenNorm != recognizedToken1) return 0;
+        uint8 dec = _tokenDecimals(tokenNorm);
+        if (dec == 18) return fee;
+        if (dec < 18) return fee * (10 ** (18 - dec));
+        if (dec <= 36) return fee / (10 ** (dec - 18));
+        return 0;
+    }
+
+    function _tokenDecimals(address token) private view returns (uint8) {
+        (bool ok, bytes memory data) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        if (ok && data.length >= 32) {
+            uint256 d = abi.decode(data, (uint256));
+            if (d <= type(uint8).max) return uint8(d);
+        }
+        return 18;
+    }
+
     function _isRecognizedToken(
         address tokenNorm,
         address WNATIVE,
@@ -245,6 +284,7 @@ library DealLib {
     }
 
     function resolveCRewardTarget(
+        address factory_,
         address infoNft,
         address partyA,
         address partyB,
@@ -253,10 +293,11 @@ library DealLib {
         bool bNftLocked,
         uint256 bNftId
     ) external view returns (uint256 cToken, address cAddr) {
-        return _resolveCRewardTargetView(infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
+        return _resolveCRewardTargetView(factory_, infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
     }
 
     function _resolveCRewardTargetView(
+        address factory_,
         address infoNft,
         address partyA,
         address partyB,
@@ -268,8 +309,21 @@ library DealLib {
         if (infoNft == address(0)) return (0, address(0));
         bool hasA = aNftLocked && aNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(aNftId) == partyA;
         bool hasB = bNftLocked && bNftId != 0 && IDealInfoNFTView(infoNft).ownerOf(bNftId) == partyB;
+        address graph = _creditGraphOf(factory_);
+        if (graph != address(0)) {
+            return IDealCreditGraphView(graph).resolveCRewardTarget(partyA, partyB, aNftId, hasA, bNftId, hasB);
+        }
         cToken = _selectC(infoNft, hasA, hasB, aNftId, bNftId);
         if (cToken != 0) cAddr = IDealInfoNFTView(infoNft).ownerOf(cToken);
+    }
+
+    function _creditGraphOf(address factory_) private view returns (address graph) {
+        if (factory_ == address(0)) return address(0);
+        try IFactoryCreditGraphView(factory_).creditGraph() returns (address g) {
+            return g;
+        } catch {
+            return address(0);
+        }
     }
 
     function _selectC(
@@ -323,6 +377,7 @@ library DealLib {
         uint256 bNftId
     ) external {
         if (infoNft == address(0)) return;
+        if (_creditGraphOf(factory_) != address(0)) return;
         IDealInfoNFTView inf = IDealInfoNFTView(infoNft);
         IFactoryInfoSetMax fi = IFactoryInfoSetMax(factory_);
         bool hasA = aNftLocked && aNftId != 0;
@@ -392,6 +447,7 @@ library DealLib {
     }
 
     function _handleDlToDlFees(
+        address factory_,
         address dl,
         address infoNft,
         address partyA,
@@ -404,7 +460,7 @@ library DealLib {
     ) private {
         if (fee == 0) return;
         (uint256 cToken, address cAddr) =
-            _resolveCRewardTargetView(infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
+            _resolveCRewardTargetView(factory_, infoNft, partyA, partyB, aNftLocked, aNftId, bNftLocked, bNftId);
         if (cToken != 0 && cAddr != address(0)) {
             IERC20(dl).safeTransfer(cAddr, fee);
         } else {
@@ -445,6 +501,7 @@ library DealLib {
     function _processDealFeesImpl(ProcessDealFeesParams calldata p) private {
         if (p.aSwapAmount > 0 && p.aTokenNorm == p.dl && p.bSwapAmount > 0 && p.bTokenNorm == p.dl) {
             _handleDlToDlFees(
+                p.factory,
                 p.dl,
                 p.infoNft,
                 p.partyA,
@@ -541,7 +598,7 @@ library DealLib {
         returns (uint256 toA, uint256 toB, uint256 toC, address cAddr, uint256 cToken)
     {
         (cToken, cAddr) = _resolveCRewardTargetView(
-            p.infoNft, p.partyA, p.partyB, p.aNftLocked, p.aNftId, p.bNftLocked, p.bNftId
+            p.factory, p.infoNft, p.partyA, p.partyB, p.aNftLocked, p.aNftId, p.bNftLocked, p.bNftId
         );
         uint256 perRoleA = _dealRewardFromRecognizedSideA(p);
         uint256 perRoleB = _dealRewardFromRecognizedSideB(p);

@@ -385,6 +385,7 @@ contract DCDomainRank is ReentrancyGuard {
         require(!_blacklisted[domainName][msg.sender], "DCDomainRank: blacklisted");
         require(!_visitorInDomain[domainName][msg.sender], "DCDomainRank: visitors cannot deposit");
         require(amount >= minDeposit, "DCDomainRank: below minDeposit");
+        require(_entryInList[domainName][deal][msg.sender], "DCDomainRank: deal not reported");
 
         _settleDeal(domainName, deal, msg.sender);
 
@@ -404,11 +405,6 @@ contract DCDomainRank is ReentrancyGuard {
             p.hourlyRate = Math.mulDiv(p.depositedDC, bps, 10_000);
         } else {
             p.hourlyRate = 0;
-        }
-
-        if (!_entryInList[domainName][deal][msg.sender]) {
-            _domainEntries[domainName].push(DealMerchantEntry({deal: deal, merchant: msg.sender}));
-            _entryInList[domainName][deal][msg.sender] = true;
         }
 
         _lastDepositAt[domainName][deal][msg.sender] = block.timestamp;

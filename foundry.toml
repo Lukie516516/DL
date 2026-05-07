@@ -16,6 +16,11 @@ compilation_restrictions = [
     { paths = "contracts/DealOpenTokenToken.sol", via_ir = false },
     # 与 Hardhat Deal.sol override 一致：无 IR 才能压在 EIP-170 内
     { paths = "contracts/Deal.sol", via_ir = false },
+    { paths = "contracts/DealNoAsset.sol", via_ir = false },
+    { paths = "contracts/DealAAssetNft.sol", via_ir = false },
+    { paths = "contracts/DealBAssetNft.sol", via_ir = false },
+    { paths = "contracts/DealAAssetNftOnly.sol", via_ir = false },
+    { paths = "contracts/DealBAssetNftOnly.sol", via_ir = false },
 ]
 
 # `forge coverage` 会关闭优化/IR，仓库内部分大合约会 stack too deep；OpenTT 专项见 forge-test/DealOpenTokenTokenFull.t.sol（forge test --match-path ...）。

@@ -43,6 +43,17 @@ interface IFactoryLock {
     function infoLock(uint256 tokenId, address holder) external;
     function infoUnlock(uint256 tokenId) external;
 }
+interface IFactoryCreditOpen {
+    function recordDealCredit(
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        bool aValid,
+        uint256 bTokenId,
+        bool bValid,
+        uint256 baseCredit
+    ) external;
+}
 
 interface IDLBurnFrom {
     function burnFrom(address account, uint256 amount) external;
@@ -594,6 +605,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         Rewards memory r = _computeRewards();
         _mintAndRecord(r);
+        _recordDealCredit(f);
         DealLib.refreshMaxPointers(infoNft, factory, false, 0, bNftLocked, bNftId);
 
         aPaid = false;
@@ -737,6 +749,14 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             if (bNftLocked && bNftId != 0 && r.toB > 0) IFactoryInfo(factory).infoAddMinted(bNftId, r.toB);
             if (r.cToken != 0 && r.toC > 0) IFactoryInfo(factory).infoAddMinted(r.cToken, r.toC);
         }
+    }
+
+    function _recordDealCredit(Fees memory f) internal {
+        if (infoNft == address(0)) return;
+        uint256 baseCredit = DealLib.feeCreditU(aTokenNorm, f.aFee, recognizedToken0, recognizedToken1)
+            + DealLib.feeCreditU(bTokenNorm, f.bFee, recognizedToken0, recognizedToken1);
+        if (baseCredit == 0) return;
+        IFactoryCreditOpen(factory).recordDealCredit(a, b, 0, false, bNftId, bNftLocked, baseCredit);
     }
 
     function _lockNftForBIfAny() internal {
