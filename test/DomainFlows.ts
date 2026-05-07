@@ -69,9 +69,31 @@ async function deployDomainFixture() {
 
   const dealLib = await viem.deployContract("DealLib");
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
-  const dealImpl = await viem.deployContract("Deal", [], {
+  const dealImpl = await viem.deployContract("Deal");
+  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
     libraries: {
       DealLib: dealLib.address,
+    },
+  });
+  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
+    libraries: {
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
+    libraries: {
       DealAssetNftLib: dealAssetNftLib.address,
     },
   });
@@ -86,7 +108,20 @@ async function deployDomainFixture() {
     pairImpl.address,
     3600,
   ]);
-  await waitFor(publicClient, await factory.write.setDealOpenTokenTokenImplementation([dealOpenTTImpl.address]));
+  const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
+  const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry");
+  await waitFor(
+    publicClient,
+    await dealImplementationRegistry.write.setDealImplementations([
+      dealImpl.address,
+      dealNoAssetImpl.address,
+      dealAAssetNftImpl.address,
+      dealBAssetNftImpl.address,
+      dealAAssetNftOnlyImpl.address,
+      dealBAssetNftOnlyImpl.address,
+      dealOpenTTImpl.address,
+    ]),
+  );
   const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
@@ -127,6 +162,8 @@ async function deployDomainFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(
     publicClient,
@@ -315,6 +352,8 @@ describe("Domain Flows", async function () {
     assert.equal(metadata.description, "domain profile text");
     assert.equal(metadata.image, "ipfs://domain-bg");
 
+    await assert.rejects(dcDomain.write.setTreasury([zeroAddress]), /zero treasury/);
+    await assert.rejects(dcDomain.write.setPaymentToken([zeroAddress]), /zero token/);
     await assert.rejects(
       dcDomainAsAlice.write.setDomainDescriptionFor(["abc123", 'bad " quote']),
       /unsafe char/,
@@ -454,6 +493,21 @@ describe("Domain Flows", async function () {
 
     const publicListings = await dcDomainMarket.read.getPublicListings([0n, 10n]);
     assert.equal(publicListings.length, 2);
+    const [publicPage, publicNextCursor, publicHasMore] = await dcDomainMarket.read.getPublicListingsPage([0n, 1n]);
+    assert.equal(publicPage.length, 1);
+    assert.equal(publicPage[0].tokenId, token1);
+    assert.equal(publicNextCursor, 1n);
+    assert.equal(publicHasMore, true);
+
+    const [p2pPage, p2pNextCursor, p2pHasMore] = await dcDomainMarket.read.getP2PListingsForBuyerPage([
+      bob.account.address,
+      0n,
+      1000n,
+    ]);
+    assert.equal(p2pPage.length, 1);
+    assert.equal(p2pPage[0].tokenId, token3);
+    assert.equal(p2pNextCursor, 3n);
+    assert.equal(p2pHasMore, false);
 
     await waitFor(publicClient, await marketAsAlice.write.delist([token1]));
     assert.equal(await dcDomainMarket.read.activeListingCount(), 2n);
@@ -587,6 +641,10 @@ describe("Domain Flows", async function () {
 
     const depositAmount = 1000n * ONE;
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
+    await assert.rejects(
+      rankAsBob.write.deposit(["rank11", alice.account.address, depositAmount]),
+      /deal not reported/,
+    );
     await waitFor(publicClient, await rankAsBob.write.deposit(["rank11", deal1, depositAmount]));
 
     const initialLeaderboard = await dcDomainRank.read.getLeaderboard(["rank11", 10n]);
@@ -942,10 +1000,22 @@ describe("Domain Flows", async function () {
       publicClient,
       await hallAsBob.write.postMessage(["hall23", bob.account.address, carol.account.address, "ack"]),
     );
+    await waitFor(
+      publicClient,
+      await hallAsBob.write.postMessage(["hall23", bob.account.address, carol.account.address, "a".repeat(1500)]),
+    );
+    await assert.rejects(
+      hallAsCarol.write.postMessage(["hall23", bob.account.address, carol.account.address, "a".repeat(1501)]),
+      /too long/,
+    );
+    await assert.rejects(
+      hallAsBob.write.signalPickUser(["hall23", carol.account.address, "a".repeat(1501)]),
+      /note too long/,
+    );
 
     assert.equal(
       await dcDomainHall.read.messagesCount(["hall23", bob.account.address, carol.account.address]),
-      2n,
+      3n,
     );
     const [contents, , senders] = await dcDomainHall.read.getMessages([
       "hall23",
@@ -954,9 +1024,10 @@ describe("Domain Flows", async function () {
       0n,
       10n,
     ]);
-    assert.deepEqual(contents, ["hello merchant", "ack"]);
+    assert.deepEqual(contents, ["hello merchant", "ack", "a".repeat(1500)]);
     assert.equal(getAddress(senders[0]), getAddress(carol.account.address));
     assert.equal(getAddress(senders[1]), getAddress(bob.account.address));
+    assert.equal(getAddress(senders[2]), getAddress(bob.account.address));
 
     await waitFor(
       publicClient,

@@ -32,6 +32,11 @@ const config = {
         compilers: [solcDefault],
         overrides: {
           "contracts/Deal.sol": solcDealOnly,
+          "contracts/DealNoAsset.sol": solcDealOnly,
+          "contracts/DealAAssetNft.sol": solcDealOnly,
+          "contracts/DealBAssetNft.sol": solcDealOnly,
+          "contracts/DealAAssetNftOnly.sol": solcDealOnly,
+          "contracts/DealBAssetNftOnly.sol": solcDealOnly,
           "contracts/DealOpenTokenToken.sol": solcDealOnly,
         },
       },
@@ -39,6 +44,11 @@ const config = {
         compilers: [solcDefault],
         overrides: {
           "contracts/Deal.sol": solcDealOnly,
+          "contracts/DealNoAsset.sol": solcDealOnly,
+          "contracts/DealAAssetNft.sol": solcDealOnly,
+          "contracts/DealBAssetNft.sol": solcDealOnly,
+          "contracts/DealAAssetNftOnly.sol": solcDealOnly,
+          "contracts/DealBAssetNftOnly.sol": solcDealOnly,
           "contracts/DealOpenTokenToken.sol": solcDealOnly,
         },
       },

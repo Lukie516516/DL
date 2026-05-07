@@ -74,7 +74,8 @@ contract DCDomainHall is ReentrancyGuard {
     IDCDomainForHall public immutable dcDomain;
     IDealFactoryForHall public immutable dealFactory;
 
-    uint256 public constant MAX_MESSAGE_BYTES = 4000;
+    uint256 public constant MAX_MESSAGE_BYTES = 1500;
+    uint256 public constant MAX_PAGE_SIZE = 100;
     uint64 public constant DEAL_TIMEOUT = 3600;
 
     struct MsgThread {
@@ -313,7 +314,8 @@ contract DCDomainHall is ReentrancyGuard {
         if (offset >= len) {
             return (new string[](0), new uint64[](0), new address[](0));
         }
-        uint256 end = offset + limit;
+        uint256 pageLimit = limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+        uint256 end = offset + pageLimit;
         if (end > len) end = len;
         uint256 n = end - offset;
         contents = new string[](n);
@@ -540,7 +542,8 @@ contract DCDomainHall is ReentrancyGuard {
         if (offset >= len) {
             return (new string[](0), new uint64[](0), new address[](0));
         }
-        uint256 end = offset + limit;
+        uint256 pageLimit = limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+        uint256 end = offset + pageLimit;
         if (end > len) end = len;
         uint256 n = end - offset;
         contents = new string[](n);

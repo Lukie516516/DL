@@ -62,9 +62,31 @@ async function deployFixture() {
   ]);
   const dealLib = await viem.deployContract("DealLib");
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
-  const dealImpl = await viem.deployContract("Deal", [], {
+  const dealImpl = await viem.deployContract("Deal");
+  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
     libraries: {
       DealLib: dealLib.address,
+    },
+  });
+  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
+    libraries: {
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
+    libraries: {
       DealAssetNftLib: dealAssetNftLib.address,
     },
   });
@@ -79,7 +101,20 @@ async function deployFixture() {
     pairImpl.address,
     3600,
   ]);
-  await waitFor(publicClient, await factory.write.setDealOpenTokenTokenImplementation([dealOpenTTImpl.address]));
+  const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
+  const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry");
+  await waitFor(
+    publicClient,
+    await dealImplementationRegistry.write.setDealImplementations([
+      dealImpl.address,
+      dealNoAssetImpl.address,
+      dealAAssetNftImpl.address,
+      dealBAssetNftImpl.address,
+      dealAAssetNftOnlyImpl.address,
+      dealBAssetNftOnlyImpl.address,
+      dealOpenTTImpl.address,
+    ]),
+  );
   const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
@@ -94,6 +129,8 @@ async function deployFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
   await waitFor(
     publicClient,
     await factory.write.setRecognizedTokens([ausd.address, usdt.address]),
@@ -157,7 +194,15 @@ async function deployFixture() {
     bad,
     wrappedNative,
     factory,
+    dealImpl,
+    dealNoAssetImpl,
+    dealAAssetNftImpl,
+    dealBAssetNftImpl,
+    dealAAssetNftOnlyImpl,
+    dealBAssetNftOnlyImpl,
+    dealOpenTTImpl,
     dealMessageHub,
+    dealActivityIndex,
     infoNft,
     createAndInitPair,
     mintInfoNft,
@@ -173,6 +218,29 @@ async function waitFor(
   hash: Address,
 ) {
   return publicClient.waitForTransactionReceipt({ hash });
+}
+
+async function assertCloneUsesImplementation(
+  publicClient: Awaited<
+    ReturnType<
+      Awaited<ReturnType<typeof network.connect<{ network: "hardhatMainnet" }>>>["viem"]["getPublicClient"]
+    >
+  >,
+  cloneAddress: Address,
+  implementation: Address,
+) {
+  const code = await publicClient.getCode({ address: cloneAddress });
+  assert.ok(code?.toLowerCase().includes(implementation.slice(2).toLowerCase()));
+}
+
+async function enableCreditGraph(fixture: Awaited<ReturnType<typeof deployFixture>>) {
+  const { viem, publicClient, owner, factory, infoNft } = fixture;
+  const creditGraph = await viem.deployContract("DealCreditGraph", [infoNft.address]);
+  await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", creditGraph.address]));
+  await waitFor(publicClient, await creditGraph.write.setRecorder([factory.address, true]));
+  // Test-only seeding helper; production recorders should be constrained to Factory/authorized modules.
+  await waitFor(publicClient, await creditGraph.write.setRecorder([owner.account.address, true]));
+  return creditGraph;
 }
 
 async function createDealAndGetAddress(
@@ -396,6 +464,231 @@ function inferTemplateType(
 }
 
 describe("Deal Rules", async function () {
+  it("routes ordinary templates to split implementations", async function () {
+    const fixture = await deployFixture();
+    const {
+      publicClient,
+      ausd,
+      dealNoAssetImpl,
+      dealAAssetNftImpl,
+      dealBAssetNftImpl,
+      dealAAssetNftOnlyImpl,
+      dealBAssetNftOnlyImpl,
+      dealOpenTTImpl,
+    } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+
+    const tokenToToken = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: ausd.address,
+      bSwapAmount: 11n * ONE,
+      templateType: TEMPLATE_TOKEN_TO_TOKEN,
+    });
+    await assertCloneUsesImplementation(publicClient, tokenToToken, dealNoAssetImpl.address);
+
+    const tokenToEmpty = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_TOKEN_TO_EMPTY,
+    });
+    await assertCloneUsesImplementation(publicClient, tokenToEmpty, dealNoAssetImpl.address);
+
+    const emptyToEmpty = await createDealAndGetAddress(fixture, {
+      aSwapToken: zeroAddress,
+      aSwapAmount: 0n,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_EMPTY_TO_EMPTY,
+    });
+    await assertCloneUsesImplementation(publicClient, emptyToEmpty, dealNoAssetImpl.address);
+
+    const openFast = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: ausd.address,
+      bSwapAmount: 11n * ONE,
+      templateType: TEMPLATE_TOKEN_TO_TOKEN,
+      openTokenTokenFast: true,
+    });
+    await assertCloneUsesImplementation(publicClient, openFast, dealOpenTTImpl.address);
+
+    const nftId = await fixture.mintInfoNft(fixture.bob);
+    const tokenToNft = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      bAssetNftId: nftId,
+      templateType: TEMPLATE_TOKEN_TO_NFT,
+    });
+    await assertCloneUsesImplementation(publicClient, tokenToNft, dealBAssetNftImpl.address);
+
+    const nftToEmptyId = await fixture.mintInfoNft(fixture.alice);
+    const nftToEmpty = await createDealAndGetAddress(fixture, {
+      aSwapToken: zeroAddress,
+      aSwapAmount: 0n,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      aAssetNftId: nftToEmptyId,
+      templateType: TEMPLATE_NFT_TO_EMPTY,
+    });
+    await assertCloneUsesImplementation(publicClient, nftToEmpty, dealAAssetNftOnlyImpl.address);
+
+    const aAssetTokenToNftId = await fixture.mintInfoNft(fixture.alice);
+    const aAssetTokenToNft = await createDealAndGetAddress(fixture, {
+      aSwapToken: zeroAddress,
+      aSwapAmount: 0n,
+      bSwapToken: ausd.address,
+      bSwapAmount: 10n * ONE,
+      aAssetNftId: aAssetTokenToNftId,
+      templateType: TEMPLATE_TOKEN_TO_NFT,
+    });
+    await assertCloneUsesImplementation(publicClient, aAssetTokenToNft, dealAAssetNftImpl.address);
+
+    const bAssetNftToEmptyId = await fixture.mintInfoNft(fixture.bob);
+    const bAssetNftToEmpty = await createDealAndGetAddress(fixture, {
+      aSwapToken: zeroAddress,
+      aSwapAmount: 0n,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      bAssetNftId: bAssetNftToEmptyId,
+      templateType: TEMPLATE_NFT_TO_EMPTY,
+    });
+    await assertCloneUsesImplementation(publicClient, bAssetNftToEmpty, dealBAssetNftOnlyImpl.address);
+  });
+
+  it("records completed deal credit from U-denominated fees and refreshes top5 snapshots", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, ausd, usdt } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const aliceInfoId = await fixture.mintInfoNft(alice);
+    const bobInfoId = await fixture.mintInfoNft(bob);
+
+    const amount = 10_000n * ONE;
+    const expectedBaseCredit = ((amount * 3n) / 1000n) * 2n;
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: amount,
+      bSwapToken: usdt.address,
+      bSwapAmount: amount,
+      aNftId: aliceInfoId,
+    });
+
+    const dealAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+    const ausdAlice = await viem.getContractAt("DCToken", ausd.address, { client: { wallet: alice } });
+    const usdtBob = await viem.getContractAt("DCToken", usdt.address, { client: { wallet: bob } });
+
+    await waitFor(publicClient, await ausdAlice.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await usdtBob.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await dealBob.write.join([bobInfoId, false]));
+    await waitFor(publicClient, await dealAlice.write.pay());
+    await waitFor(publicClient, await dealBob.write.pay());
+    await waitFor(publicClient, await dealAlice.write.setMyVote([ACCEPT]));
+    await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+
+    assert.equal(await creditGraph.read.creditScore([aliceInfoId]), expectedBaseCredit);
+    assert.equal(await creditGraph.read.creditScore([bobInfoId]), expectedBaseCredit);
+
+    const alicePeers = await creditGraph.read.topCreditPeers([aliceInfoId]);
+    const bobPeers = await creditGraph.read.topCreditPeers([bobInfoId]);
+    assert.equal(alicePeers[0].tokenId, bobInfoId);
+    assert.equal(alicePeers[0].creditSnapshot, expectedBaseCredit);
+    assert.equal(bobPeers[0].tokenId, aliceInfoId);
+    assert.equal(bobPeers[0].creditSnapshot, expectedBaseCredit);
+  });
+
+  it("applies base credit plus inverse-score extra reward with zero-score boundaries", async function () {
+    const fixture = await deployFixture();
+    const { alice, bob } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+    const aliceInfoId = await fixture.mintInfoNft(alice);
+    const bobInfoId = await fixture.mintInfoNft(bob);
+
+    await waitFor(
+      fixture.publicClient,
+      await creditGraph.write.recordDeal([
+        alice.account.address,
+        bob.account.address,
+        aliceInfoId,
+        true,
+        0n,
+        false,
+        9_970n * ONE,
+      ]),
+    );
+    assert.equal(await creditGraph.read.creditScore([aliceInfoId]), 9_970n * ONE);
+    assert.equal(await creditGraph.read.creditScore([bobInfoId]), 0n);
+
+    await waitFor(
+      fixture.publicClient,
+      await creditGraph.write.recordDeal([
+        alice.account.address,
+        bob.account.address,
+        aliceInfoId,
+        true,
+        bobInfoId,
+        true,
+        30n * ONE,
+      ]),
+    );
+
+    assert.equal(await creditGraph.read.creditScore([aliceInfoId]), 10_000n * ONE);
+    assert.equal(await creditGraph.read.creditScore([bobInfoId]), 90n * ONE);
+  });
+
+  it("can migrate credit scores and top5 snapshots to a replacement credit graph", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, factory, infoNft } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+    const aliceInfoId = await fixture.mintInfoNft(alice);
+    const bobInfoId = await fixture.mintInfoNft(bob);
+
+    await waitFor(
+      publicClient,
+      await creditGraph.write.recordDeal([
+        alice.account.address,
+        bob.account.address,
+        aliceInfoId,
+        true,
+        bobInfoId,
+        true,
+        100n * ONE,
+      ]),
+    );
+
+    const aliceScore = await creditGraph.read.creditScore([aliceInfoId]);
+    const bobScore = await creditGraph.read.creditScore([bobInfoId]);
+    const alicePeers = await creditGraph.read.topCreditPeers([aliceInfoId]);
+    const bobPeers = await creditGraph.read.topCreditPeers([bobInfoId]);
+
+    const replacementGraph = await viem.deployContract("DealCreditGraph", [infoNft.address]);
+    await waitFor(publicClient, await replacementGraph.write.importCredit([aliceInfoId, aliceScore, alicePeers]));
+    await waitFor(publicClient, await replacementGraph.write.importCredit([bobInfoId, bobScore, bobPeers]));
+    await waitFor(publicClient, await replacementGraph.write.setRecorder([factory.address, true]));
+    await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", replacementGraph.address]));
+    await waitFor(publicClient, await replacementGraph.write.lockMigration());
+
+    assert.equal(await replacementGraph.read.creditScore([aliceInfoId]), aliceScore);
+    assert.equal(await replacementGraph.read.creditScore([bobInfoId]), bobScore);
+
+    const migratedAlicePeers = await replacementGraph.read.topCreditPeers([aliceInfoId]);
+    assert.equal(migratedAlicePeers[0].tokenId, bobInfoId);
+    assert.equal(migratedAlicePeers[0].creditSnapshot, bobScore);
+
+    await assert.rejects(
+      replacementGraph.write.importCredit([aliceInfoId, aliceScore, alicePeers]),
+      /MigrationAlreadyLocked/,
+    );
+  });
+
   it("charges 0.3% on both recognized swap sides and routes fees into their pairs", async function () {
     const fixture = await deployFixture();
     const { ausd, usdt, factory } = fixture;
@@ -642,6 +935,50 @@ describe("Deal Rules", async function () {
     assert.equal(await ausd.read.balanceOf([ausdPair]), pairBalanceBefore + ((aSwapAmount * 3n) / 1000n));
   });
 
+  it("rejects oversized deal titles before storing them in clone state", async function () {
+    const fixture = await deployFixture();
+    const { bad } = fixture;
+
+    await assert.rejects(
+      createDealAndGetAddress(fixture, {
+        aSwapToken: bad.address,
+        aSwapAmount: 10n * ONE,
+        bSwapToken: zeroAddress,
+        bSwapAmount: 0n,
+        templateType: TEMPLATE_TOKEN_TO_EMPTY,
+        title: "a".repeat(97),
+      }),
+      /TitleTooLong/,
+    );
+  });
+
+  it("rejects deal force-timeout windows above one day", async function () {
+    const fixture = await deployFixture();
+    const { bad } = fixture;
+
+    await assert.rejects(
+      createDealAndGetAddress(fixture, {
+        aSwapToken: bad.address,
+        aSwapAmount: 10n * ONE,
+        bSwapToken: zeroAddress,
+        bSwapAmount: 0n,
+        templateType: TEMPLATE_TOKEN_TO_EMPTY,
+        timeoutSeconds: 86_401n,
+      }),
+      /TimeoutTooLong/,
+    );
+  });
+
+  it("caps DealReader batch calls at 100 deals", async function () {
+    const fixture = await deployFixture();
+    const reader = await fixture.viem.deployContract("DealReader");
+    const tooMany = Array.from({ length: 101 }, () => zeroAddress);
+
+    await assert.rejects(reader.read.getDeals([tooMany]), /BatchTooLarge/);
+    await assert.rejects(reader.read.getDealsSlim([tooMany]), /BatchTooLarge/);
+    await assert.rejects(reader.read.getDealsPlus([tooMany, zeroAddress]), /BatchTooLarge/);
+  });
+
   it("preserves deal chat through the external message hub", async function () {
     const fixture = await deployFixture();
     const { viem, publicClient, bad, alice, bob, dealMessageHub } = fixture;
@@ -661,14 +998,19 @@ describe("Deal Rules", async function () {
     await waitFor(publicClient, await dealAsAlice.write.postMessage(["hello from a"]));
     await waitFor(publicClient, await dealAsBob.write.join([0n, false]));
     await waitFor(publicClient, await dealAsBob.write.postMessage(["hello from b"]));
+    await waitFor(publicClient, await dealAsAlice.write.postMessage(["a".repeat(1500)]));
+
+    await assert.rejects(dealAsAlice.write.postMessage([""]), /EmptyMessage/);
+    await assert.rejects(dealAsAlice.write.postMessage(["a".repeat(1501)]), /MessageTooLong/);
 
     const count = await dealMessageHub.read.messagesCount([dealAddress]);
     const [contents, , senders] = await dealMessageHub.read.getMessages([dealAddress, 0n, 10n]);
 
-    assert.equal(count, 2n);
-    assert.deepEqual(contents, ["hello from a", "hello from b"]);
+    assert.equal(count, 3n);
+    assert.deepEqual(contents, ["hello from a", "hello from b", "a".repeat(1500)]);
     assert.equal(getAddress(senders[0]), getAddress(alice.account.address));
     assert.equal(getAddress(senders[1]), getAddress(bob.account.address));
+    assert.equal(getAddress(senders[2]), getAddress(alice.account.address));
   });
 
   it("allows deal chat after Completed via DealMessageHub", async function () {
@@ -948,6 +1290,18 @@ describe("Deal Rules", async function () {
 
     const tokenUri = await infoNft.read.tokenURI([firstId]);
     assert.match(tokenUri, /^data:application\/json;base64,/);
+
+    const infoNftAsAlice = await fixture.viem.getContractAt("DealInfoNFT", infoNft.address, {
+      client: { wallet: alice },
+    });
+    await waitFor(publicClient, await infoNftAsAlice.write.setTokenImageURI([firstId, "ipfs://avatar"]));
+    await waitFor(publicClient, await infoNftAsAlice.write.setTokenUserName([firstId, "alice"]));
+    await waitFor(publicClient, await infoNftAsAlice.write.setTokenUserDetail([firstId, "maker profile"]));
+    await assert.rejects(infoNftAsAlice.write.setTokenImageURI([firstId, "a".repeat(513)]), /TOO_LONG/);
+    await assert.rejects(infoNftAsAlice.write.setTokenImageURI([firstId, 'bad"uri']), /UNSAFE_CHAR/);
+    await assert.rejects(infoNftAsAlice.write.setTokenUserName([firstId, "a".repeat(65)]), /TOO_LONG/);
+    await assert.rejects(infoNftAsAlice.write.setTokenUserDetail([firstId, "a".repeat(1001)]), /TOO_LONG/);
+    await assert.rejects(infoNft.write.setAdmin([zeroAddress]), /ZERO_ADMIN/);
 
     await waitFor(publicClient, await infoNft.write.setCurrentSeason([2]));
     const thirdId = await fixture.mintInfoNft(alice);

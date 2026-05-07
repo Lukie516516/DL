@@ -50,12 +50,7 @@ async function deployBusinessFixture() {
 
   const dealLib = await viem.deployContract("DealLib");
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
-  const dealImpl = await viem.deployContract("Deal", [], {
-    libraries: {
-      DealLib: dealLib.address,
-      DealAssetNftLib: dealAssetNftLib.address,
-    },
-  });
+  const dealImpl = await viem.deployContract("Deal");
   const pairImpl = await viem.deployContract("DealSwapTemplate");
   const factory = await viem.deployContract("DealFactory", [
     dealImpl.address,

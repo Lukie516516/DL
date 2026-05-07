@@ -53,6 +53,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     /* ========== 地址枚举（可选） ========== */
     mapping(address => uint256[]) private _ownedTokens;
     mapping(uint256 => uint256)  private _ownedIndex1b;
+    uint256 public constant MAX_PAGE_SIZE = 100;
 
     function tokensOfOwner(address owner) external view returns (uint256[] memory tokens) {
         return _ownedTokens[owner];
@@ -63,7 +64,8 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         uint256[] storage arr = _ownedTokens[owner];
         total = arr.length;
         if (offset >= total) return (new uint256[](0), total);
-        uint256 end = offset + limit; if (end > total) end = total;
+        uint256 pageLimit = limit > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : limit;
+        uint256 end = offset + pageLimit; if (end > total) end = total;
         uint256 n = end - offset; tokens = new uint256[](n);
         for (uint256 i = 0; i < n; ++i) tokens[i] = arr[offset + i];
     }
@@ -72,6 +74,10 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     struct Media { string uri; string mime; bytes data; }
     mapping(uint256 => Media) private _media;
     uint256 public maxImageDataBytes = 256*1024;
+    uint256 public constant MAX_IMAGE_URI_BYTES = 512;
+    uint256 public constant MAX_IMAGE_MIME_BYTES = 64;
+    uint256 public constant MAX_USERNAME_BYTES = 64;
+    uint256 public constant MAX_USERDETAIL_BYTES = 1000;
     event TokenImageURISet(uint256 indexed tokenId, string uri);
     event TokenImageDataSet(uint256 indexed tokenId, string mime, uint256 size);
     event MaxImageDataBytesUpdated(uint256 newLimit);
@@ -128,7 +134,10 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         emit FactoryRemoved(f);
     }
 
-    function setAdmin(address _admin) external onlyAdmin { admin = _admin; }
+    function setAdmin(address _admin) external onlyAdmin {
+        require(_admin != address(0), "ZERO_ADMIN");
+        admin = _admin;
+    }
 
     function setMintPriceU(address p, uint256 u) external onlyOwner { pair = p; mintPriceDL = u; }
 
@@ -150,15 +159,27 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     }
 
     /* ========== 媒体/昵称 ========== */
+    function _assertJsonSafe(bytes memory b, uint256 maxLen) internal pure {
+        require(b.length <= maxLen, "TOO_LONG");
+        for (uint256 i; i < b.length; ) {
+            uint8 c = uint8(b[i]);
+            require(c >= 0x20 && c != 0x22 && c != 0x5c, "UNSAFE_CHAR");
+            unchecked { ++i; }
+        }
+    }
+
     function setTokenImageURI(uint256 tokenId, string calldata uri) external onlyOwnerOrApproved(tokenId) {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
+        _assertJsonSafe(bytes(uri), MAX_IMAGE_URI_BYTES);
         _media[tokenId].uri = uri; emit TokenImageURISet(tokenId, uri);
     }
     function setTokenImageData(uint256 tokenId, string calldata mime, bytes calldata data)
         external onlyOwnerOrApproved(tokenId)
     {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
-        require(bytes(mime).length > 0 && data.length <= maxImageDataBytes, "BAD_MEDIA");
+        bytes memory mimeBytes = bytes(mime);
+        require(mimeBytes.length > 0 && data.length <= maxImageDataBytes, "BAD_MEDIA");
+        _assertJsonSafe(mimeBytes, MAX_IMAGE_MIME_BYTES);
         _media[tokenId].mime = mime; _media[tokenId].data = data;
         emit TokenImageDataSet(tokenId, mime, data.length);
     }
@@ -187,6 +208,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     event TokenUserNameSet(uint256 indexed tokenId, string username);
     function setTokenUserName(uint256 tokenId, string calldata _name) external onlyOwnerOrApproved(tokenId) {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
+        _assertJsonSafe(bytes(_name), MAX_USERNAME_BYTES);
         username[tokenId] = _name; emit TokenUserNameSet(tokenId, _name);
     }
 
@@ -194,6 +216,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     event TokenUserDetailSet(uint256 indexed tokenId, string userdetail);
     function setTokenUserDetail(uint256 tokenId, string calldata _detail) external onlyOwnerOrApproved(tokenId) {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
+        _assertJsonSafe(bytes(_detail), MAX_USERDETAIL_BYTES);
         userdetail[tokenId] = _detail; emit TokenUserDetailSet(tokenId, _detail);
     }
 

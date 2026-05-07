@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup:recognized-pairs": "hardhat run scripts/setup-recognized-pairs.ts",
     "deploy:agiking": "hardhat run scripts/deploy-agiking.ts --network agiking",
+    "deploy:agiking:deal-upgrade": "hardhat run scripts/deploy-fix.ts --network agiking",
     "deploy:domain-upgrade": "hardhat run scripts/deploy-domain-upgrade.ts --network agiking"
   },
   "keywords": [],

@@ -42,12 +42,7 @@ async function deployDexFixture() {
 
   const dealLib = await viem.deployContract("DealLib");
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
-  const dealImpl = await viem.deployContract("Deal", [], {
-    libraries: {
-      DealLib: dealLib.address,
-      DealAssetNftLib: dealAssetNftLib.address,
-    },
-  });
+  const dealImpl = await viem.deployContract("Deal");
   const pairImpl = await viem.deployContract("DealSwapTemplate");
   const factory = await viem.deployContract("DealFactory", [
     dealImpl.address,
@@ -198,6 +193,13 @@ describe("DealSwapOrderBook", async function () {
     const bobOrderId = await orderBook.read.nextOrderId();
     await waitFor(publicClient, await dlBob.write.approve([orderBook.address, 50n * ONE]));
     await waitFor(publicClient, await orderBookBob.write.placeSellDL([pairAddress, 50n * ONE]));
+
+    const [firstQueuedIds, queueHead, queueTotal] = await orderBook.read.getQueuePage([pairAddress, true, 0n, 1n]);
+    assert.deepEqual(firstQueuedIds, [aliceOrderId]);
+    assert.equal(queueHead, 0n);
+    assert.equal(queueTotal, 2n);
+    const [remainingQueuedIds] = await orderBook.read.getQueuePage([pairAddress, true, 1n, 1000n]);
+    assert.deepEqual(remainingQueuedIds, [bobOrderId]);
 
     await waitFor(publicClient, await other.write.transfer([pairAddress, 20n * ONE]));
     await waitFor(publicClient, await pair.write.mintOtherOnly());

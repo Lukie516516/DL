@@ -312,10 +312,12 @@ contract DCDomain is ERC721, Ownable {
     }
 
     function setTreasury(address newTreasury) external onlyOwner {
+        require(newTreasury != address(0), "DCDomain: zero treasury");
         treasury = newTreasury;
     }
 
     function setPaymentToken(address newToken) external onlyOwner {
+        require(newToken != address(0), "DCDomain: zero token");
         paymentToken = IERC20(newToken);
     }
 

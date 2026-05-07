@@ -61,15 +61,45 @@ async function main() {
 
   // ═══════════════ 2. Deploy Deal implementation (linked libraries) ═══════════════
   console.log("\n--- Deploying Deal implementation ---");
-  const dealImplContract = await viem.deployContract("Deal", [], {
+  const dealImplContract = await viem.deployContract("Deal", [], { client });
+  const newDealImpl = dealImplContract.address;
+  console.log("Deal implementation:", newDealImpl);
+  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
+    client,
+    libraries: { DealLib: dealLib.address },
+  });
+  console.log("DealNoAsset implementation:", dealNoAssetImpl.address);
+  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
     client,
     libraries: {
       DealLib: dealLib.address,
       DealAssetNftLib: dealAssetNftLib.address,
     },
   });
-  const newDealImpl = dealImplContract.address;
-  console.log("Deal implementation:", newDealImpl);
+  console.log("DealAAssetNft implementation:", dealAAssetNftImpl.address);
+  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
+    client,
+    libraries: {
+      DealLib: dealLib.address,
+      DealAssetNftLib: dealAssetNftLib.address,
+    },
+  });
+  console.log("DealBAssetNft implementation:", dealBAssetNftImpl.address);
+  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
+    client,
+    libraries: { DealAssetNftLib: dealAssetNftLib.address },
+  });
+  console.log("DealAAssetNftOnly implementation:", dealAAssetNftOnlyImpl.address);
+  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
+    client,
+    libraries: { DealAssetNftLib: dealAssetNftLib.address },
+  });
+  console.log("DealBAssetNftOnly implementation:", dealBAssetNftOnlyImpl.address);
+  const dealOpenTokenTokenImpl = await viem.deployContract("DealOpenTokenToken", [], {
+    client,
+    libraries: { DealLib: dealLib.address },
+  });
+  console.log("DealOpenTokenToken implementation:", dealOpenTokenTokenImpl.address);
 
   // ═══════════════ 3. Deploy new DealFactory ═══════════════
   console.log("\n--- Deploying new DealFactory ---");
@@ -81,6 +111,14 @@ async function main() {
   console.log("New DealFactory:", newFactory.address);
   const dealMessageHub = await viem.deployContract("DealMessageHub", [newFactory.address], { client });
   console.log("DealMessageHub:", dealMessageHub.address);
+  const dealActivityIndex = await viem.deployContract("DealActivityIndex", [newFactory.address], { client });
+  console.log("DealActivityIndex:", dealActivityIndex.address);
+  const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry", [], { client });
+  console.log("DealImplementationRegistry:", dealImplementationRegistry.address);
+  const creditGraph = EXISTING.dealCreditGraph
+    ? await viem.getContractAt("DealCreditGraph", EXISTING.dealCreditGraph, { client })
+    : await viem.deployContract("DealCreditGraph", [EXISTING.dealInfoNFT], { client });
+  console.log(EXISTING.dealCreditGraph ? "DealCreditGraph existing:" : "DealCreditGraph:", creditGraph.address);
 
   // ═══════════════ 4. Configure new DealFactory ═══════════════
   console.log("\n--- Configuring new DealFactory ---");
@@ -95,6 +133,28 @@ async function main() {
   console.log("  setGlobal wrappedNative OK");
   await waitFor(publicClient, await newFactory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   console.log("  setGlobal dealMessageHub OK");
+
+  await waitFor(publicClient, await newFactory.write.setGlobal(["creditGraph", creditGraph.address]));
+  console.log("  setGlobal creditGraph OK");
+  await waitFor(publicClient, await newFactory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  console.log("  setGlobal dealActivityIndex OK");
+  await waitFor(
+    publicClient,
+    await dealImplementationRegistry.write.setDealImplementations([
+      newDealImpl,
+      dealNoAssetImpl.address,
+      dealAAssetNftImpl.address,
+      dealBAssetNftImpl.address,
+      dealAAssetNftOnlyImpl.address,
+      dealBAssetNftOnlyImpl.address,
+      dealOpenTokenTokenImpl.address,
+    ]),
+  );
+  console.log("  DealImplementationRegistry.setDealImplementations OK");
+  await waitFor(publicClient, await newFactory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  console.log("  setGlobal dealImplementationRegistry OK");
+  await waitFor(publicClient, await creditGraph.write.setRecorder([newFactory.address, true]));
+  console.log("  DealCreditGraph recorder OK");
 
   await waitFor(publicClient, await newFactory.write.setGlobal(["swapOrderBook", EXISTING.dealSwapOrderBook]));
   console.log("  setGlobal swapOrderBook OK");
@@ -124,8 +184,16 @@ async function main() {
     dealLib: dealLib.address,
     dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: newDealImpl,
+    dealNoAssetImplementation: dealNoAssetImpl.address,
+    dealAAssetNftImplementation: dealAAssetNftImpl.address,
+    dealBAssetNftImplementation: dealBAssetNftImpl.address,
+    dealAAssetNftOnlyImplementation: dealAAssetNftOnlyImpl.address,
+    dealBAssetNftOnlyImplementation: dealBAssetNftOnlyImpl.address,
+    dealOpenTokenTokenImplementation: dealOpenTokenTokenImpl.address,
     dealFactory: newFactory.address,
     dealMessageHub: dealMessageHub.address,
+    dealCreditGraph: creditGraph.address,
+    dealActivityIndex: dealActivityIndex.address,
   };
 
   const allAddresses = {
@@ -136,10 +204,19 @@ async function main() {
     dealLib: dealLib.address,
     dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: newDealImpl,
+    dealNoAssetImplementation: dealNoAssetImpl.address,
+    dealAAssetNftImplementation: dealAAssetNftImpl.address,
+    dealBAssetNftImplementation: dealBAssetNftImpl.address,
+    dealAAssetNftOnlyImplementation: dealAAssetNftOnlyImpl.address,
+    dealBAssetNftOnlyImplementation: dealBAssetNftOnlyImpl.address,
+    dealOpenTokenTokenImplementation: dealOpenTokenTokenImpl.address,
+    dealImplementationRegistry: dealImplementationRegistry.address,
     oldDealImplementation: EXISTING.oldDealImplementation,
     pairImplementation: EXISTING.pairImplementation,
     dealFactory: newFactory.address,
     dealMessageHub: dealMessageHub.address,
+    dealCreditGraph: creditGraph.address,
+    dealActivityIndex: dealActivityIndex.address,
     oldDealFactory: EXISTING.oldDealFactory,
     dealInfoNFT: EXISTING.dealInfoNFT,
     pairDlAusd: EXISTING.pairDlAusd,
@@ -177,8 +254,17 @@ async function main() {
       DealLib: loadAbi("utils/DealLib.sol/DealLib.json"),
       DealAssetNftLib: loadAbi("utils/DealAssetNftLib.sol/DealAssetNftLib.json"),
       Deal: loadAbi("Deal.sol/Deal.json"),
+      DealNoAsset: loadAbi("DealNoAsset.sol/DealNoAsset.json"),
+      DealAAssetNft: loadAbi("DealAAssetNft.sol/DealAAssetNft.json"),
+      DealBAssetNft: loadAbi("DealBAssetNft.sol/DealBAssetNft.json"),
+      DealAAssetNftOnly: loadAbi("DealAAssetNftOnly.sol/DealAAssetNftOnly.json"),
+      DealBAssetNftOnly: loadAbi("DealBAssetNftOnly.sol/DealBAssetNftOnly.json"),
+      DealOpenTokenToken: loadAbi("DealOpenTokenToken.sol/DealOpenTokenToken.json"),
+      DealImplementationRegistry: loadAbi("DealImplementationRegistry.sol/DealImplementationRegistry.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
       DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
+      DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
+      DealActivityIndex: loadAbi("DealActivityIndex.sol/DealActivityIndex.json"),
     },
   };
 
