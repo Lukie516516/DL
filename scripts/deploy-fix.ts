@@ -139,8 +139,18 @@ async function main() {
   console.log("  setGlobal swapOrderBook OK");
   await waitFor(publicClient, await newFactory.write.setRecognizedTokens([EXISTING.ausd, EXISTING.usdt]));
   console.log("  setRecognizedTokens OK");
+  await waitFor(publicClient, await newFactory.write.mapExistingPair([EXISTING.ausd, EXISTING.pairDlAusd]));
+  console.log("  mapExistingPair AUSD OK");
+  await waitFor(publicClient, await newFactory.write.mapExistingPair([EXISTING.usdt, EXISTING.pairDlUsdt]));
+  console.log("  mapExistingPair USDT OK");
   await waitFor(publicClient, await newFactory.write.setTreasuryByAdmin([dep]));
   console.log("  setTreasuryByAdmin OK");
+
+  const infoNft = await viem.getContractAt("DealInfoNFT", EXISTING.dealInfoNFT, { client });
+  await waitFor(publicClient, await infoNft.write.addFactory([newFactory.address]));
+  console.log("  DealInfoNFT.addFactory(newFactory) OK");
+  await waitFor(publicClient, await infoNft.write.setFactory([newFactory.address]));
+  console.log("  DealInfoNFT.setFactory(newFactory) OK");
 
   // Grant DL MINTER_ROLE to new factory
   const dlContract = await viem.getContractAt("DCToken", EXISTING.dlToken, { client });
@@ -169,7 +179,9 @@ async function main() {
   // ═══════════════ 4. Post-deployment config ═══════════════
   console.log("\n--- Post-deployment config ---");
 
-  // Allow DCDomainHall to call createDealFor / chargeMessageFeeFrom
+  // Allow domain entry contracts to call createDealFor / chargeMessageFeeFrom
+  await waitFor(publicClient, await newFactory.write.setAllowedCreateFor([dcSwap.address, true]));
+  console.log("  DealFactory.setAllowedCreateFor(DCDomainSwap) OK");
   await waitFor(publicClient, await newFactory.write.setAllowedCreateFor([dcHall.address, true]));
   console.log("  DealFactory.setAllowedCreateFor(DCDomainHall) OK");
 
