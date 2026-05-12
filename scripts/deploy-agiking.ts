@@ -215,6 +215,12 @@ async function main() {
   });
   console.log("DCDomainHall", dcHall.address);
 
+  await waitFor(publicClient, await factory.write.setAllowedCreateFor([dcSwap.address, true]));
+  await waitFor(publicClient, await factory.write.setAllowedCreateFor([dcHall.address, true]));
+  await waitFor(publicClient, await dcRank.write.setDealReporter([dcSwap.address, true]));
+  await waitFor(publicClient, await dcRank.write.setDealReporter([dcHall.address, true]));
+  console.log("Domain entry permissions OK");
+
   // —— Governance (D + timelock + governor) ——
   const dToken = await viem.deployContract("D", [], { client });
   console.log("D (votes)", dToken.address);
