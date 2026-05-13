@@ -98,6 +98,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     /* 基本信息 */
     address public factory;
     string  public title;
+    string  public description;
     address public a;
     address public b;
 
@@ -221,7 +222,9 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         uint8   joinMode;     address expectedB;
         uint256 gateNftId;
         uint256 aNftId;
-        string  title;        uint64  timeoutSeconds;
+        string  title;
+        string  description;
+        uint64  timeoutSeconds;
         uint64  timeStart;    uint64  timeEnd;
         bool    isDomainDeal;
         string  domainName;
@@ -287,7 +290,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         aNftId    = p.aNftId;
         bNftId    = 0;
 
-        title=p.title; timeoutSeconds=p.timeoutSeconds;
+        title=p.title; description=p.description; timeoutSeconds=p.timeoutSeconds;
         timeStart = p.timeStart; timeEnd = p.timeEnd;
         _check(timeStart > 0 && timeEnd > timeStart, 13);
 

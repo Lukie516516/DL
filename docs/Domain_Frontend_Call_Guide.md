@@ -500,7 +500,7 @@ const rows = await Promise.all(
 - 不要给这类单子直接显示“立即加入 deal”
 - 应该跳大厅
 
-### 7.2 `createTteHallDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, trackCreator)`
+### 7.2 `createTteHallDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, trackCreator)`
 
 作用：
 - 创建大厅 TokenToToken 合同
@@ -512,6 +512,7 @@ const rows = await Promise.all(
 - `bSwapToken: address`
 - `bSwapAmount: uint256`
 - `title: string`
+- `description: string`，创建时上链交易描述，可为空，最大 1500 bytes
 - `trackCreator: bool`
 
 说明：
@@ -538,6 +539,7 @@ const rows = await Promise.all(
 - `timeoutSeconds: uint64`
 - `timeStart: uint64`
 - `title: string`
+- `description: string`，创建时上链交易描述，可为空，最大 1500 bytes
 - `trackCreator: bool`
 
 其中：
@@ -616,7 +618,7 @@ const rows = await Promise.all(
 - `offset: uint256`
 - `limit: uint256`
 
-### 7.10 `pickUserAndCreateDeal(domainName, pickedUser, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, trackCreator)`
+### 7.10 `pickUserAndCreateDeal(domainName, pickedUser, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, trackCreator)`
 
 作用：
 - 商户直接点对点创建一笔指定访客才能加入的 TokenToToken
@@ -629,6 +631,7 @@ const rows = await Promise.all(
 - `bSwapToken: address`
 - `bSwapAmount: uint256`
 - `title: string`
+- `description: string`，创建时上链交易描述，可为空，最大 1500 bytes
 - `trackCreator: bool`
 
 说明：
@@ -639,7 +642,7 @@ const rows = await Promise.all(
 
 ## 8. `DCDomainSwap` 常用方法
 
-### 8.1 `createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, expectedB)`
+### 8.1 `createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB)`
 
 作用：
 - 在域名下直接创建 TokenToToken 交易
@@ -651,6 +654,7 @@ const rows = await Promise.all(
 - `bSwapToken: address`
 - `bSwapAmount: uint256`
 - `title: string`
+- `description: string`，创建时上链交易描述，可为空，最大 1500 bytes
 - `expectedB: address`
 
 规则：
@@ -756,4 +760,3 @@ const rows = await Promise.all(
 - 域名调用只认真实 `domainName`
 - 大厅模板先聊天选人，再允许加入
 - 域名一级注册 / 二级市场 / 排行榜充值都用 `DL`
-

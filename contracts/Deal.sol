@@ -16,6 +16,7 @@ contract Deal is IERC721Receiver {
 
     address public factory;
     string public title;
+    string public description;
     address public a;
     address public b;
     bool public isDomainDeal;
@@ -121,6 +122,7 @@ contract Deal is IERC721Receiver {
         uint256 gateNftId;
         uint256 aNftId;
         string title;
+        string description;
         uint64 timeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;

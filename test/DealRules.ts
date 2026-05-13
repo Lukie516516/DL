@@ -264,6 +264,7 @@ async function createDealAndGetAddress(
     gateNftId?: bigint;
     aNftId?: bigint;
     title?: string;
+    description?: string;
     timeoutSeconds?: bigint;
     timeStart?: bigint;
     timeEnd?: bigint;
@@ -309,6 +310,7 @@ async function createDealAndGetAddress(
         gateNftId: init.gateNftId ?? 0n,
         aNftId: init.aNftId ?? 0n,
         title: init.title ?? "test",
+        description: init.description ?? "",
         timeoutSeconds: init.timeoutSeconds ?? 3600n,
         timeStart: init.timeStart ?? DEFAULT_TIME_START,
         timeEnd: init.timeEnd ?? DEFAULT_TIME_END,
@@ -873,6 +875,7 @@ describe("Deal Rules", async function () {
             gateNftId: 0n,
             aNftId: 0n,
             title: "missing pair",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
@@ -949,6 +952,46 @@ describe("Deal Rules", async function () {
         title: "a".repeat(97),
       }),
       /TitleTooLong/,
+    );
+  });
+
+  it("stores optional deal descriptions and exposes them through DealReader", async function () {
+    const fixture = await deployFixture();
+    const { viem, bad } = fixture;
+    const description = "交付内容：测试账号在验收后释放保证金。";
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: bad.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_TOKEN_TO_EMPTY,
+      title: "desc deal",
+      description,
+    });
+
+    const deal = await viem.getContractAt("Deal", dealAddress);
+    assert.equal(await deal.read.description(), description);
+
+    const reader = await viem.deployContract("DealReader");
+    const info = await reader.read.getDeal([dealAddress]);
+    assert.equal(info.description, description);
+  });
+
+  it("rejects oversized deal descriptions before cloning", async function () {
+    const fixture = await deployFixture();
+    const { bad } = fixture;
+
+    await assert.rejects(
+      createDealAndGetAddress(fixture, {
+        aSwapToken: bad.address,
+        aSwapAmount: 10n * ONE,
+        bSwapToken: zeroAddress,
+        bSwapAmount: 0n,
+        templateType: TEMPLATE_TOKEN_TO_EMPTY,
+        description: "a".repeat(1501),
+      }),
+      /DescriptionTooLong/,
     );
   });
 
@@ -1078,6 +1121,7 @@ describe("Deal Rules", async function () {
           gateNftId: 0n,
           aNftId: 0n,
           title: "create for",
+          description: "",
           timeoutSeconds: 3600n,
           timeStart: DEFAULT_TIME_START,
           timeEnd: DEFAULT_TIME_END,
@@ -1212,6 +1256,7 @@ describe("Deal Rules", async function () {
             gateNftId: 0n,
             aNftId: 0n,
             title: "bad margin token",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
@@ -1256,6 +1301,7 @@ describe("Deal Rules", async function () {
           gateNftId: 0n,
           aNftId: 0n,
             title: "extended margin whitelist",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
@@ -1396,6 +1442,7 @@ describe("Deal Rules", async function () {
             gateNftId: 0n,
             aNftId: nftId,
             title: "conflict a",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
@@ -1463,6 +1510,7 @@ describe("Deal Rules", async function () {
             gateNftId: 0n,
             aNftId: nftId,
             title: "lock source",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
@@ -1497,6 +1545,7 @@ describe("Deal Rules", async function () {
             gateNftId: 0n,
             aNftId: 0n,
             title: "locked sell",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,

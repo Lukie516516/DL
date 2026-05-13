@@ -49,6 +49,7 @@ interface IDealFactoryForHall {
         uint256 gateNftId;
         uint256 aNftId;
         string title;
+        string description;
         uint64 timeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
@@ -210,6 +211,7 @@ contract DCDomainHall is ReentrancyGuard {
         uint64 timeoutSeconds_,
         uint64 timeStart_,
         string calldata title,
+        string calldata description,
         bool trackCreator
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
@@ -246,6 +248,7 @@ contract DCDomainHall is ReentrancyGuard {
             gateNftId: 0,
             aNftId: aNftId,
             title: title,
+            description: description,
             timeoutSeconds: timeoutSeconds_,
             timeStart: timeStart_,
             timeEnd: timeEnd_,
@@ -357,6 +360,7 @@ contract DCDomainHall is ReentrancyGuard {
         address bSwapToken,
         uint256 bSwapAmount,
         string calldata title,
+        string calldata description,
         bool trackCreator
     ) external returns (address deal) {
         require(pickedUser != address(0), "DCDomainHall: zero picked");
@@ -387,6 +391,7 @@ contract DCDomainHall is ReentrancyGuard {
             gateNftId: 0,
             aNftId: 0,
             title: title,
+            description: description,
             timeoutSeconds: DEAL_TIMEOUT,
             timeStart: tsStart,
             timeEnd: tsEnd,
@@ -424,6 +429,7 @@ contract DCDomainHall is ReentrancyGuard {
         address bSwapToken,
         uint256 bSwapAmount,
         string calldata title,
+        string calldata description,
         bool trackCreator
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
@@ -451,6 +457,7 @@ contract DCDomainHall is ReentrancyGuard {
             gateNftId: 0,
             aNftId: 0,
             title: title,
+            description: description,
             timeoutSeconds: DEAL_TIMEOUT,
             timeStart: tteStart,
             timeEnd: tteEnd,

@@ -43,6 +43,7 @@ interface IDeal {
         uint256 gateNftId; // 门禁 NFT 的 tokenId（仅在 NftGated 模式使用）
         uint256 aNftId; // A 侧自愿/要求绑定的 tokenId（0 代表不需要）
         string title;
+        string description;
         uint64 timeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
@@ -230,9 +231,11 @@ contract DealFactory is Ownable {
     error RewardPairMissing();
     error OpenTokenTokenFastNotTT();
     error TitleTooLong();
+    error DescriptionTooLong();
     error TimeoutTooLong();
 
     uint256 public constant MAX_TITLE_BYTES = 96;
+    uint256 public constant MAX_DESCRIPTION_BYTES = 1500;
     uint64 public constant MAX_TIMEOUT_SECONDS = 1 days;
 
     struct Ratio {
@@ -842,6 +845,7 @@ contract DealFactory is Ownable {
             revert InvalidTemplateType();
         if (p.joinMode > 3) revert InvalidJoinMode();
         if (bytes(p.title).length > MAX_TITLE_BYTES) revert TitleTooLong();
+        if (bytes(p.description).length > MAX_DESCRIPTION_BYTES) revert DescriptionTooLong();
 
         bool aHasSwap = p.aSwapAmount > 0;
         bool bHasSwap = p.bSwapAmount > 0;

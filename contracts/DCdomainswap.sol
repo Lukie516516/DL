@@ -46,6 +46,7 @@ interface IDealFactory {
         uint256 gateNftId;
         uint256 aNftId;
         string  title;
+        string  description;
         uint64  timeoutSeconds;
         uint64  timeStart;
         uint64  timeEnd;
@@ -146,6 +147,7 @@ contract DCDomainSwap {
         address bSwapToken,
         uint256 bSwapAmount,
         string  calldata title,
+        string  calldata description,
         address expectedB
     ) external returns (address deal) {
         // 检查域名存在
@@ -182,6 +184,7 @@ contract DCDomainSwap {
             gateNftId:      0,
             aNftId:         0,
             title:                    title,
+            description:              description,
             timeoutSeconds:           TIMEOUT,
             timeStart:                phaseJoinDeadline,
             timeEnd:                  phasePayDeadline,

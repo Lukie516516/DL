@@ -36,6 +36,7 @@ interface IDeal {
 
         // 基础信息
         string  title;
+        string  description;
         uint64  timeoutSeconds;  // 工厂已保证 ≥ 最小值
         uint64  timeStart;
         uint64  timeEnd;
