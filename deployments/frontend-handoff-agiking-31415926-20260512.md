@@ -115,6 +115,7 @@ swap/orderbook 不产信用分
 | 项目 | 限制 |
 | --- | --- |
 | deal title | 最大 96 bytes |
+| deal description | 最大 1500 bytes，可为空 |
 | message | 最大 1500 bytes |
 | DealReader batch | 最大 100 个 deal |
 | message page limit | 最大 100 |
@@ -123,6 +124,8 @@ swap/orderbook 不产信用分
 | timeoutSeconds | 最大 1 day |
 
 注意：限制是 bytes，不是字符数。中文和 emoji 会占多个 bytes。
+
+`deal description` 是创建时上链描述字段，需要使用更新后的 ABI 和重新部署后的合约地址；当前旧部署地址不支持这个字段。
 
 ## 部署后自检
 
@@ -146,4 +149,3 @@ WNATIVE: 10,000,000
 ```
 
 ## 重要提醒
-

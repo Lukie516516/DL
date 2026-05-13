@@ -83,6 +83,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
 
     address public factory;
     string public title;
+    string public description;
     address public a;
     address public b;
 
@@ -214,6 +215,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         uint256 gateNftId;
         uint256 aNftId;
         string title;
+        string description;
         uint64 timeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
@@ -309,6 +311,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         aNftId = p.aNftId;
 
         title = p.title;
+        description = p.description;
         timeoutSeconds = p.timeoutSeconds;
         timeStart = p.timeStart;
         timeEnd = p.timeEnd;

@@ -8,6 +8,7 @@ interface IDeal {
     function joinMode() external view returns (uint8);
     function templateType() external view returns (uint8);
     function title() external view returns (string memory);
+    function description() external view returns (string memory);
 
     function isDomainDeal() external view returns (bool);
     function domainName() external view returns (string memory);
@@ -81,6 +82,7 @@ contract DealReader {
         uint8 joinMode;
         uint8 templateType;
         string title;
+        string description;
         bool isDomainDeal;
         string domainName;
         address a;
@@ -187,6 +189,7 @@ contract DealReader {
         try d.joinMode() returns (uint8 v) { out.joinMode = v; } catch { ok = false; }
         try d.templateType() returns (uint8 v) { out.templateType = v; } catch { ok = false; }
         try d.title() returns (string memory v) { out.title = v; } catch { ok = false; }
+        try d.description() returns (string memory v) { out.description = v; } catch {}
         try d.isDomainDeal() returns (bool v) { out.isDomainDeal = v; } catch { ok = false; }
         try d.domainName() returns (string memory v) { out.domainName = v; } catch { ok = false; }
 

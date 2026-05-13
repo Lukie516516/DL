@@ -268,6 +268,7 @@ async function createDealAndGetAddress(
     isDomainDeal?: boolean;
     domainName?: string;
     title?: string;
+    description?: string;
   },
 ) {
   const { viem, publicClient, factory } = fixture;
@@ -295,6 +296,7 @@ async function createDealAndGetAddress(
         gateNftId: 0n,
         aNftId: 0n,
         title: init.title ?? "domain sale",
+        description: init.description ?? "",
         timeoutSeconds: 3600n,
         timeStart: DEFAULT_TIME_START,
         timeEnd: DEFAULT_TIME_END,
@@ -551,6 +553,7 @@ describe("Domain Flows", async function () {
       usdt.address,
       20n * ONE,
       "",
+      "",
       zeroAddress,
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -613,6 +616,7 @@ describe("Domain Flows", async function () {
         aAmt,
         usdt.address,
         bAmt,
+        "",
         "",
         zeroAddress,
       ]);
@@ -699,6 +703,7 @@ describe("Domain Flows", async function () {
       usdt.address,
       2n * ONE,
       "",
+      "",
       zeroAddress,
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
@@ -760,6 +765,7 @@ describe("Domain Flows", async function () {
       1n * ONE,
       usdt.address,
       2n * ONE,
+      "",
       "",
       zeroAddress,
     ]);
@@ -839,6 +845,7 @@ describe("Domain Flows", async function () {
       10n * ONE,
       usdt.address,
       20n * ONE,
+      "",
       "",
       false,
     ]);
@@ -972,6 +979,7 @@ describe("Domain Flows", async function () {
       3600n,
       DEFAULT_TIME_START,
       "",
+      "",
       false,
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
@@ -1091,6 +1099,7 @@ describe("Domain Flows", async function () {
       usdt.address,
       20n * ONE,
       "blocked title",
+      "",
       false,
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
@@ -1216,6 +1225,7 @@ describe("Domain Flows", async function () {
       usdt.address,
       6n * ONE,
       "picked user title",
+      "",
       false,
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
@@ -1268,6 +1278,7 @@ describe("Domain Flows", async function () {
         3600n,
         DEFAULT_TIME_START,
         "bad tte",
+        "",
         false,
       ]),
       /TTE swap/,
@@ -1288,6 +1299,7 @@ describe("Domain Flows", async function () {
       3600n,
       DEFAULT_TIME_START,
       "zero margin ete",
+      "",
       false,
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
@@ -1382,6 +1394,7 @@ describe("Domain Flows", async function () {
             gateNftId: 0n,
             aNftId: 0n,
             title: "fake domain deal",
+            description: "",
             timeoutSeconds: 3600n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
