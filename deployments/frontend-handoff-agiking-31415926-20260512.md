@@ -1,6 +1,6 @@
 # Agiking 前端交付信息
 
-部署时间：2026-05-12  
+部署时间：2026-05-13
 链 ID：31415926  
 RPC：https://rpc.agikingrpc.shop  
 部署钱包：0xe88c63d29ece76e3336b0db747e10876c3bf9893  
@@ -25,24 +25,24 @@ abi = 最新 ABI
 
 | 名称 | 地址 |
 | --- | --- |
-| `dlToken` | `0x9f61795163127c9e22256c79a455b792f572757e` |
-| `ausd` | `0x1813b638e9019a99f21afb5d669ba4b92255e890` |
-| `usdt` | `0x20a354476a7aff3ca222397be9d772c206a9c555` |
-| `wrappedNative` | `0x6e20de6be74ec17618a9a3c5288c29b80b14ffb1` |
-| `dealFactory` | `0xbce6ad11cac8fda4d35133833fcf840cf853d860` |
-| `dealReader` | `0xc7c825ba5128e5ebf9f662db07f77ad06c0ef447` |
-| `dealMessageHub` | `0x15300673487d74a0a79db19c625d082664a03a68` |
-| `dealCreditGraph` | `0x7cf62026ce199d7c7188ae50a34522fa325c2fd5` |
-| `dealInfoNFT` | `0xf235ca219e3a25edaf164214a1a9863f8c080681` |
-| `dealSwapOrderBook` | `0x049d0f811d50b052a3cf65bf5f19421d3902773b` |
-| `dealRouter` | `0x9a71f32922147872b6db68f98f083ab3fa102820` |
-| `pairDlAusd` | `0x48d9c1fEc7b1fD85CEE883B27bf3e3cBD1eeb13C` |
-| `pairDlUsdt` | `0x40831F34422df51A67B3a9c5933753dCccBCDD50` |
-| `dcDomain` | `0x1afbbb63ee49f687355a5dfb32d48f68e8699303` |
-| `dcDomainRank` | `0xf405b4006af3d959fd2766f45dc8f668e72e2f5d` |
-| `dcDomainMarket` | `0x5a1492101d94b27403128ef7c9a5baddf4082daa` |
-| `dcDomainSwap` | `0x02903d74bc6c1e8b5f205cbdec54f46529eb8b10` |
-| `dcDomainHall` | `0x6e22e612ee4b12f6f1a00b9f5606ab15c5da152c` |
+| `dlToken` | `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3` |
+| `ausd` | `0x61b625206675c95a93a9dd45e386ab2801f4d96c` |
+| `usdt` | `0x7677a9c80622b395a52754c14379eb48febdbba0` |
+| `wrappedNative` | `0x631b09c6905ce136074be938c82a1df16443e676` |
+| `dealFactory` | `0x6de82c8432b5a15555f60d52b0717781d770a565` |
+| `dealReader` | `0xa316012d76045e5dd97fb9bed176e63590325d30` |
+| `dealMessageHub` | `0x18bc613d8ce4c7e0117aeaf52c0910317e30b7d3` |
+| `dealCreditGraph` | `0x96a8547929ae75afc344522575f0dd59c222650d` |
+| `dealInfoNFT` | `0xdba1efb9d7ce36e8ba3f51a857e5364bd98502f3` |
+| `dealSwapOrderBook` | `0x1d293938b5f8335142aabf4cc9545dafcfc5816f` |
+| `dealRouter` | `0x52d02e04813f66a36b96ff9f3fb63f7ad7a695e0` |
+| `pairDlAusd` | `0x314DA00dE1f773cB6abb3F8c213D17e19F56D44b` |
+| `pairDlUsdt` | `0x9321D09a931c6eF44EAD872d01774F0C34891842` |
+| `dcDomain` | `0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3` |
+| `dcDomainRank` | `0xf1bb9e705f5366febcd15a14e785fb26228fcd8c` |
+| `dcDomainMarket` | `0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd` |
+| `dcDomainSwap` | `0x22e4daf9266eebd906d38a7b419b8e4e550481d9` |
+| `dcDomainHall` | `0x94e68093fcf7f7010ca69ce3e4fca1eb444a9c73` |
 
 ## Deal 模板实现地址
 
@@ -50,15 +50,15 @@ abi = 最新 ABI
 
 | 名称 | 地址 |
 | --- | --- |
-| `dealImplementation` | `0xc31b883019785b984840f9dc8a0096248d00fd54` |
-| `dealNoAssetImplementation` | `0x283604b05a56d195fb90384314940c1682f13c22` |
-| `dealAAssetNftImplementation` | `0x0eff53b6a418091566f65f3a772cafe28223ed57` |
-| `dealBAssetNftImplementation` | `0xa306bea20205293f5d1c1137e1bbf571c64d669a` |
-| `dealAAssetNftOnlyImplementation` | `0x708b3b3cb2ef802902232c098fc8e4846bc4db59` |
-| `dealBAssetNftOnlyImplementation` | `0xb4fbaea390b1734879c50a30094604eece0f9f01` |
-| `dealOpenTokenTokenImplementation` | `0x29caf64f489276d589fe8ba6f2699b8d682c13d6` |
-| `dealImplementationRegistry` | `0xee012562426a6fca0dd74875637fd81405a4aa11` |
-| `dealActivityIndex` | `0xe2fee660bd1caa4c672b07367e96e1d64fe36a85` |
+| `dealImplementation` | `0x1af470654ba3c066eeeac438a3aed1eb70741fd9` |
+| `dealNoAssetImplementation` | `0x619ae6c8b4b61f9d20c17ce89847fec1a12bed69` |
+| `dealAAssetNftImplementation` | `0xdfac97fc62e5da6e4ad85583c1d8a7b6d5476d6b` |
+| `dealBAssetNftImplementation` | `0x9c572863fb6d6fdd27ae369e861024eafd7f74a3` |
+| `dealAAssetNftOnlyImplementation` | `0x897ff8d33295eaedb0b5dfb3c5fea2cf1277ef38` |
+| `dealBAssetNftOnlyImplementation` | `0x60ed13ced49b623da62d6009758896f2b29bfae2` |
+| `dealOpenTokenTokenImplementation` | `0x91da4dff98897558fa907f0a5cc8d37fa79d02eb` |
+| `dealImplementationRegistry` | `0x8c5a021fc6def078b5dc7c71651d9d02a7605c26` |
+| `dealActivityIndex` | `0x8083e05c228bc085fa9d6c58b409ba5b2bfe7a77` |
 
 ## 前端创建 deal
 
@@ -90,7 +90,7 @@ DCDomainHall
 信用分合约：
 
 ```text
-DealCreditGraph = 0x7cf62026ce199d7c7188ae50a34522fa325c2fd5
+DealCreditGraph = 0x96a8547929ae75afc344522575f0dd59c222650d
 ```
 
 常用读接口：
@@ -125,18 +125,20 @@ swap/orderbook 不产信用分
 
 注意：限制是 bytes，不是字符数。中文和 emoji 会占多个 bytes。
 
-`deal description` 是创建时上链描述字段，需要使用更新后的 ABI 和重新部署后的合约地址；当前旧部署地址不支持这个字段。
+`deal description` 是创建时上链描述字段，请使用本次更新后的 ABI 和新部署地址；不填时传空字符串。
 
 ## 部署后自检
 
 已完成链上自检：
 
 ```text
+34 个部署地址均有 code
 Factory globals OK
 ImplementationRegistry OK
 CreditGraph recorder OK
 InfoNFT factory OK
 OrderBook router OK
+带 description 的 createDeal 静态调用 OK
 ```
 
 部署钱包当前测试币余额：
@@ -146,6 +148,30 @@ DL: 8,000,000
 AUSD: 9,000,000
 USDT: 9,000,000
 WNATIVE: 10,000,000
+```
+
+前端测试钱包：
+
+```text
+0x5CcB69B2Ba6dcC61C4be40a0B06D79Ddcb445aC5
+```
+
+已补发新版测试币：
+
+```text
+DL: 500,000
+AUSD: 500,000
+USDT: 500,000
+WNATIVE: 500,000
+```
+
+mint 交易：
+
+```text
+DL: 0xd33fc0291bd9b1807f8bd450779df47dc0f66d9c1ae730df21f04bdf35f0f916
+AUSD: 0xc24a137dc48d772bbc0dde957af757484ba86ef5415d5b3f4e35e106922016a0
+USDT: 0x682cb2438b3c50dcbff3f70f1256f73c5060f77a1a0ea367bc1757ea33a6f9b7
+WNATIVE: 0xbf4571357e303d9e6b3a357a63234ddebb7a0fd34f69458ea3734560c14dad20
 ```
 
 ## 重要提醒
