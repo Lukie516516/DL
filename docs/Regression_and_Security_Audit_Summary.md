@@ -1,6 +1,6 @@
 # 深度回归与安全审计摘要
 
-**范围**：当前分支 `contracts/` 内 Deal / OpenTT / Factory / MessageHub 相关逻辑；重点覆盖近期变更（进程事件时间戳、`DealRewardsLogged` / `logDealRewards`、`postMessage` 含 `Canceled` / `Abandoned`）。
+**范围**：当前分支 `contracts/` 内 Deal / OpenTT / Factory / MessageHub 相关逻辑；重点覆盖近期变更（进程事件时间戳、`DealRewardsLogged` / `logDealRewards`、`DealMessageHub.postMessage` 含 `Canceled` / `Abandoned`）。
 
 **结论（执行层）**：Hardhat 与 Foundry 全套测试通过；Slither 在既有排除规则下未暴露需立即阻断的单一「高危」条目，但存在大量信息级/风格类告警，需结合业务人工筛。
 
@@ -10,23 +10,23 @@
 
 | 套件 | 命令 | 结果 |
 |------|------|------|
-| Foundry | `forge test`（默认 profile） | **25 passed**；见 `foundry.toml` 中 `[fuzz] runs = 512`、`[invariant] runs = 256, depth = 32`（单不变式每 run 约 **8192** 次 handler 调用） |
-| Hardhat | `npx hardhat test` | **62 passing**（BusinessFlow、DealRules、Router、OrderBook、DomainFlows 等） |
+| Foundry | `forge test`（默认 profile） | **30 passed**；见 `foundry.toml` 中 `[fuzz] runs = 512`、`[invariant] runs = 256, depth = 32`（单不变式每 run 约 **8192** 次 handler 调用） |
+| Hardhat | `node node_modules/hardhat/dist/src/cli.js test` | **71 passing**（BusinessFlow、DealRules、Router、OrderBook、DomainFlows 等） |
 
 **Foundry 覆盖一览**
 
 | 文件 | 类型 | 内容 |
 |------|------|------|
-| `forge-test/DealOpenTokenTokenFull.t.sol` | 单元 / fuzz | OpenTT 主路径、超时、`postMessage`（含 `Canceled` / `Abandoned`） |
+| `forge-test/DealOpenTokenTokenFull.t.sol` | 单元 / fuzz | OpenTT 主路径、超时、Hub 留言（含 `Canceled` / `Abandoned`） |
 | 同上 `DealOpenTokenTokenInvariantTest` | **6 个 invariant** | `status` 有界、无 B 则无 B-NFT、成交清 NFT、**托管余额 ≤ 应托管上限**、**`Abandoned` ⇒ `b==0`**、**`Active`/`Locked` ⇒ `b!=0`** |
-| `forge-test/DealMessageHubFuzz.t.sol` | fuzz | 追加消息一致性；**未登记 deal 调用 `postFromDeal` 必 `NotDeal`** |
+| `forge-test/DealMessageHubFuzz.t.sol` | fuzz | 追加消息一致性；**未登记 deal 调用 `postMessage` / `postFromDeal` 必 `NotDeal`** |
 | `forge-test/TimeRangeFuzz.t.sol` | fuzz / 属性 | 工厂与 Deal 时间窗判定一致 |
 
 **不变式 handler 修正**：`step_forceCompleteA/B` 中原先 `vm.warp(block.timestamp + aAt/bAt + timeout)` 会错误叠加时间；已改为与单元测试一致的 **绝对截止** `aAt/bAt + timeoutSeconds`（并不再误加当前块时间）。
 
 **更狠的 fuzz**（可选）：`FOUNDRY_FUZZ_RUNS=2048 forge test` 或临时调高 `[invariant] runs`。
 
-**新增/补强**：Foundry 增加 `test_postMessage_afterCanceled`、`test_postMessage_afterAbandoned`，锁定「终局取消/废弃后仍可留言」回归（及 `Abandoned` 仅 A 可发）。
+**新增/补强**：Foundry 增加 `test_postMessage_afterCanceled`、`test_postMessage_afterAbandoned`，锁定「终局取消/废弃后仍可通过 Hub 留言」回归（及 `Abandoned` 仅 A 可发）。
 
 ---
 
@@ -40,10 +40,11 @@
 
 ## 3. 人工关注点（与近期功能相关）
 
-### 3.1 `DealMessageHub.postFromDeal`
+### 3.1 `DealMessageHub.postMessage`
 
-- 仅校验 `factory.isDeal(msg.sender)`，**不感知** Deal 的 `status`。
-- 留言权限由 **Deal / OpenTT 的 `postMessage`** 统一 gating（`onlyAB` + `status` 枚举全覆盖）；Hub 侧无重复状态机，**避免双处不一致**。
+- 前端入口是 `postMessage(deal, content)`。
+- Hub 校验 `factory.isDeal(deal)`，并读取该 deal 当前 `a()` / `b()`，只允许当前 A/B 写入。
+- Hub 不额外限制 `status`，所以 `Completed` / `Canceled` / `Abandoned` 后只要仍是当前参与方也可留言。
 
 ### 3.2 `DealFactory.logDealRewards`
 
@@ -51,13 +52,13 @@
 
 ### 3.3 进程事件与时间戳
 
-- 带 `when` 的事件与 `block.timestamp` 一致；`Completed` / `Canceled` 仍依赖 **log 区块时间**。
+- 带 `when` 的事件与 `block.timestamp` 一致；`Completed(reason, when)` / `Canceled(when)` 也直接带终局时间。
 - 前端/子图需 **更新 ABI**（若干事件签名相对历史版本已变）。
 
-### 3.4 `postMessage` 与 `Canceled` / `Abandoned`
+### 3.4 Hub 留言与 `Canceled` / `Abandoned`
 
-- 六种 `status` 下**只要**调用者仍是当前 **`a` 或 `b`** 即可发（需 `dealMessageHub` 已配置）。
-- **`abandonByA`**：`Deal` / `DealOpenTokenToken` 的 `_refundAllToParties` 会 **`b = address(0)`**，故 **`Abandoned` 后通常仅 A 可 `postMessage`**；前 B 会 `DealError(2)`。**`Canceled`** 路径不清 `b`，A/B 仍可发。
+- 六种 `status` 下**只要**调用者仍是当前 **`a` 或 `b`** 即可通过 Hub 发（需 `dealMessageHub` 已配置）。
+- **`abandonByA`**：`Deal` / `DealOpenTokenToken` 的 `_refundAllToParties` 会 **`b = address(0)`**，故 **`Abandoned` 后通常仅 A 可发**；前 B 会 `NotParticipant`。**`Canceled`** 路径不清 `b`，A/B 仍可发。
 
 ### 3.5 OpenTT 与标准 Deal 差异
 
@@ -69,7 +70,7 @@
 
 1. **形式化/不变式**：可对「托管余额 ≥ 应退金额」类性质保持现有 Foundry invariant，并在重大改动后提高 fuzz runs。
 2. **Slither 降噪**：可按模块逐步处理 `dead-code`、补接口继承（`missing-inheritance`），主要为可维护性，非即时安全漏洞。
-3. **链下索引**：`Canceled()` 无地址字段，时间线需依赖前置 `VoteCast` / `ForcedAfterTimeout`。
+3. **链下索引**：`Canceled(when)` 无地址字段，谁触发取消仍需依赖前置 `VoteCast` / `ForcedAfterTimeout`。
 4. **部署一致性**：Deal 库拆分见 [Deal库拆分部署接线说明](./Deal库拆分部署接线说明.md)；**旧 clone 不自动升级**。
 
 ---

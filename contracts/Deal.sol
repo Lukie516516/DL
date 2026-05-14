@@ -79,10 +79,6 @@ contract Deal is IERC721Receiver {
     uint32 public mintOnFeesNum;
     uint32 public mintOnFeesDen;
     address public specialNoFeeToken;
-    bool public msgPriceEnabled;
-    address public msgPriceTokenNorm;
-    address public msgPricePair;
-    uint256 public msgPriceAmountInToken;
 
     event Initialized(address indexed initiator, address indexed factory);
     event Joined(address indexed b, bool nftLockedB, uint64 when);
@@ -91,15 +87,13 @@ contract Deal is IERC721Receiver {
     event ActivePartnerCleared(address indexed prevB, uint8 reason, uint64 when);
     event DealAbandoned(address indexed initiator, uint64 when);
     event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
-    event Completed(CompletionReason reason);
-    event Canceled();
+    event Completed(CompletionReason reason, uint64 when);
+    event Canceled(uint64 when);
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
     event FeesProcessed(address indexed tokenA, uint256 aFee, address indexed tokenB, uint256 bFee);
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address indexed cAddr, uint256 toC);
     event AssetNftDeposited(address indexed owner, uint256 indexed tokenId);
     event AssetNftReleased(address indexed to, uint256 indexed tokenId);
-    event MessagePosted(address indexed sender, uint256 indexed index);
-    event MessageFeeCharged(address indexed sender, uint256 dlBurned);
     event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
     event WithdrawnInActive(address indexed payer, bool indexed isPartyA, uint64 when);
 
@@ -195,10 +189,6 @@ contract Deal is IERC721Receiver {
     }
 
     function forceComplete() external pure {
-        revert DealError(57);
-    }
-
-    function postMessage(string calldata) external pure {
         revert DealError(57);
     }
 

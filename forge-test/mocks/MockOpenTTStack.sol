@@ -76,6 +76,13 @@ contract MockInfoNFT is ERC721 {
 contract MockOpenTTFactory {
     MockInfoNFT public nft;
     address public hub;
+    address public lastCreditA;
+    address public lastCreditB;
+    uint256 public lastCreditATokenId;
+    bool public lastCreditAValid;
+    uint256 public lastCreditBTokenId;
+    bool public lastCreditBValid;
+    uint256 public lastCreditBase;
 
     function setNft(address _nft) external {
         nft = MockInfoNFT(_nft);
@@ -92,6 +99,24 @@ contract MockOpenTTFactory {
     function mintDL(address, uint256) external pure {}
 
     function logDealRewards(address, uint256, address, uint256, address, uint256) external pure {}
+
+    function recordDealCredit(
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        bool aValid,
+        uint256 bTokenId,
+        bool bValid,
+        uint256 baseCredit
+    ) external {
+        lastCreditA = partyA;
+        lastCreditB = partyB;
+        lastCreditATokenId = aTokenId;
+        lastCreditAValid = aValid;
+        lastCreditBTokenId = bTokenId;
+        lastCreditBValid = bValid;
+        lastCreditBase = baseCredit;
+    }
 
     function updateAndQuoteToDL(address, uint256) external pure returns (uint256) {
         return 0;

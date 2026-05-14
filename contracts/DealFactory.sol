@@ -824,7 +824,7 @@ contract DealFactory is Ownable {
     }
 
     function chargeMessageFeeFrom(address payer) external {
-        if (!isAllowedCreateFor[msg.sender]) revert NotAllowedCreateFor();
+        if (msg.sender != dealMessageHub && !isAllowedCreateFor[msg.sender]) revert NotAllowedCreateFor();
         if (!msgPriceEnabled || msgPriceAmountInToken == 0) return;
         address msgNorm = _normalizeToken(msgPriceToken);
         uint256 dlNeed;

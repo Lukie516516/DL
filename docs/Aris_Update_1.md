@@ -279,7 +279,7 @@ Agiking（`chainId = 31415926`）当前默认认可币以 [`deployments/agiking-
 - `Deal.pay()`
 - `Deal.setMyVote(Vote v)`
 - `Deal.forceComplete()`
-- `Deal.postMessage(string content)`
+- `DealMessageHub.postMessage(address deal, string content)`
 
 ### 7.3 Reader 只读聚合
 
@@ -392,7 +392,7 @@ Agiking（`chainId = 31415926`）当前默认认可币以 [`deployments/agiking-
 - `Claimed`
 - `FeesProcessed`
 - `RewardsMinted`
-- `MessagePosted`
+- `DealMessageHub.MessageStored`
 - `AssetNftDeposited`
 - `AssetNftReleased`
 

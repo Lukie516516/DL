@@ -15,6 +15,7 @@ contract DealOpenTokenTokenFullTest is Test {
     uint256 internal constant ONE = 1e18;
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
+    address internal charlie = address(0xC0FFEE);
     address internal treasury = address(0x7E4);
 
     MockOpenTTFactory internal factory;
@@ -27,6 +28,8 @@ contract DealOpenTokenTokenFullTest is Test {
     DealOpenTokenToken internal openDeal;
 
     uint256 internal bobNftId = 1;
+    uint256 internal aliceNftId = 2;
+    uint256 internal charlieNftId = 3;
 
     function setUp() public {
         factory = new MockOpenTTFactory();
@@ -41,6 +44,7 @@ contract DealOpenTokenTokenFullTest is Test {
 
         vm.label(alice, "alice");
         vm.label(bob, "bob");
+        vm.label(charlie, "charlie");
         vm.label(treasury, "treasury");
 
         DealOpenTokenToken impl_ = new DealOpenTokenToken();
@@ -52,7 +56,9 @@ contract DealOpenTokenTokenFullTest is Test {
 
         tokenA.mint(alice, 1_000 * ONE);
         tokenB.mint(bob, 1_000 * ONE);
+        tokenB.mint(charlie, 1_000 * ONE);
         infoNft.mint(bob, bobNftId);
+        infoNft.mint(charlie, charlieNftId);
     }
 
     function _initDeal(
@@ -61,6 +67,18 @@ contract DealOpenTokenTokenFullTest is Test {
         uint256 bAmt,
         uint64 timeout,
         bool trackCreator
+    ) internal {
+        _initDealWithOptions(d, aAmt, bAmt, timeout, trackCreator, 0, false);
+    }
+
+    function _initDealWithOptions(
+        DealOpenTokenToken d,
+        uint256 aAmt,
+        uint256 bAmt,
+        uint64 timeout,
+        bool trackCreator,
+        uint256 aInfoId,
+        bool recognizeCreditTokens
     ) internal {
         DealOpenTokenToken.InitParams memory p = DealOpenTokenToken.InitParams({
             aSwapToken: address(tokenA),
@@ -79,7 +97,7 @@ contract DealOpenTokenTokenFullTest is Test {
             joinMode: 0,
             expectedB: address(0),
             gateNftId: 0,
-            aNftId: 0,
+            aNftId: aInfoId,
             title: "open-tt",
             description: "",
             timeoutSeconds: timeout,
@@ -95,8 +113,8 @@ contract DealOpenTokenTokenFullTest is Test {
             infoNft: address(infoNft),
             treasury: treasury,
             WNATIVE: address(wnative),
-            recognizedToken0: address(0),
-            recognizedToken1: address(0),
+            recognizedToken0: recognizeCreditTokens ? address(tokenA) : address(0),
+            recognizedToken1: recognizeCreditTokens ? address(tokenB) : address(0),
             aTokenNorm: address(tokenA),
             bTokenNorm: address(tokenB),
             aPair: address(0),
@@ -134,8 +152,20 @@ contract DealOpenTokenTokenFullTest is Test {
         openDeal.join(optId, false);
     }
 
+    function _joinC(uint256 optId) internal {
+        vm.prank(charlie);
+        openDeal.join(optId, false);
+    }
+
     function _payB() internal {
         vm.startPrank(bob);
+        tokenB.approve(address(openDeal), type(uint256).max);
+        openDeal.pay();
+        vm.stopPrank();
+    }
+
+    function _payC() internal {
+        vm.startPrank(charlie);
         tokenB.approve(address(openDeal), type(uint256).max);
         openDeal.pay();
         vm.stopPrank();
@@ -157,6 +187,48 @@ contract DealOpenTokenTokenFullTest is Test {
         assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Completed));
         assertEq(openDeal.bNftId(), 0);
         assertFalse(openDeal.bNftLocked());
+    }
+
+    function test_aInfoNft_participatesInCreditOnCompletion() public {
+        infoNft.mint(alice, aliceNftId);
+
+        DealOpenTokenToken d = DealOpenTokenToken(payable(Clones.clone(address(impl))));
+        _initDealWithOptions(d, 10 * ONE, 5 * ONE, 3600, false, aliceNftId, true);
+        tokenA.mint(alice, 1_000 * ONE);
+        tokenB.mint(bob, 1_000 * ONE);
+
+        assertEq(d.aNftId(), aliceNftId);
+        assertEq(infoNft.lockCount(aliceNftId), 1);
+
+        vm.startPrank(alice);
+        tokenA.approve(address(d), type(uint256).max);
+        d.pay();
+        d.preAccept();
+        vm.stopPrank();
+
+        vm.prank(bob);
+        d.join(bobNftId, false);
+
+        vm.startPrank(bob);
+        tokenB.approve(address(d), type(uint256).max);
+        d.pay();
+        vm.stopPrank();
+
+        vm.prank(bob);
+        d.setMyVote(DealOpenTokenToken.Vote.Accept);
+
+        assertEq(uint8(d.status()), uint8(DealOpenTokenToken.Status.Completed));
+        assertFalse(d.bNftLocked());
+        assertEq(infoNft.lockCount(aliceNftId), 0);
+        assertEq(infoNft.lockCount(bobNftId), 0);
+
+        assertEq(factory.lastCreditA(), alice);
+        assertEq(factory.lastCreditB(), bob);
+        assertEq(factory.lastCreditATokenId(), aliceNftId);
+        assertTrue(factory.lastCreditAValid());
+        assertEq(factory.lastCreditBTokenId(), bobNftId);
+        assertTrue(factory.lastCreditBValid());
+        assertEq(factory.lastCreditBase(), (10 * ONE * 3) / 1000 + (5 * ONE * 3) / 1000);
     }
 
     function test_join_optIdZero_noLock() public {
@@ -192,6 +264,65 @@ contract DealOpenTokenTokenFullTest is Test {
         assertEq(openDeal.b(), address(0));
         assertEq(openDeal.bNftId(), 0);
         assertFalse(openDeal.bNftLocked());
+    }
+
+    function test_replaceInactiveBAndJoin_preservesAPaymentAndBlocksOldB() public {
+        _payAReady();
+        _joinB(bobNftId);
+        assertEq(openDeal.b(), bob);
+        assertTrue(openDeal.aPaid());
+        assertEq(openDeal.bJoinedAt(), block.timestamp);
+
+        vm.prank(charlie);
+        vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(58)));
+        openDeal.replaceInactiveBAndJoin(charlieNftId, false);
+
+        vm.warp(uint256(openDeal.bJoinedAt()) + uint256(openDeal.timeoutSeconds()) + 1);
+        vm.prank(charlie);
+        openDeal.replaceInactiveBAndJoin(charlieNftId, false);
+
+        assertEq(openDeal.b(), charlie);
+        assertEq(openDeal.lastRemovedB(), bob);
+        assertEq(openDeal.bNftId(), charlieNftId);
+        assertTrue(openDeal.bNftLocked());
+        assertTrue(openDeal.aPaid());
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Active));
+        assertEq(infoNft.lockCount(bobNftId), 0);
+        assertEq(infoNft.lockCount(charlieNftId), 1);
+
+        _payC();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Locked));
+        vm.prank(charlie);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Accept);
+        vm.prank(alice);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Accept);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Completed));
+    }
+
+    function test_removedB_cannotRejoinUnlessAOpensForHim() public {
+        _payAReady();
+        _preAccept();
+        _joinB(bobNftId);
+        _payB();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Locked));
+
+        vm.prank(bob);
+        openDeal.setMyVote(DealOpenTokenToken.Vote.Reject);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Ready));
+        assertEq(openDeal.lastRemovedB(), bob);
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(59)));
+        openDeal.join(bobNftId, false);
+
+        vm.prank(alice);
+        openDeal.openJoinFor(bob);
+        vm.prank(bob);
+        openDeal.join(bobNftId, false);
+
+        assertEq(openDeal.b(), bob);
+        assertEq(openDeal.bNftId(), bobNftId);
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Active));
     }
 
     /// @dev preAccept 后 aVote 已为 Accept，仅 **A** 可在 b 未投票且超时后 forceComplete（与合约分支一致）
@@ -248,7 +379,7 @@ contract DealOpenTokenTokenFullTest is Test {
         _preAccept();
         _joinB(0);
         vm.prank(alice);
-        openDeal.postMessage("hi");
+        hub2.postMessage(address(openDeal), "hi");
     }
 
     function test_postMessage_afterCompleted() public {
@@ -266,7 +397,7 @@ contract DealOpenTokenTokenFullTest is Test {
         assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Completed));
 
         vm.prank(alice);
-        openDeal.postMessage("after done");
+        hub2.postMessage(address(openDeal), "after done");
         assertEq(hub2.messagesCount(address(openDeal)), 1);
     }
 
@@ -289,9 +420,9 @@ contract DealOpenTokenTokenFullTest is Test {
         assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Canceled));
 
         vm.prank(alice);
-        openDeal.postMessage("after cancel a");
+        hub2.postMessage(address(openDeal), "after cancel a");
         vm.prank(bob);
-        openDeal.postMessage("after cancel b");
+        hub2.postMessage(address(openDeal), "after cancel b");
         assertEq(hub2.messagesCount(address(openDeal)), 2);
     }
 
@@ -311,11 +442,11 @@ contract DealOpenTokenTokenFullTest is Test {
         assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Abandoned));
 
         vm.prank(alice);
-        openDeal.postMessage("after abandon a");
-        // `abandonByA` → `_refundAllToParties` 会 `b = address(0)`，仅 A 仍满足 onlyAB
+        hub2.postMessage(address(openDeal), "after abandon a");
+        // `abandonByA` -> `_refundAllToParties` 会 `b = address(0)`，Hub 只允许当前 A/B。
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(2)));
-        openDeal.postMessage("bob cannot");
+        vm.expectRevert(DealMessageHub.NotParticipant.selector);
+        hub2.postMessage(address(openDeal), "bob cannot");
         assertEq(hub2.messagesCount(address(openDeal)), 1);
     }
 
@@ -393,6 +524,8 @@ contract MockFactoryForHub {
     function isDeal(address d) external view returns (bool) {
         return _isDeal[d];
     }
+
+    function chargeMessageFeeFrom(address) external pure {}
 }
 
 /// @notice 随机步进 OpenTT；不变式检查链上状态一致性

@@ -11,7 +11,7 @@
 |----|------|
 | **Relay** | `DealFactory.setTrustedDealRelay(DCDomainHall, true)`，Hall 才能 `createDealFor` / `chargeMessageFeeFrom`。 |
 | **大厅建单** | `InitParams.deferCounterpartyPick == true`：须 Open + `expectedB=0`；`join` 被挡直到 A 调 `openJoinFor`；详见下节。 |
-| **留言费** | Deal 内留言：用户授权 **Deal**；Hall 留言：授权 **DealFactory**（`chargeMessageFeeFrom` → `burnFrom`）。 |
+| **留言费** | 普通 Deal 留言统一走 **DealMessageHub**，计费由 **DealFactory** 执行；用户授权 **DealFactory**（`chargeMessageFeeFrom` → `burnFrom`）。Hall 留言同样授权 **DealFactory**。 |
 
 ---
 
