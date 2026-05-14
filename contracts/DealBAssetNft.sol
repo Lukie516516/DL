@@ -24,7 +24,6 @@ interface IFactoryDealRewardsLog {
         uint256 toC
     ) external;
 }
-interface IFactoryMessageHub { function dealMessageHub() external view returns (address); }
 interface IFactoryIndex {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
@@ -56,23 +55,6 @@ interface IFactoryCredit {
     ) external;
 }
 
-interface IDLBurnFrom { function burnFrom(address account, uint256 amount) external; }
-interface IDealMessageHub {
-    function postFromDeal(address sender, string calldata content) external returns (uint256 index);
-    function messagesCount(address deal) external view returns (uint256);
-    function getMessages(
-        address deal,
-        uint256 offset,
-        uint256 limit
-    )
-        external
-        view
-        returns (
-            string[] memory contents,
-            uint64[] memory times,
-            address[] memory senders
-        );
-}
 
 /* ---------- DealInfoNFT（只读） ---------- */
 interface IDealInfoNFTView {
@@ -169,12 +151,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     bool private _trackA;
     bool private _trackBActive;
 
-    /* ===== 留言计费 ===== */
-    bool    public msgPriceEnabled;
-    address public msgPriceTokenNorm;
-    address public msgPricePair;
-    uint256 public msgPriceAmountInToken;
-
     /* 事件 */
     event Initialized(address indexed initiator, address indexed factory);
     event Joined(address indexed b, bool nftLockedB, uint64 when);
@@ -186,15 +162,13 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     event DealAbandoned(address indexed initiator, uint64 when);
     /// @notice `forceComplete`：对侧超时未投票后单方推进；`completed` 为 true 则成交，false 则取消
     event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
-    event Completed(CompletionReason reason);
-    event Canceled();
+    event Completed(CompletionReason reason, uint64 when);
+    event Canceled(uint64 when);
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
     event FeesProcessed(address indexed tokenA, uint256 aFee, address indexed tokenB, uint256 bFee);
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address indexed cAddr, uint256 toC);
     event AssetNftDeposited(address indexed owner, uint256 indexed tokenId);
     event AssetNftReleased(address indexed to, uint256 indexed tokenId);
-    event MessagePosted(address indexed sender, uint256 indexed index);
-    event MessageFeeCharged(address indexed sender, uint256 dlBurned);
     /// @notice Active 下成功注入（pay）：便于前端时间线索引
     event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
     /// @notice Active 下 withdrawInActive 撤回已注入资产
@@ -259,9 +233,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         _check(feeNonDLDen>0 && feeNonDLNum<feeNonDLDen, 7);
         _check(mintOnFeesDen>0 && mintOnFeesNum<mintOnFeesDen, 8);
         specialNoFeeToken=c.specialNoFeeToken;
-
-        msgPriceEnabled=c.msgPriceEnabled; msgPriceTokenNorm=c.msgPriceTokenNorm;
-        msgPricePair=c.msgPricePair; msgPriceAmountInToken=c.msgPriceAmountInToken;
 
         aSwapToken=p.aSwapToken; aSwapAmount=p.aSwapAmount; aMarginToken=p.aMarginToken; aMarginAmount=p.aMarginAmount;
         bSwapToken=p.bSwapToken; bSwapAmount=p.bSwapAmount; bMarginToken=p.bMarginToken; bMarginAmount=p.bMarginAmount;
@@ -527,7 +498,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        emit Completed(reason);
+        emit Completed(reason, uint64(block.timestamp));
     }
 
     // 取消：当场退款 & 清理（先置终态，符合 CEI，降低重入窗口）
@@ -554,7 +525,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        emit Canceled();
+        emit Canceled(uint64(block.timestamp));
     }
 
     /* ========== 手续费 & 入池 ========== */
@@ -656,11 +627,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
             + DealLib.feeCreditU(bTokenNorm, f.bFee, recognizedToken0, recognizedToken1);
         if (baseCredit == 0) return;
         IFactoryCredit(factory).recordDealCredit(a, b, aNftId, aNftLocked, bNftId, bNftLocked, baseCredit);
-    }
-
-    /* ========== 折算 ========== */
-    function _quoteAggToDL(address token, address pair, uint256 amountIn) internal returns (uint256 dlOut) {
-        return DealLib.quoteAggToDL(factory, dl, token, pair, amountIn);
     }
 
     /* ========== 自动锁定判定 ========== */
@@ -796,30 +762,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
             51
         );
         return IERC721Receiver.onERC721Received.selector;
-    }
-
-    /* ========== 链上聊天 ========== */
-    /// @notice 任意 Deal 状态下均可向 DealMessageHub 追加留言（仅 A/B；需已设置 hub）。含 Completed / Canceled / Abandoned。
-    function postMessage(string calldata content) external nonReentrant onlyAB {
-        _check(
-            status == Status.Ready || status == Status.Active || status == Status.Locked
-                || status == Status.Completed || status == Status.Canceled || status == Status.Abandoned,
-            52
-        );
-        _chargeMessageFee(msg.sender);
-        address hub = IFactoryMessageHub(factory).dealMessageHub();
-        _check(hub != address(0), 54);
-        uint256 idx = IDealMessageHub(hub).postFromDeal(msg.sender, content);
-        emit MessagePosted(msg.sender, idx);
-    }
-
-    function _chargeMessageFee(address sender) internal {
-        if (!msgPriceEnabled) return;
-        if (msgPriceAmountInToken == 0) return;
-        uint256 dlAmount = _quoteAggToDL(msgPriceTokenNorm, msgPricePair, msgPriceAmountInToken);
-        if (dlAmount == 0) return;
-        IDLBurnFrom(dl).burnFrom(sender, dlAmount);
-        emit MessageFeeCharged(sender, dlAmount);
     }
 
     // 接收原生

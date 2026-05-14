@@ -51,20 +51,21 @@
 
 这次为了把 `Deal` 主合约体积压回安全范围，聊天能力做了“保功能、拆承载”的处理：
 
-- `Deal.postMessage(string)` 还保留
-- 聊天内容不再存在 `Deal` 本体 storage
-- 聊天内容改存到独立合约 `DealMessageHub`
+- `Deal.postMessage(string)` 不再作为新前端入口
+- 聊天内容不存 `Deal` 本体 storage
+- 写入和读取都统一走独立合约 `DealMessageHub`
 
 这意味着：
 
-- 写消息时，前端仍然可以从 `Deal` 地址发起 `postMessage`
+- 写消息时，前端调用 `DealMessageHub.postMessage(deal, content)`
 - 读消息时，前端/索引应改为通过 `DealMessageHub` 读取
 
 推荐读取方式：
 
 1. 先从 `Deal.factory()` 找到对应 `DealFactory`
 2. 再从 `DealFactory.dealMessageHub()` 取到消息中心地址
-3. 调 `DealMessageHub.messagesCount(deal)` / `DealMessageHub.getMessages(deal, offset, limit)`
+3. 写消息调 `DealMessageHub.postMessage(deal, content)`
+4. 读消息调 `DealMessageHub.messagesCount(deal)` / `DealMessageHub.getMessages(deal, offset, limit)`
 
 这样做的好处是：
 
@@ -467,4 +468,3 @@
 当前结论可以概括成一句话：
 
 **现在 DEX 已经切成“虚拟储备参与定价、真实储备决定即时兑付、exact-in 默认部分成交加剩余挂单、exact-out 仅支持即时成交和预览”的版本。**
-

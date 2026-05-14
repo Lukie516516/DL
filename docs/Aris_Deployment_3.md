@@ -154,7 +154,7 @@
 
 否则：
 
-- `Deal.postMessage()` 会因为找不到消息中心而失败
+- `DealMessageHub.postMessage(deal, content)` 会因为找不到消息中心而失败
 - 聊天功能不会正常工作
 
 ### 3.4 老 Pair 怎么办
@@ -494,4 +494,3 @@
 如果只记一句话：
 
 **这次上线最关键的是：换新 `DealSwapTemplate`、换新 `DealSwapOrderBook`、换新 `DealSwapRouter`、重建新 Pair、前端切新 Pair 和新 Router；`DealFactory` 最好也一起升级，至少要更新 `pairImplementation` 和 `swapOrderBook`。**
-

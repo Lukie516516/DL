@@ -25,9 +25,6 @@ interface IFactoryDealRewardsLog {
         uint256 toC
     ) external;
 }
-interface IFactoryMessageHub {
-    function dealMessageHub() external view returns (address);
-}
 interface IFactoryIndex {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
@@ -55,17 +52,11 @@ interface IFactoryCreditOpen {
     ) external;
 }
 
-interface IDLBurnFrom {
-    function burnFrom(address account, uint256 amount) external;
-}
-interface IDealMessageHub {
-    function postFromDeal(address sender, string calldata content) external returns (uint256 index);
-}
 
 /**
  * @title DealOpenTokenToken
- * @notice 精简版 Open 币币：ERC20/原生互换 + Open/ExactAddress；与 Deal 币币一致可由 B 在 join 时带 Info NFT（optId）并经 Factory 锁定。
- *         无 NftGated / 无 A 侧链上 NFT / 无商品交割 NFT。A 可在 Ready 先 pay；preAccept；Locked 下 B 单方 Reject 退 B 回 Ready。
+ * @notice 精简版 Open 币币：ERC20/原生互换 + Open/ExactAddress；A 可在创建时绑定 Info NFT，B 可在 join 时带 Info NFT。
+ *         无 NftGated / 无商品交割 NFT。A 可在 Ready 先 pay；preAccept；Locked 下 B 单方 Reject 退 B 回 Ready。
  */
 contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -110,7 +101,9 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     JoinMode public joinMode;
     address public expectedB;
 
+    uint256 public aNftId;
     uint256 public bNftId;
+    bool private aNftLocked;
     bool public bNftLocked;
 
     address public aSwapToken;
@@ -127,6 +120,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     uint64 public lockedAt;
     uint64 public timeoutSeconds;
+    uint64 public bJoinedAt;
     uint64 public timeStart;
     uint64 public timeEnd;
     uint64 public aAt;
@@ -159,14 +153,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     uint32 public mintOnFeesNum;
     uint32 public mintOnFeesDen;
     address public specialNoFeeToken;
+    address public lastRemovedB;
 
     bool private _trackA;
     bool private _trackBActive;
-
-    bool public msgPriceEnabled;
-    address public msgPriceTokenNorm;
-    address public msgPricePair;
-    uint256 public msgPriceAmountInToken;
 
     event Initialized(address indexed initiator, address indexed factory);
     event Joined(address indexed b, bool nftLocked, uint64 when);
@@ -176,13 +166,11 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     event ActivePartnerCleared(address indexed prevB, uint8 reason, uint64 when);
     event DealAbandoned(address indexed initiator, uint64 when);
     event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
-    event Completed(CompletionReason reason);
-    event Canceled();
+    event Completed(CompletionReason reason, uint64 when);
+    event Canceled(uint64 when);
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
     event FeesProcessed(address indexed tokenA, uint256 aFee, address indexed tokenB, uint256 bFee);
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address cAddr, uint256 toC);
-    event MessagePosted(address indexed sender, uint256 indexed index);
-    event MessageFeeCharged(address indexed sender, uint256 dlBurned);
     event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
     event WithdrawnInActive(address indexed payer, bool indexed isPartyA, uint64 when);
     event APreAccepted(address indexed a_, uint64 at);
@@ -266,14 +254,14 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _check(c.dl != address(0) && c.WNATIVE != address(0), 6);
         _check(c.treasury != address(0), 53);
 
-        // 本合约仅支持标准 TokenToToken 形状；禁止 gate / A 链上 NFT / 商品交割 NFT（B 的 Info NFT 仅经 join(optId)）
+        // 本合约仅支持标准 TokenToToken 形状；禁止 gate / 商品交割 NFT；A/B 的 Info NFT 单独锁定用于奖励和信用。
         _check(p.templateType == 0, 9);
         _check(p.joinMode <= uint8(JoinMode.ExactAddress), 10);
         _check(
             p.aAssetNft == address(0) && p.aAssetNftId == 0 && p.bAssetNft == address(0) && p.bAssetNftId == 0,
             38
         );
-        _check(p.gateNftId == 0 && p.aNftId == 0, 12);
+        _check(p.gateNftId == 0, 12);
 
         factory = _factory;
         a = _initiator;
@@ -295,11 +283,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _check(mintOnFeesDen > 0 && mintOnFeesNum < mintOnFeesDen, 8);
         specialNoFeeToken = c.specialNoFeeToken;
 
-        msgPriceEnabled = c.msgPriceEnabled;
-        msgPriceTokenNorm = c.msgPriceTokenNorm;
-        msgPricePair = c.msgPricePair;
-        msgPriceAmountInToken = c.msgPriceAmountInToken;
-
         aSwapToken = p.aSwapToken;
         aSwapAmount = p.aSwapAmount;
         aMarginToken = p.aMarginToken;
@@ -308,6 +291,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bSwapAmount = p.bSwapAmount;
         bMarginToken = p.bMarginToken;
         bMarginAmount = p.bMarginAmount;
+        aNftId = p.aNftId;
 
         _check(aSwapAmount > 0 && bSwapAmount > 0, 14);
 
@@ -334,6 +318,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         }
 
         status = Status.Ready;
+        _lockNftForAIfAny();
 
         address aNorm = (aSwapToken == NATIVE) ? WNATIVE : aSwapToken;
         address bNorm = (bSwapToken == NATIVE) ? WNATIVE : bSwapToken;
@@ -365,7 +350,9 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         _refundAllToParties();
 
+        _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
+        bJoinedAt = 0;
         bNftId = 0;
 
         if (_trackA && _trackBActive) IFactoryIndex(factory).onAbandoned(a, prevB);
@@ -390,19 +377,29 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _check(b == address(0), 17);
         _check(a != msg.sender, 18);
         if (joinMode == JoinMode.ExactAddress) _check(msg.sender == expectedB, 21);
-        b = msg.sender;
-        if (optId > 0) {
-            _check(infoNft != address(0), 22);
-            _check(IERC721(infoNft).ownerOf(optId) == msg.sender, 22);
-            bNftId = optId;
-        }
-        _lockNftForBIfAny();
+        _check(msg.sender != lastRemovedB || (joinMode == JoinMode.ExactAddress && expectedB == msg.sender), 59);
+        _setJoinedB(msg.sender, optId, trackMe);
+    }
 
-        _trackBActive = trackMe;
-        status = Status.Active;
-        emit Joined(b, bNftLocked, uint64(block.timestamp));
-        if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
-        _tryLock();
+    function replaceInactiveBAndJoin(uint256 optId, bool trackMe) external nonReentrant inState(Status.Active) {
+        _check(joinMode == JoinMode.Open, 58);
+        _check(b != address(0) && msg.sender != a && msg.sender != b && msg.sender != lastRemovedB, 18);
+        _check(bJoinedAt != 0 && block.timestamp >= uint256(bJoinedAt) + uint256(timeoutSeconds), 58);
+
+        address prevB = b;
+        _refundFundsB();
+        _unlockNftIfLocked(false);
+        bNftId = 0;
+        if (_trackBActive) {
+            IFactoryIndex(factory).onParticipantRemoved(prevB);
+            _trackBActive = false;
+        }
+        _markRemovedB(prevB);
+        b = address(0);
+        bJoinedAt = 0;
+
+        emit ActivePartnerCleared(prevB, 3, uint64(block.timestamp));
+        _setJoinedB(msg.sender, optId, trackMe);
     }
 
     function pay() external payable nonReentrant onlyAB {
@@ -485,11 +482,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _refundFundsB();
         _unlockNftIfLocked(false);
         bNftId = 0;
+        _markRemovedB(prevB);
         if (_trackBActive) {
             IFactoryIndex(factory).onParticipantRemoved(prevB);
             _trackBActive = false;
         }
         b = address(0);
+        bJoinedAt = 0;
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 1, uint64(block.timestamp));
     }
@@ -500,11 +499,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _refundFundsB();
         _unlockNftIfLocked(false);
         bNftId = 0;
+        _markRemovedB(prevB);
         if (_trackBActive) {
             IFactoryIndex(factory).onParticipantRemoved(prevB);
             _trackBActive = false;
         }
         b = address(0);
+        bJoinedAt = 0;
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 2, uint64(block.timestamp));
     }
@@ -545,11 +546,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _refundFundsB();
         _unlockNftIfLocked(false);
         bNftId = 0;
+        _markRemovedB(prevB);
         if (_trackBActive) {
             IFactoryIndex(factory).onParticipantRemoved(prevB);
             _trackBActive = false;
         }
         b = address(0);
+        bJoinedAt = 0;
         status = Status.Ready;
         aVote = Vote.Unset;
         bVote = Vote.Unset;
@@ -609,7 +612,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         Rewards memory r = _computeRewards();
         _mintAndRecord(r);
         _recordDealCredit(f);
-        DealLib.refreshMaxPointers(infoNft, factory, false, 0, bNftLocked, bNftId);
+        DealLib.refreshMaxPointers(infoNft, factory, aNftLocked, aNftId, bNftLocked, bNftId);
 
         aPaid = false;
         bPaid = false;
@@ -636,10 +639,12 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             _trackBActive = false;
         }
 
+        _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
+        bJoinedAt = 0;
         bNftId = 0;
 
-        emit Completed(reason);
+        emit Completed(reason, uint64(block.timestamp));
     }
 
     function _cancel() internal {
@@ -669,10 +674,12 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             _trackBActive = false;
         }
 
+        _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
+        bJoinedAt = 0;
         bNftId = 0;
 
-        emit Canceled();
+        emit Canceled(uint64(block.timestamp));
     }
 
     function _computeFees() internal returns (Fees memory f) {
@@ -704,8 +711,8 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 infoNft: infoNft,
                 partyA: a,
                 partyB: b,
-                aNftLocked: false,
-                aNftId: 0,
+                aNftLocked: aNftLocked,
+                aNftId: aNftId,
                 bNftLocked: bNftLocked,
                 bNftId: bNftId
             })
@@ -733,8 +740,8 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 infoNft: infoNft,
                 partyA: a,
                 partyB: b,
-                aNftLocked: false,
-                aNftId: 0,
+                aNftLocked: aNftLocked,
+                aNftId: aNftId,
                 bNftLocked: bNftLocked,
                 bNftId: bNftId
             })
@@ -749,6 +756,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         IFactoryDealRewardsLog(factory).logDealRewards(a, r.toA, b, r.toB, r.cAddr, r.toC);
 
         if (infoNft != address(0)) {
+            if (aNftLocked && aNftId != 0 && r.toA > 0) IFactoryInfo(factory).infoAddMinted(aNftId, r.toA);
             if (bNftLocked && bNftId != 0 && r.toB > 0) IFactoryInfo(factory).infoAddMinted(bNftId, r.toB);
             if (r.cToken != 0 && r.toC > 0) IFactoryInfo(factory).infoAddMinted(r.cToken, r.toC);
         }
@@ -759,7 +767,38 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         uint256 baseCredit = DealLib.feeCreditU(aTokenNorm, f.aFee, recognizedToken0, recognizedToken1)
             + DealLib.feeCreditU(bTokenNorm, f.bFee, recognizedToken0, recognizedToken1);
         if (baseCredit == 0) return;
-        IFactoryCreditOpen(factory).recordDealCredit(a, b, 0, false, bNftId, bNftLocked, baseCredit);
+        IFactoryCreditOpen(factory).recordDealCredit(a, b, aNftId, aNftLocked, bNftId, bNftLocked, baseCredit);
+    }
+
+    function _setJoinedB(address newB, uint256 optId, bool trackMe) internal {
+        b = newB;
+        if (optId > 0) {
+            _check(infoNft != address(0), 22);
+            _check(IERC721(infoNft).ownerOf(optId) == newB, 22);
+            bNftId = optId;
+        }
+        _lockNftForBIfAny();
+
+        _trackBActive = trackMe;
+        status = Status.Active;
+        bJoinedAt = uint64(block.timestamp);
+        if (newB == lastRemovedB) lastRemovedB = address(0);
+        emit Joined(b, bNftLocked, uint64(block.timestamp));
+        if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
+        _tryLock();
+    }
+
+    function _markRemovedB(address prevB) internal {
+        lastRemovedB = prevB;
+        if (joinMode == JoinMode.ExactAddress && expectedB == prevB) expectedB = address(0);
+    }
+
+    function _lockNftForAIfAny() internal {
+        if (aNftId == 0 || aNftLocked) return;
+        _check(infoNft != address(0), 49);
+        _check(IERC721(infoNft).ownerOf(aNftId) == a, 49);
+        aNftLocked = true;
+        IFactoryLock(factory).infoLock(aNftId, a);
     }
 
     function _lockNftForBIfAny() internal {
@@ -770,15 +809,17 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     }
 
     function _unlockNftIfLocked(bool isA) internal {
-        if (isA) return;
-        if (bNftLocked && bNftId != 0) {
-            bNftLocked = false;
-            IFactoryLock(factory).infoUnlock(bNftId);
+        if (isA) {
+            if (aNftLocked && aNftId != 0) {
+                aNftLocked = false;
+                IFactoryLock(factory).infoUnlock(aNftId);
+            }
+        } else {
+            if (bNftLocked && bNftId != 0) {
+                bNftLocked = false;
+                IFactoryLock(factory).infoUnlock(bNftId);
+            }
         }
-    }
-
-    function _quoteAggToDL(address token, address pair, uint256 amountIn) internal returns (uint256 dlOut) {
-        return DealLib.quoteAggToDL(factory, dl, token, pair, amountIn);
     }
 
     function _tryLock() internal {
@@ -800,7 +841,9 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     }
 
     function _isSideReadyA() internal view returns (bool) {
-        return !_sideNeedsPayA() || aPaid;
+        bool tokensReady = !_sideNeedsPayA() || aPaid;
+        bool nftReady = aNftId == 0 || aNftLocked;
+        return tokensReady && nftReady;
     }
 
     function _isSideReadyB() internal view returns (bool) {
@@ -864,29 +907,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     function _sideNeedsPayB() internal view returns (bool) {
         return bSwapAmount > 0 || bMarginAmount > 0;
-    }
-
-    /// @notice 任意 Deal 状态下均可向 DealMessageHub 追加留言（仅 A/B；需已设置 hub）。含 Completed / Canceled / Abandoned。
-    function postMessage(string calldata content) external nonReentrant onlyAB {
-        _check(
-            status == Status.Ready || status == Status.Active || status == Status.Locked
-                || status == Status.Completed || status == Status.Canceled || status == Status.Abandoned,
-            52
-        );
-        _chargeMessageFee(msg.sender);
-        address hub = IFactoryMessageHub(factory).dealMessageHub();
-        _check(hub != address(0), 54);
-        uint256 idx = IDealMessageHub(hub).postFromDeal(msg.sender, content);
-        emit MessagePosted(msg.sender, idx);
-    }
-
-    function _chargeMessageFee(address sender) internal {
-        if (!msgPriceEnabled) return;
-        if (msgPriceAmountInToken == 0) return;
-        uint256 dlAmount = _quoteAggToDL(msgPriceTokenNorm, msgPricePair, msgPriceAmountInToken);
-        if (dlAmount == 0) return;
-        IDLBurnFrom(dl).burnFrom(sender, dlAmount);
-        emit MessageFeeCharged(sender, dlAmount);
     }
 
     receive() external payable {}

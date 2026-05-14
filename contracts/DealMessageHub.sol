@@ -3,6 +3,12 @@ pragma solidity ^0.8.26;
 
 interface IDealFactoryDealAuth {
     function isDeal(address deal) external view returns (bool);
+    function chargeMessageFeeFrom(address payer) external;
+}
+
+interface IDealMessagePeerView {
+    function a() external view returns (address);
+    function b() external view returns (address);
 }
 
 contract DealMessageHub {
@@ -11,6 +17,7 @@ contract DealMessageHub {
 
     error ZeroAddress();
     error NotDeal();
+    error NotParticipant();
     error EmptyMessage();
     error MessageTooLong();
 
@@ -33,23 +40,36 @@ contract DealMessageHub {
         factory = factory_;
     }
 
+    function postMessage(address deal, string calldata content) external returns (uint256 index) {
+        if (!IDealFactoryDealAuth(factory).isDeal(deal)) revert NotDeal();
+        if (msg.sender != IDealMessagePeerView(deal).a() && msg.sender != IDealMessagePeerView(deal).b()) {
+            revert NotParticipant();
+        }
+        IDealFactoryDealAuth(factory).chargeMessageFeeFrom(msg.sender);
+        return _store(deal, msg.sender, content);
+    }
+
     function postFromDeal(
         address sender,
         string calldata content
     ) external returns (uint256 index) {
         if (!IDealFactoryDealAuth(factory).isDeal(msg.sender)) revert NotDeal();
+        return _store(msg.sender, sender, content);
+    }
+
+    function _store(address deal, address sender, string calldata content) internal returns (uint256 index) {
         uint256 contentLen = bytes(content).length;
         if (contentLen == 0) revert EmptyMessage();
         if (contentLen > MAX_MESSAGE_BYTES) revert MessageTooLong();
 
-        Thread storage t = _threads[msg.sender];
+        Thread storage t = _threads[deal];
         uint64 ts = uint64(block.timestamp);
         t.contents.push(content);
         t.times.push(ts);
         t.senders.push(sender);
         index = t.contents.length - 1;
 
-        emit MessageStored(msg.sender, sender, index, ts);
+        emit MessageStored(deal, sender, index, ts);
     }
     function messagesCount(address deal) external view returns (uint256) {
         return _threads[deal].contents.length;

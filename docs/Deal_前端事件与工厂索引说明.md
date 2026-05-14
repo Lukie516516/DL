@@ -8,9 +8,9 @@
 
 | 主题 | 状态 | 说明 |
 |------|------|------|
-| **时间戳 / 时间线** | 已对齐 | 多数进程事件带 `uint64 when`（或 OpenTT 的 `APreAccepted.at`），等于当时 `block.timestamp`。终局 `Completed` / `Canceled` 无额外字段时，用**该 log 所在区块**的 `timestamp` 即可（与 `when` 同源）。 |
+| **时间戳 / 时间线** | 已对齐 | 交易进程事件都带 `uint64 when`（OpenTT 的 `APreAccepted` 用 `at`），等于当时 `block.timestamp`。`Completed` / `Canceled` 也已带 `when`。 |
 | **瘦身（Deal 库拆分）** | 部署侧按文档接线 | 逻辑在 `DealLib` / `DealAssetNftLib` 等库与实现合约中；**新创建的 clone** 才用新实现。部署、换实现指针、库链接见 [Deal库拆分部署接线说明](./Deal库拆分部署接线说明.md)。 |
-| **成交后聊天** | 已支持 | `Deal` / `DealOpenTokenToken` 的 `postMessage` 在 **含 `Completed` / `Canceled` / `Abandoned` 在内任意 `status`** 均允许（仅 A/B，且需工厂配置 `dealMessageHub`）。留言落 `DealMessageHub` 时照常有 `MessageStored` 等（以 Hub ABI 为准）。 |
+| **成交后聊天** | 已支持 | 前端统一调用 `DealMessageHub.postMessage(deal, content)`。Hub 校验 `deal` 已在 Factory 登记，且 `msg.sender` 是该 deal 当前 `a` 或 `b`；`Completed` / `Canceled` / `Abandoned` 也可写。 |
 
 ---
 
@@ -43,7 +43,7 @@ event DealRewardsLogged(
 
 1. 订阅 **`DealFactory` 地址** 上的 `DealRewardsLogged`。  
 2. 用 `deal` 索引过滤「某合约实例」；用 `partyA` / `partyB` 过滤「某地址参与的成交」。  
-3. 时间：用该 log 的 **block timestamp**（或交易 `block.timestamp`）。
+3. 时间：用该 log 的 **block timestamp**（或交易 `block.timestamp`）；这是工厂奖励汇总事件，不是单笔 deal 进程事件。
 
 ---
 
@@ -63,6 +63,8 @@ event DealRewardsLogged(
 | `ForcedAfterTimeout(caller, completed, when)` | 超时后 `forceComplete`：`completed==true` 成交，`false` 取消 |
 | `ActivePartnerCleared(prevB, reason, when)` | B 从 Active 被清掉：`reason 1 = exitByB`，`2 = kickBByA` |
 | `DealAbandoned(initiator, when)` | A 废弃（`abandonByA`） |
+| `Completed(reason, when)` | 成交终局 |
+| `Canceled(when)` | 取消终局 |
 
 **`Vote` 枚举（ABI 编码为 uint8）**：`Unset = 0`，`Accept = 1`，`Reject = 2`。  
 **`CompletionReason`（`Completed`）**：`BothAccepted`、`ForcedByA`、`ForcedByB`（具体数值以生成 ABI 为准）。
@@ -74,10 +76,10 @@ event DealRewardsLogged(
 | `APreAccepted(a_, at)` | A 预同意（`at` 为时间戳） |
 | `BExpelledOnReject(prevB, when)` | B 拒绝且被规则清退回 Ready（带 `when`） |
 
-### 3.3 终局与区块时间
+### 3.3 终局时间
 
-- **`Completed(CompletionReason reason)`**、**`Canceled()`**：事件体内**没有**额外 `when`；时间请用 **该事件所在区块 timestamp**。  
-- 与带 `when` 的事件在**同一秒级时钟**下一致。
+- **`Completed(CompletionReason reason, uint64 when)`**、**`Canceled(uint64 when)`**：直接读取 `when`。  
+- 前端不需要再为这两个终局事件额外查区块时间。
 
 ### 3.4 昵称 `{用户名称}`
 
@@ -97,7 +99,7 @@ event DealRewardsLogged(
 | **允许阶段** | **`Ready` 或 `Active`**（尚未进入 `Locked`）。 |
 | **链上效果** | 全额退回双方已托管资产、解锁相关 NFT、清理 B 与索引标记，状态变为 **`Abandoned`**。 |
 | **事件** | **`DealAbandoned(initiator, when)`**，`initiator` 恒为 **A**。 |
-| **留言** | **`postMessage` 在 `Abandoned` 状态下允许**，但 **`abandonByA` 会执行 `b = address(0)`**（见 `_refundAllToParties`），故通常 **只有 A** 仍满足 `onlyAB`；前 B 地址无法再在该实例上留言。 |
+| **留言** | 通过 **`DealMessageHub.postMessage(deal, content)`** 写入；但 **`abandonByA` 会执行 `b = address(0)`**（见 `_refundAllToParties`），故通常 **只有 A** 仍是当前参与方；前 B 地址无法再留言。 |
 
 **没有**对称的 `abandonByB`：B 不能在同一语义下「废弃整单」；B 在 Active 阶段只能 **`exitByB`**（见下 §4.3）。
 
@@ -110,9 +112,9 @@ event DealRewardsLogged(
 | **谁触发** | 不是单独一个「某方取消」按钮函数，而是逻辑走到内部 **`_cancel()`**。 |
 | **允许阶段** | 仅在 **`Locked`**（双方已付清/满足锁定条件后投票）。 |
 | **典型触发** | ① **A、B 都投 `Reject`**（`setMyVote`）；② **`forceComplete` 超时**：已投票一方选的是 **`Reject`**，对侧迟迟不投，超时后由已投方调用 `forceComplete`，走 **`_cancel()`**（会先 `ForcedAfterTimeout(..., completed: false, ...)`）。 |
-| **链上效果** | 状态 **`Canceled`**；对已付款/托管侧做退款与 `Claimed` 事件，再 **`Canceled()`**。 |
-| **事件** | 前序多有 **`VoteCast`**；超时取消时还有 **`ForcedAfterTimeout(caller, completed=false, when)`**；最后 **`Canceled()`**（该事件**不带地址**，要靠前几笔 log 判断是谁投了什么、谁调了 `forceComplete`）。 |
-| **留言** | **`postMessage` 允许**（仍仅 A/B）。 |
+| **链上效果** | 状态 **`Canceled`**；对已付款/托管侧做退款与 `Claimed` 事件，再 **`Canceled(when)`**。 |
+| **事件** | 前序多有 **`VoteCast`**；超时取消时还有 **`ForcedAfterTimeout(caller, completed=false, when)`**；最后 **`Canceled(when)`**（该事件**不带地址**，要靠前几笔 log 判断是谁投了什么、谁调了 `forceComplete`）。 |
+| **留言** | **`DealMessageHub.postMessage(deal, content)` 允许**（仍仅当前 A/B）。 |
 
 与 **成交**对比：双方 **`Accept`** 或超时 **`Accept`** 一方 `forceComplete` → **`Completed`**，并有 `RewardsMinted` / 工厂的 `DealRewardsLogged` 等。
 
@@ -126,8 +128,11 @@ event DealRewardsLogged(
 |------|----|----------|-----------------|
 | **`exitByB`** | B | **`Ready`**，`b` 清空，退款 | **`ActivePartnerCleared(prevB, reason=1, when)`** |
 | **`kickBByA`** | A | 同上 | **`ActivePartnerCleared(prevB, reason=2, when)`** |
+| **`replaceInactiveBAndJoin`** | 外部新 B | **`Active`**，旧 B 清空并退款，新 B 成为当前 B | **`ActivePartnerCleared(prevB, reason=3, when)`** + 同 tx 的 **`Joined(newB, ...)`** |
 
 这是「退出本轮对手方 / 被踢出」，**整单仍可被 A 重新找人继续**；不要把它画成和 **`Canceled`** 同一种「交易失败终局」。
+
+`replaceInactiveBAndJoin` 只适用于 `DealOpenTokenToken` 的 `Open` 模式：`bJoinedAt + timeoutSeconds` 之后仍未进入 `Locked`，外部用户才能顶替。被清掉的旧 B 会记录为 `lastRemovedB`，不能自己马上重新 join；A 主动 `openJoinFor(lastRemovedB)` 后才允许回来。
 
 ---
 
@@ -140,24 +145,25 @@ event DealRewardsLogged(
 
 ### 4.5 和链上聊天的关系（再确认）
 
-| `status` | `postMessage` |
+| `status` | `DealMessageHub.postMessage(deal, content)` |
 |----------|----------------|
-| **全部六种** `status` | 在 **`msg.sender` 仍为当前 `a` 或 `b`** 时均允许（`dealMessageHub` 非零；计费按 `msgPrice*`）。**特例**：`abandonByA` 后 **`b` 已清零**，仅 **A** 可发。 |
+| **全部六种** `status` | 在 **`msg.sender` 仍为当前 `a` 或 `b`** 时均允许（Factory 已配置 `dealMessageHub`；计费由 Factory 的 message price rule 执行）。**特例**：`abandonByA` 后 **`b` 已清零**，仅 **A** 可发。 |
 
 ---
 
 ## 5. 最简单集成路径（推荐）
 
 1. **奖励 / 汇总**：只订 **`DealFactory`** → `DealRewardsLogged`（+ 如需 DL 明细再订 `DLMinted`）。  
-2. **单笔交易时间线**：订 **该 Deal / OpenTT 实例地址** → 上表事件；按 `when` 或 log 区块时间排序。  
-3. **成交后留言**：`Completed` 后仍调实例的 **`postMessage`**（及 Hub 侧配置与计费规则不变）。  
-4. **ABI**：本次 **`Joined` / `Paid` / `WithdrawnInActive` / `Locked` / `BExpelledOnReject`** 等与旧版相比**签名已变**（增加时间戳等），前端解码需更新 artifact。
+2. **单笔交易时间线**：订 **该 Deal / OpenTT 实例地址** → 上表事件；按 `when` / `at` 排序。  
+3. **成交后留言**：`Completed` 后仍调 **`DealMessageHub.postMessage(deal, content)`**。  
+4. **ABI**：本次 **`Joined` / `Paid` / `WithdrawnInActive` / `Locked` / `Completed` / `Canceled` / `BExpelledOnReject`** 等与旧版相比**签名已变或新增**，前端解码需更新 artifact。
 
 ---
 
 ## 6. 相关源码（便于对 ABI）
 
 - `contracts/DealFactory.sol`：`DealRewardsLogged`、`logDealRewards`、`DLMinted`  
-- `contracts/Deal.sol`：进程事件、`postMessage`  
-- `contracts/DealOpenTokenToken.sol`：同上 + `APreAccepted`、`BExpelledOnReject`  
+- `contracts/Deal.sol` / 各 Deal implementation：进程事件  
+- `contracts/DealMessageHub.sol`：链上留言写入与读取
+- `contracts/DealOpenTokenToken.sol`：同上 + `APreAccepted`、`BExpelledOnReject`、`replaceInactiveBAndJoin`
 - 部署与库拆分：`docs/Deal库拆分部署接线说明.md`

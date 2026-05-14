@@ -9,6 +9,18 @@ contract MockFactoryHub {
     function set(address d, bool v) external {
         isDeal[d] = v;
     }
+
+    function chargeMessageFeeFrom(address) external pure {}
+}
+
+contract MockDealPeerView {
+    address public a;
+    address public b;
+
+    constructor(address a_, address b_) {
+        a = a_;
+        b = b_;
+    }
 }
 
 /**
@@ -76,5 +88,30 @@ contract DealMessageHubFuzz is Test {
         vm.prank(rogue);
         vm.expectRevert(DealMessageHub.NotDeal.selector);
         hub.postFromDeal(rogue, "x");
+    }
+
+    function test_postMessage_acceptsCurrentParticipantsOnly() public {
+        MockFactoryHub f = new MockFactoryHub();
+        DealMessageHub hub = new DealMessageHub(address(f));
+        address alice = address(0xA11CE);
+        address bob = address(0xB0B);
+        address rogue = address(0xBAD);
+        MockDealPeerView deal = new MockDealPeerView(alice, bob);
+        f.set(address(deal), true);
+
+        vm.prank(alice);
+        hub.postMessage(address(deal), "from a");
+        vm.prank(bob);
+        hub.postMessage(address(deal), "from b");
+        vm.prank(rogue);
+        vm.expectRevert(DealMessageHub.NotParticipant.selector);
+        hub.postMessage(address(deal), "nope");
+
+        assertEq(hub.messagesCount(address(deal)), 2);
+        (string[] memory contents,, address[] memory senders) = hub.getMessages(address(deal), 0, 10);
+        assertEq(contents[0], "from a");
+        assertEq(contents[1], "from b");
+        assertEq(senders[0], alice);
+        assertEq(senders[1], bob);
     }
 }

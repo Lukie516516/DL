@@ -28,10 +28,6 @@ interface IFactoryDealRewardsLogNoAsset {
     ) external;
 }
 
-interface IFactoryMessageHubNoAsset {
-    function dealMessageHub() external view returns (address);
-}
-
 interface IFactoryIndexNoAsset {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
@@ -60,14 +56,6 @@ interface IFactoryCreditNoAsset {
         bool bValid,
         uint256 baseCredit
     ) external;
-}
-
-interface IDLBurnFromNoAsset {
-    function burnFrom(address account, uint256 amount) external;
-}
-
-interface IDealMessageHubNoAsset {
-    function postFromDeal(address sender, string calldata content) external returns (uint256 index);
 }
 
 /// @notice Smaller ordinary deal implementation for templates without delivered asset NFTs.
@@ -155,11 +143,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
     bool private _trackA;
     bool private _trackBActive;
 
-    bool public msgPriceEnabled;
-    address public msgPriceTokenNorm;
-    address public msgPricePair;
-    uint256 public msgPriceAmountInToken;
-
     event Initialized(address indexed initiator, address indexed factory);
     event Joined(address indexed b, bool nftLockedB, uint64 when);
     event Locked(uint64 when);
@@ -167,13 +150,11 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
     event ActivePartnerCleared(address indexed prevB, uint8 reason, uint64 when);
     event DealAbandoned(address indexed initiator, uint64 when);
     event ForcedAfterTimeout(address indexed caller, bool completed, uint64 when);
-    event Completed(CompletionReason reason);
-    event Canceled();
+    event Completed(CompletionReason reason, uint64 when);
+    event Canceled(uint64 when);
     event Claimed(address indexed who, address swapToken, uint256 swapAmt, address marginToken, uint256 marginAmt);
     event FeesProcessed(address indexed tokenA, uint256 aFee, address indexed tokenB, uint256 bFee);
     event RewardsMinted(address indexed a, uint256 toA, address indexed b, uint256 toB, address indexed cAddr, uint256 toC);
-    event MessagePosted(address indexed sender, uint256 indexed index);
-    event MessageFeeCharged(address indexed sender, uint256 dlBurned);
     event Paid(address indexed payer, bool indexed isPartyA, uint64 when);
     event WithdrawnInActive(address indexed payer, bool indexed isPartyA, uint64 when);
 
@@ -282,11 +263,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         _check(feeNonDLDen > 0 && feeNonDLNum < feeNonDLDen, 7);
         _check(mintOnFeesDen > 0 && mintOnFeesNum < mintOnFeesDen, 8);
         specialNoFeeToken = c.specialNoFeeToken;
-
-        msgPriceEnabled = c.msgPriceEnabled;
-        msgPriceTokenNorm = c.msgPriceTokenNorm;
-        msgPricePair = c.msgPricePair;
-        msgPriceAmountInToken = c.msgPriceAmountInToken;
 
         aSwapToken = p.aSwapToken;
         aSwapAmount = p.aSwapAmount;
@@ -570,7 +546,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
             _trackBActive = false;
         }
 
-        emit Completed(reason);
+        emit Completed(reason, uint64(block.timestamp));
     }
 
     function _cancel() internal {
@@ -602,7 +578,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
             _trackBActive = false;
         }
 
-        emit Canceled();
+        emit Canceled(uint64(block.timestamp));
     }
 
     function _computeFees() internal returns (Fees memory f) {
@@ -809,32 +785,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
                 IFactoryLockNoAsset(factory).infoUnlock(bNftId);
             }
         }
-    }
-
-    function _quoteAggToDL(address token, address pair, uint256 amountIn) internal returns (uint256 dlOut) {
-        return DealLib.quoteAggToDL(factory, dl, token, pair, amountIn);
-    }
-
-    function postMessage(string calldata content) external nonReentrant onlyAB {
-        _check(
-            status == Status.Ready || status == Status.Active || status == Status.Locked || status == Status.Completed
-                || status == Status.Canceled || status == Status.Abandoned,
-            52
-        );
-        _chargeMessageFee(msg.sender);
-        address hub = IFactoryMessageHubNoAsset(factory).dealMessageHub();
-        _check(hub != address(0), 54);
-        uint256 idx = IDealMessageHubNoAsset(hub).postFromDeal(msg.sender, content);
-        emit MessagePosted(msg.sender, idx);
-    }
-
-    function _chargeMessageFee(address sender) internal {
-        if (!msgPriceEnabled) return;
-        if (msgPriceAmountInToken == 0) return;
-        uint256 dlAmount = _quoteAggToDL(msgPriceTokenNorm, msgPricePair, msgPriceAmountInToken);
-        if (dlAmount == 0) return;
-        IDLBurnFromNoAsset(dl).burnFrom(sender, dlAmount);
-        emit MessageFeeCharged(sender, dlAmount);
     }
 
     receive() external payable {}

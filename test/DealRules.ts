@@ -1035,16 +1035,17 @@ describe("Deal Rules", async function () {
       title: "chat deal",
     });
 
-    const dealAsAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const hubAsAlice = await viem.getContractAt("DealMessageHub", dealMessageHub.address, { client: { wallet: alice } });
+    const hubAsBob = await viem.getContractAt("DealMessageHub", dealMessageHub.address, { client: { wallet: bob } });
     const dealAsBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
 
-    await waitFor(publicClient, await dealAsAlice.write.postMessage(["hello from a"]));
+    await waitFor(publicClient, await hubAsAlice.write.postMessage([dealAddress, "hello from a"]));
     await waitFor(publicClient, await dealAsBob.write.join([0n, false]));
-    await waitFor(publicClient, await dealAsBob.write.postMessage(["hello from b"]));
-    await waitFor(publicClient, await dealAsAlice.write.postMessage(["a".repeat(1500)]));
+    await waitFor(publicClient, await hubAsBob.write.postMessage([dealAddress, "hello from b"]));
+    await waitFor(publicClient, await hubAsAlice.write.postMessage([dealAddress, "a".repeat(1500)]));
 
-    await assert.rejects(dealAsAlice.write.postMessage([""]), /EmptyMessage/);
-    await assert.rejects(dealAsAlice.write.postMessage(["a".repeat(1501)]), /MessageTooLong/);
+    await assert.rejects(hubAsAlice.write.postMessage([dealAddress, ""]), /EmptyMessage/);
+    await assert.rejects(hubAsAlice.write.postMessage([dealAddress, "a".repeat(1501)]), /MessageTooLong/);
 
     const count = await dealMessageHub.read.messagesCount([dealAddress]);
     const [contents, , senders] = await dealMessageHub.read.getMessages([dealAddress, 0n, 10n]);
@@ -1080,10 +1081,10 @@ describe("Deal Rules", async function () {
     const deal = await viem.getContractAt("Deal", dealAddress);
     assert.equal(Number(await deal.read.status()), 3);
 
-    const dealAsAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
-    const dealAsBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
-    await waitFor(publicClient, await dealAsAlice.write.postMessage(["post-complete a"]));
-    await waitFor(publicClient, await dealAsBob.write.postMessage(["post-complete b"]));
+    const hubAsAlice = await viem.getContractAt("DealMessageHub", dealMessageHub.address, { client: { wallet: alice } });
+    const hubAsBob = await viem.getContractAt("DealMessageHub", dealMessageHub.address, { client: { wallet: bob } });
+    await waitFor(publicClient, await hubAsAlice.write.postMessage([dealAddress, "post-complete a"]));
+    await waitFor(publicClient, await hubAsBob.write.postMessage([dealAddress, "post-complete b"]));
 
     const count = await dealMessageHub.read.messagesCount([dealAddress]);
     assert.equal(count, 2n);
