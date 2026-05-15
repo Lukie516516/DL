@@ -107,6 +107,7 @@ contract DCDomainSwap {
         uint8   joinMode,      // 0=Open 1=ExactAddress
         address expectedB
     );
+    event DealInfoNftUsed(address indexed deal, uint256 indexed aNftId);
     event ReplaceTimeoutUpdated(uint64 oldValue, uint64 newValue);
 
     modifier onlyOwner() {
@@ -173,6 +174,34 @@ contract DCDomainSwap {
         string  calldata description,
         address expectedB
     ) external returns (address deal) {
+        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, 0);
+    }
+
+    function createDealWithInfoNft(
+        string  calldata domainName,
+        address aSwapToken,
+        uint256 aSwapAmount,
+        address bSwapToken,
+        uint256 bSwapAmount,
+        string  calldata title,
+        string  calldata description,
+        address expectedB,
+        uint256 aNftId
+    ) external returns (address deal) {
+        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, aNftId);
+    }
+
+    function _createDeal(
+        string  calldata domainName,
+        address aSwapToken,
+        uint256 aSwapAmount,
+        address bSwapToken,
+        uint256 bSwapAmount,
+        string  calldata title,
+        string  calldata description,
+        address expectedB,
+        uint256 aNftId
+    ) internal returns (address deal) {
         // 检查域名存在
         _resolveDomain(domainName);
 
@@ -205,7 +234,7 @@ contract DCDomainSwap {
             joinMode:       joinMode,
             expectedB:      expectedB,
             gateNftId:      0,
-            aNftId:         0,
+            aNftId:         aNftId,
             title:                    title,
             description:              description,
             timeoutSeconds:           TIMEOUT,
@@ -236,6 +265,7 @@ contract DCDomainSwap {
             joinMode,
             expectedB
         );
+        if (aNftId != 0) emit DealInfoNftUsed(deal, aNftId);
     }
 
     // ─────────────────────────────────────────────
