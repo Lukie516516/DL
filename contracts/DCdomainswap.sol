@@ -48,6 +48,7 @@ interface IDealFactory {
         string  title;
         string  description;
         uint64  timeoutSeconds;
+        uint64  replaceTimeoutSeconds;
         uint64  timeStart;
         uint64  timeEnd;
         bool    isDomainDeal;
@@ -80,8 +81,13 @@ contract DCDomainSwap {
     // 常量 & 状态
     // ─────────────────────────────────────────────
 
+    address public owner;
     address public FACTORY;
     uint64  public constant TIMEOUT = 3600;
+    uint64  public constant REPLACE_TIMEOUT = 120;
+    uint64  public constant MIN_REPLACE_TIMEOUT_SECONDS = 60;
+    uint64  public constant MAX_REPLACE_TIMEOUT_SECONDS = 1 days;
+    uint64  public replaceTimeoutSeconds = REPLACE_TIMEOUT;
     IDCDomain     public immutable dcDomain;
     IDCDomainRank public immutable dcRank;
 
@@ -101,6 +107,12 @@ contract DCDomainSwap {
         uint8   joinMode,      // 0=Open 1=ExactAddress
         address expectedB
     );
+    event ReplaceTimeoutUpdated(uint64 oldValue, uint64 newValue);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "DCDomainSwap: not owner");
+        _;
+    }
 
     // ─────────────────────────────────────────────
     // 构造函数
@@ -110,10 +122,21 @@ contract DCDomainSwap {
         require(_dcDomain != address(0), "ZERO_DOMAIN");
         require(_dcRank   != address(0), "ZERO_RANK");
         require(_factory  != address(0), "ZERO_FACTORY");
+        owner    = msg.sender;
         dcDomain = IDCDomain(_dcDomain);
         dcRank   = IDCDomainRank(_dcRank);
         FACTORY  = _factory;
     }//填入DCdomain、DCDomainRank、Factory的地址
+
+    function setReplaceTimeoutSeconds(uint64 value) external onlyOwner {
+        require(
+            value >= MIN_REPLACE_TIMEOUT_SECONDS && value <= MAX_REPLACE_TIMEOUT_SECONDS,
+            "DCDomainSwap: invalid replace timeout"
+        );
+        uint64 oldValue = replaceTimeoutSeconds;
+        replaceTimeoutSeconds = value;
+        emit ReplaceTimeoutUpdated(oldValue, value);
+    }
 
     // ─────────────────────────────────────────────
     // 内部工具
@@ -186,6 +209,7 @@ contract DCDomainSwap {
             title:                    title,
             description:              description,
             timeoutSeconds:           TIMEOUT,
+            replaceTimeoutSeconds:    replaceTimeoutSeconds,
             timeStart:                phaseJoinDeadline,
             timeEnd:                  phasePayDeadline,
             isDomainDeal:             true,

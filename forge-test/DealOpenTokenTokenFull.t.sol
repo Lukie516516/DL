@@ -101,6 +101,7 @@ contract DealOpenTokenTokenFullTest is Test {
             title: "open-tt",
             description: "",
             timeoutSeconds: timeout,
+            replaceTimeoutSeconds: 120,
             timeStart: 1_700_000_000,
             timeEnd: 1_800_000_000,
             isDomainDeal: false,
@@ -277,7 +278,7 @@ contract DealOpenTokenTokenFullTest is Test {
         vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(58)));
         openDeal.replaceInactiveBAndJoin(charlieNftId, false);
 
-        vm.warp(uint256(openDeal.bJoinedAt()) + uint256(openDeal.timeoutSeconds()) + 1);
+        vm.warp(uint256(openDeal.bJoinedAt()) + uint256(openDeal.replaceTimeoutSeconds()) + 1);
         vm.prank(charlie);
         openDeal.replaceInactiveBAndJoin(charlieNftId, false);
 
@@ -297,6 +298,38 @@ contract DealOpenTokenTokenFullTest is Test {
         vm.prank(alice);
         openDeal.setMyVote(DealOpenTokenToken.Vote.Accept);
         assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Completed));
+    }
+
+    function test_replaceNonVotingBAndJoin_afterLockedTimeout_returnsToActive() public {
+        _payAReady();
+        _preAccept();
+        _joinB(bobNftId);
+        _payB();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Locked));
+        assertEq(uint8(openDeal.aVote()), uint8(DealOpenTokenToken.Vote.Accept));
+        assertEq(uint8(openDeal.bVote()), uint8(DealOpenTokenToken.Vote.Unset));
+
+        vm.prank(charlie);
+        vm.expectRevert(abi.encodeWithSelector(DealError.selector, uint16(58)));
+        openDeal.replaceNonVotingBAndJoin(charlieNftId, false);
+
+        uint256 base = openDeal.aAt() > openDeal.lockedAt() ? openDeal.aAt() : openDeal.lockedAt();
+        vm.warp(base + uint256(openDeal.replaceTimeoutSeconds()) + 1);
+        vm.prank(charlie);
+        openDeal.replaceNonVotingBAndJoin(charlieNftId, false);
+
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Active));
+        assertEq(openDeal.b(), charlie);
+        assertTrue(openDeal.aPaid());
+        assertFalse(openDeal.bPaid());
+        assertEq(openDeal.lastRemovedB(), bob);
+        assertEq(infoNft.lockCount(bobNftId), 0);
+        assertEq(infoNft.lockCount(charlieNftId), 1);
+
+        _payC();
+        assertEq(uint8(openDeal.status()), uint8(DealOpenTokenToken.Status.Locked));
+        assertEq(uint8(openDeal.aVote()), uint8(DealOpenTokenToken.Vote.Accept));
+        assertEq(uint8(openDeal.bVote()), uint8(DealOpenTokenToken.Vote.Unset));
     }
 
     function test_removedB_cannotRejoinUnlessAOpensForHim() public {
@@ -637,6 +670,7 @@ contract OpenTTHandler is Test {
             title: "inv",
             description: "",
             timeoutSeconds: 3600,
+            replaceTimeoutSeconds: 120,
             timeStart: 1_700_000_000,
             timeEnd: 1_800_000_000,
             isDomainDeal: false,

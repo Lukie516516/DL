@@ -266,6 +266,7 @@ async function createDealAndGetAddress(
     title?: string;
     description?: string;
     timeoutSeconds?: bigint;
+    replaceTimeoutSeconds?: bigint;
     timeStart?: bigint;
     timeEnd?: bigint;
     isDomainDeal?: boolean;
@@ -312,6 +313,7 @@ async function createDealAndGetAddress(
         title: init.title ?? "test",
         description: init.description ?? "",
         timeoutSeconds: init.timeoutSeconds ?? 3600n,
+        replaceTimeoutSeconds: init.replaceTimeoutSeconds ?? (init.openTokenTokenFast ? 120n : 0n),
         timeStart: init.timeStart ?? DEFAULT_TIME_START,
         timeEnd: init.timeEnd ?? DEFAULT_TIME_END,
         isDomainDeal: init.isDomainDeal ?? false,
@@ -877,6 +879,7 @@ describe("Deal Rules", async function () {
             title: "missing pair",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
@@ -1124,6 +1127,7 @@ describe("Deal Rules", async function () {
           title: "create for",
           description: "",
           timeoutSeconds: 3600n,
+          replaceTimeoutSeconds: 0n,
           timeStart: DEFAULT_TIME_START,
           timeEnd: DEFAULT_TIME_END,
           isDomainDeal: false,
@@ -1259,6 +1263,7 @@ describe("Deal Rules", async function () {
             title: "bad margin token",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
@@ -1304,6 +1309,7 @@ describe("Deal Rules", async function () {
             title: "extended margin whitelist",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
@@ -1445,6 +1451,7 @@ describe("Deal Rules", async function () {
             title: "conflict a",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
@@ -1513,6 +1520,7 @@ describe("Deal Rules", async function () {
             title: "lock source",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
@@ -1548,6 +1556,7 @@ describe("Deal Rules", async function () {
             title: "locked sell",
             description: "",
             timeoutSeconds: 3600n,
+            replaceTimeoutSeconds: 0n,
             timeStart: DEFAULT_TIME_START,
             timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,

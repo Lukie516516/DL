@@ -45,6 +45,7 @@ interface IDeal {
         string title;
         string description;
         uint64 timeoutSeconds;
+        uint64 replaceTimeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
         bool isDomainDeal;
@@ -237,6 +238,8 @@ contract DealFactory is Ownable {
     uint256 public constant MAX_TITLE_BYTES = 96;
     uint256 public constant MAX_DESCRIPTION_BYTES = 1500;
     uint64 public constant MAX_TIMEOUT_SECONDS = 1 days;
+    uint64 public constant MIN_REPLACE_TIMEOUT_SECONDS = 60;
+    uint64 public constant MAX_REPLACE_TIMEOUT_SECONDS = 1 days;
 
     struct Ratio {
         uint32 num;
@@ -1106,6 +1109,10 @@ contract DealFactory is Ownable {
             revert UseDomainEntry();
         require(init.timeoutSeconds >= minTimeoutSeconds);
         if (init.timeoutSeconds > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
+        if (init.openTokenTokenFast) {
+            require(init.replaceTimeoutSeconds >= MIN_REPLACE_TIMEOUT_SECONDS);
+            if (init.replaceTimeoutSeconds > MAX_REPLACE_TIMEOUT_SECONDS) revert TimeoutTooLong();
+        }
         if (dlToken == address(0) || wrappedNative == address(0))
             revert CoreGlobalsUnset();
         _assertTemplate(init);

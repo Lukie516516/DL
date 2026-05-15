@@ -51,6 +51,7 @@ interface IDealFactoryForHall {
         string title;
         string description;
         uint64 timeoutSeconds;
+        uint64 replaceTimeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
         bool isDomainDeal;
@@ -250,6 +251,7 @@ contract DCDomainHall is ReentrancyGuard {
             title: title,
             description: description,
             timeoutSeconds: timeoutSeconds_,
+            replaceTimeoutSeconds: 0,
             timeStart: timeStart_,
             timeEnd: timeEnd_,
             isDomainDeal: true,
@@ -393,6 +395,7 @@ contract DCDomainHall is ReentrancyGuard {
             title: title,
             description: description,
             timeoutSeconds: DEAL_TIMEOUT,
+            replaceTimeoutSeconds: 0,
             timeStart: tsStart,
             timeEnd: tsEnd,
             isDomainDeal: true,
@@ -459,6 +462,7 @@ contract DCDomainHall is ReentrancyGuard {
             title: title,
             description: description,
             timeoutSeconds: DEAL_TIMEOUT,
+            replaceTimeoutSeconds: 0,
             timeStart: tteStart,
             timeEnd: tteEnd,
             isDomainDeal: true,

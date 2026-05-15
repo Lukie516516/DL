@@ -118,6 +118,7 @@ contract Deal is IERC721Receiver {
         string title;
         string description;
         uint64 timeoutSeconds;
+        uint64 replaceTimeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
         bool isDomainDeal;
