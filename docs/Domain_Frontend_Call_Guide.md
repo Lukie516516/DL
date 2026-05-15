@@ -667,6 +667,24 @@ const rows = await Promise.all(
 - 这不是大厅模式
 - 如果是大厅撮合，不要调这个方法
 
+### 8.2 `createDealWithInfoNft(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, aNftId)`
+
+作用：
+- 在域名下直接创建 TokenToToken 交易，并绑定发起方 A 的官方 `DealInfoNFT`
+
+参数：
+- 前 8 个参数和 `createDeal` 一致
+- `aNftId: uint256`，发起方 A 自己持有的官方 `DealInfoNFT tokenId`
+
+规则：
+- `aNftId = 0` 等价于不绑定身份 NFT
+- `aNftId > 0` 时，底层 `DealOpenTokenToken` 会校验 `DealInfoNFT.ownerOf(aNftId) == msg.sender`
+- 创建成功后，deal 会锁定该身份 NFT；成交后信用分按这个 tokenId 记账
+
+前端建议：
+- 用户选择身份 NFT 时调 `createDealWithInfoNft`
+- 用户不选择身份 NFT 时继续调 `createDeal`
+
 ---
 
 ## 9. 通过 `DealFactory.createDeal` 卖域名 NFT

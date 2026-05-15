@@ -1,10 +1,10 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-15T03:58:10.731Z",
+  "deployedAt": "2026-05-15T09:31:37.210Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260515-035810.json",
-  "upgrade": "event-time-messagehub-opentt-replace-timeout",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-dcdomain-swap-info-nft-20260515-093137.json",
+  "upgrade": "dcdomain-swap-info-nft",
   "addresses": {
     "dlToken": "0xf9606500fbbea6d220bb65fc5cea9641c6e436d3",
     "ausd": "0x61b625206675c95a93a9dd45e386ab2801f4d96c",
@@ -34,7 +34,7 @@
     "dcDomain": "0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3",
     "dcDomainRank": "0xf1bb9e705f5366febcd15a14e785fb26228fcd8c",
     "dcDomainMarket": "0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd",
-    "dcDomainSwap": "0xc70848bbf91e711cb511557c9c6d5c129db5b8e0",
+    "dcDomainSwap": "0xce1a37712e686a933eafb82bdfbda511c1a46eda",
     "dcDomainHall": "0x5104b6c8a28382711e59d06f0e7c9728357ef519",
     "dToken": "0x3340f3f9e27baeab1fea9fb25b646a82b5588cd2",
     "dealTimelock": "0xd553524a05b33da8aedd972fd3858889238828b6",
@@ -26774,6 +26774,25 @@
         "anonymous": false,
         "inputs": [
           {
+            "indexed": true,
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "aNftId",
+            "type": "uint256"
+          }
+        ],
+        "name": "DealInfoNftUsed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
             "indexed": false,
             "internalType": "uint64",
             "name": "oldValue",
@@ -26898,6 +26917,65 @@
           }
         ],
         "name": "createDeal",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "aSwapToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "aSwapAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "bSwapToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "bSwapAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "expectedB",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "aNftId",
+            "type": "uint256"
+          }
+        ],
+        "name": "createDealWithInfoNft",
         "outputs": [
           {
             "internalType": "address",
@@ -31587,6 +31665,7 @@
     "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
     "Completed/Canceled events now include when.",
     "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
-    "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory."
+    "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
+    "DCDomainSwap redeployed with createDealWithInfoNft(..., aNftId); old createDeal(...) remains available."
   ]
 }

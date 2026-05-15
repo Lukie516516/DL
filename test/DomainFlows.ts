@@ -208,8 +208,23 @@ async function deployDomainFixture() {
     return { pairAddress, pair };
   }
 
-  await createAndInitPair(ausd.address);
+  const { pairAddress: pairDlAusd } = await createAndInitPair(ausd.address);
   await createAndInitPair(usdt.address);
+
+  async function mintInfoNft(wallet: typeof owner) {
+    const dlAsUser = await viem.getContractAt("DCToken", dl.address, {
+      client: { wallet },
+    });
+    const infoNftAsUser = await viem.getContractAt("DealInfoNFT", infoNft.address, {
+      client: { wallet },
+    });
+
+    await waitFor(publicClient, await infoNft.write.setMintPriceU([pairDlAusd, ONE]));
+    await waitFor(publicClient, await dlAsUser.write.approve([infoNft.address, 1_000_000n * ONE]));
+    const nextIdBefore = await infoNft.read.nextId();
+    await waitFor(publicClient, await infoNftAsUser.write.mintByBurn());
+    return nextIdBefore;
+  }
 
   async function registerDomain(wallet: typeof owner, domainName: string) {
     const paymentAsUser = await viem.getContractAt("DCToken", dl.address, {
@@ -237,12 +252,14 @@ async function deployDomainFixture() {
     ausd,
     usdt,
     factory,
+    infoNft,
     dcDomain,
     dcDomainMarket,
     dcDomainRank,
     dcDomainHall,
     dcDomainSwap,
     registerDomain,
+    mintInfoNft,
   };
 }
 
@@ -576,6 +593,46 @@ describe("Domain Flows", async function () {
     assert.equal(await deal.read.domainName(), "swp123");
     assert.equal(await dcDomainRank.read.domainDealCount(["swp123"]), 1n);
     assert.equal(await dcDomainRank.read.globalDomainCount(), 1n);
+  });
+
+  it("allows DCDomainSwap to create domain deals with creator DealInfoNFT identity", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, publicClient, bob, ausd, usdt, dcDomainSwap, infoNft } = fixture;
+
+    await fixture.registerDomain(fixture.alice, "swpnft");
+    const bobInfoId = await fixture.mintInfoNft(bob);
+
+    const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
+      client: { wallet: bob },
+    });
+
+    const hash = await swapAsBob.write.createDealWithInfoNft([
+      "swpnft",
+      ausd.address,
+      10n * ONE,
+      usdt.address,
+      20n * ONE,
+      "",
+      "",
+      zeroAddress,
+      bobInfoId,
+    ]);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    const events = await publicClient.getContractEvents({
+      address: dcDomainSwap.address,
+      abi: dcDomainSwap.abi,
+      eventName: "DealCreated",
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+      strict: true,
+    });
+
+    assert.equal(events.length, 1);
+    const dealAddress = events[0].args.deal;
+    const deal = await viem.getContractAt("DealOpenTokenToken", dealAddress);
+
+    assert.equal(await deal.read.aNftId(), bobInfoId);
+    assert.equal(await infoNft.read.lockCount([bobInfoId]), 1);
   });
 
   it("tracks domain leaderboard scores, settlement, and global leaderboard ordering", async function () {
