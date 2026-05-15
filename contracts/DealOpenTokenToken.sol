@@ -120,6 +120,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     uint64 public lockedAt;
     uint64 public timeoutSeconds;
+    uint64 public replaceTimeoutSeconds;
     uint64 public bJoinedAt;
     uint64 public timeStart;
     uint64 public timeEnd;
@@ -154,6 +155,9 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     uint32 public mintOnFeesDen;
     address public specialNoFeeToken;
     address public lastRemovedB;
+
+    uint64 public constant MIN_REPLACE_TIMEOUT_SECONDS = 60;
+    uint64 public constant MAX_REPLACE_TIMEOUT_SECONDS = 1 days;
 
     bool private _trackA;
     bool private _trackBActive;
@@ -214,6 +218,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         string title;
         string description;
         uint64 timeoutSeconds;
+        uint64 replaceTimeoutSeconds;
         uint64 timeStart;
         uint64 timeEnd;
         bool isDomainDeal;
@@ -305,6 +310,12 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         title = p.title;
         description = p.description;
         timeoutSeconds = p.timeoutSeconds;
+        replaceTimeoutSeconds = p.replaceTimeoutSeconds;
+        _check(
+            replaceTimeoutSeconds >= MIN_REPLACE_TIMEOUT_SECONDS &&
+                replaceTimeoutSeconds <= MAX_REPLACE_TIMEOUT_SECONDS,
+            57
+        );
         timeStart = p.timeStart;
         timeEnd = p.timeEnd;
         _check(timeStart > 0 && timeEnd > timeStart, 13);
@@ -384,7 +395,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     function replaceInactiveBAndJoin(uint256 optId, bool trackMe) external nonReentrant inState(Status.Active) {
         _check(joinMode == JoinMode.Open, 58);
         _check(b != address(0) && msg.sender != a && msg.sender != b && msg.sender != lastRemovedB, 18);
-        _check(bJoinedAt != 0 && block.timestamp >= uint256(bJoinedAt) + uint256(timeoutSeconds), 58);
+        _check(bJoinedAt != 0 && block.timestamp >= uint256(bJoinedAt) + uint256(replaceTimeoutSeconds), 58);
 
         address prevB = b;
         _refundFundsB();
@@ -399,6 +410,37 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bJoinedAt = 0;
 
         emit ActivePartnerCleared(prevB, 3, uint64(block.timestamp));
+        _setJoinedB(msg.sender, optId, trackMe);
+    }
+
+    function replaceNonVotingBAndJoin(uint256 optId, bool trackMe) external nonReentrant inState(Status.Locked) {
+        _check(joinMode == JoinMode.Open, 58);
+        _check(b != address(0) && msg.sender != a && msg.sender != b && msg.sender != lastRemovedB, 18);
+        _check(aVote == Vote.Accept && bVote == Vote.Unset, 58);
+        uint256 base = uint256(aAt > lockedAt ? aAt : lockedAt);
+        _check(base != 0 && block.timestamp >= base + uint256(replaceTimeoutSeconds), 58);
+
+        address prevB = b;
+        _refundFundsB();
+        _unlockNftIfLocked(false);
+        bNftId = 0;
+        if (_trackBActive) {
+            IFactoryIndex(factory).onParticipantRemoved(prevB);
+            _trackBActive = false;
+        }
+        _markRemovedB(prevB);
+        b = address(0);
+        bJoinedAt = 0;
+        lockedAt = 0;
+        aVote = Vote.Unset;
+        bVote = Vote.Unset;
+        aAt = 0;
+        bAt = 0;
+        status = Status.Active;
+        aHasPreAccepted = true;
+        aPreAcceptAt = uint64(block.timestamp);
+
+        emit ActivePartnerCleared(prevB, 4, uint64(block.timestamp));
         _setJoinedB(msg.sender, optId, trackMe);
     }
 

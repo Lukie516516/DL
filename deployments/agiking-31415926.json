@@ -1,10 +1,10 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-14T06:48:26.267Z",
+  "deployedAt": "2026-05-15T03:58:10.731Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260514-064826.json",
-  "upgrade": "event-time-messagehub-opentt",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260515-035810.json",
+  "upgrade": "event-time-messagehub-opentt-replace-timeout",
   "addresses": {
     "dlToken": "0xf9606500fbbea6d220bb65fc5cea9641c6e436d3",
     "ausd": "0x61b625206675c95a93a9dd45e386ab2801f4d96c",
@@ -12,30 +12,30 @@
     "wrappedNative": "0x631b09c6905ce136074be938c82a1df16443e676",
     "dealLib": "0xae3a1cd41021d172b24ea730b20457e676c46c09",
     "dealAssetNftLib": "0x537ec145ef2664f39c4faa6ab6ae3a93c67377d8",
-    "dealImplementation": "0xe97308213b0bb3ab6e79fbca1fcd5cf40f7415a4",
-    "dealNoAssetImplementation": "0xf70275414f2b849e2198dd06148b292bd56f5177",
-    "dealAAssetNftImplementation": "0xbc38f654d0c8de5cfde7f2689715dabc97f45eae",
-    "dealBAssetNftImplementation": "0x2a2cbc1e4ba61f1cea8abd4bb00124ffff9bee0e",
-    "dealAAssetNftOnlyImplementation": "0x054579004f6ff9cf6018a11769193b2bca50d260",
-    "dealBAssetNftOnlyImplementation": "0x802b65fc738294032358c7edf71865023dc6fb8c",
-    "dealOpenTokenTokenImplementation": "0xb663b56f16510652888abfa4963b25426635dea2",
-    "dealImplementationRegistry": "0x6626ec11dffc23d65c3aa14ba6909cf6ae3468f3",
+    "dealImplementation": "0x2c08cfc094105dc579b8f85680c0fac86452c3cd",
+    "dealNoAssetImplementation": "0xb392e8a50ef5717341c91a6d98c1629fa56d5516",
+    "dealAAssetNftImplementation": "0x5274916b83790219e6316406cbd2466b45fc2878",
+    "dealBAssetNftImplementation": "0xc5b795073dcb8d08bbdb8d6d8581bcdde6482e4d",
+    "dealAAssetNftOnlyImplementation": "0x37fc30e4fc29c94fc35c5ea19d3b7e313347a3d0",
+    "dealBAssetNftOnlyImplementation": "0x98f9e7ff05e288962805c725cf5e2780f81fd854",
+    "dealOpenTokenTokenImplementation": "0x200ab998be2c2a9d2fa319e45dc2c2cb34792f4e",
+    "dealImplementationRegistry": "0x93bbdf2ba9117297a5faf64a459d1ece60df5810",
     "pairImplementation": "0x3b7954b3065dbb3ad50d69195b62a8486e78aac2",
-    "dealFactory": "0x172c314b5f231b8538126e34419415d0eba33773",
-    "dealMessageHub": "0xc07bfb56888c309e293cfa625db95aed2b3499e6",
+    "dealFactory": "0xafe8feb98ff13d9637e64fdfd1297e1a9f68e8b5",
+    "dealMessageHub": "0xff6b941ab43a7795b693282a98086c7b0c7fdaae",
     "dealCreditGraph": "0x96a8547929ae75afc344522575f0dd59c222650d",
-    "dealActivityIndex": "0x93dc60d36b3b181374d13e5947ce3f54bcfab592",
+    "dealActivityIndex": "0x5091dbe9bc7527ce5ea34d1ab3fb601250f704fd",
     "dealInfoNFT": "0xdba1efb9d7ce36e8ba3f51a857e5364bd98502f3",
     "pairDlAusd": "0x314DA00dE1f773cB6abb3F8c213D17e19F56D44b",
     "pairDlUsdt": "0x9321D09a931c6eF44EAD872d01774F0C34891842",
     "dealSwapOrderBook": "0x1d293938b5f8335142aabf4cc9545dafcfc5816f",
     "dealRouter": "0x52d02e04813f66a36b96ff9f3fb63f7ad7a695e0",
-    "dealReader": "0xad4efd661bf6b114e203e8706b31ecc75db9a6a3",
+    "dealReader": "0x578478b5c294aaa51b09dca3dbdb79f2ea3c8e76",
     "dcDomain": "0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3",
     "dcDomainRank": "0xf1bb9e705f5366febcd15a14e785fb26228fcd8c",
     "dcDomainMarket": "0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd",
-    "dcDomainSwap": "0x2d3a6c1aeab849baa3a81c6d908fb3269afdf4a3",
-    "dcDomainHall": "0x44eea4a7dff5768367edc02259b9501136e64a03",
+    "dcDomainSwap": "0xc70848bbf91e711cb511557c9c6d5c129db5b8e0",
+    "dcDomainHall": "0x5104b6c8a28382711e59d06f0e7c9728357ef519",
     "dToken": "0x3340f3f9e27baeab1fea9fb25b646a82b5588cd2",
     "dealTimelock": "0xd553524a05b33da8aedd972fd3858889238828b6",
     "dealGovernor": "0x87f6d9a1d39cc75609678f37eb314ef0c5990586",
@@ -1644,6 +1644,11 @@
               },
               {
                 "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
                 "name": "timeStart",
                 "type": "uint64"
               },
@@ -3231,6 +3236,11 @@
               {
                 "internalType": "uint64",
                 "name": "timeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
                 "type": "uint64"
               },
               {
@@ -4826,6 +4836,11 @@
               {
                 "internalType": "uint64",
                 "name": "timeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
                 "type": "uint64"
               },
               {
@@ -6459,6 +6474,11 @@
               },
               {
                 "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
                 "name": "timeStart",
                 "type": "uint64"
               },
@@ -8084,6 +8104,11 @@
               {
                 "internalType": "uint64",
                 "name": "timeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
                 "type": "uint64"
               },
               {
@@ -9717,6 +9742,11 @@
               },
               {
                 "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
                 "name": "timeStart",
                 "type": "uint64"
               },
@@ -10626,6 +10656,32 @@
       },
       {
         "inputs": [],
+        "name": "MAX_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MIN_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "NATIVE",
         "outputs": [
           {
@@ -11281,6 +11337,11 @@
               },
               {
                 "internalType": "uint64",
+                "name": "replaceTimeoutSeconds",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
                 "name": "timeStart",
                 "type": "uint64"
               },
@@ -11594,6 +11655,37 @@
         "name": "replaceInactiveBAndJoin",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "optId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "trackMe",
+            "type": "bool"
+          }
+        ],
+        "name": "replaceNonVotingBAndJoin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "replaceTimeoutSeconds",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -12966,6 +13058,19 @@
       },
       {
         "inputs": [],
+        "name": "MAX_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "MAX_TIMEOUT_SECONDS",
         "outputs": [
           {
@@ -12985,6 +13090,19 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MIN_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -13201,6 +13319,11 @@
                   },
                   {
                     "internalType": "uint64",
+                    "name": "replaceTimeoutSeconds",
+                    "type": "uint64"
+                  },
+                  {
+                    "internalType": "uint64",
                     "name": "timeStart",
                     "type": "uint64"
                   },
@@ -13360,6 +13483,11 @@
                   {
                     "internalType": "uint64",
                     "name": "timeoutSeconds",
+                    "type": "uint64"
+                  },
+                  {
+                    "internalType": "uint64",
+                    "name": "replaceTimeoutSeconds",
                     "type": "uint64"
                   },
                   {
@@ -26643,6 +26771,25 @@
         "type": "event"
       },
       {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "oldValue",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "newValue",
+            "type": "uint64"
+          }
+        ],
+        "name": "ReplaceTimeoutUpdated",
+        "type": "event"
+      },
+      {
         "inputs": [],
         "name": "FACTORY",
         "outputs": [
@@ -26650,6 +26797,45 @@
             "internalType": "address",
             "name": "",
             "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MIN_REPLACE_TIMEOUT_SECONDS",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "REPLACE_TIMEOUT",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -26765,6 +26951,45 @@
           }
         ],
         "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "replaceTimeoutSeconds",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "value",
+            "type": "uint64"
+          }
+        ],
+        "name": "setReplaceTimeoutSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       }
     ],
@@ -31361,6 +31586,7 @@
     "Deal template implementations are freshly deployed; old template addresses should not be used for new deals.",
     "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
     "Completed/Canceled events now include when.",
+    "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
     "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory."
   ]
 }

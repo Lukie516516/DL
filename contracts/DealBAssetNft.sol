@@ -198,7 +198,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         uint256 aNftId;
         string  title;
         string  description;
-        uint64  timeoutSeconds;
+        uint64  timeoutSeconds; uint64 replaceTimeoutSeconds;
         uint64  timeStart;    uint64  timeEnd;
         bool    isDomainDeal;
         string  domainName;

@@ -3,6 +3,7 @@
  * - Deal terminal events with explicit `when`
  * - DealMessageHub as the only normal chat entry
  * - DealOpenTokenToken replacement flow + current credit rules
+ * - OpenTokenToken B replacement timeout (`replaceTimeoutSeconds`), default 120 seconds
  *
  * This script intentionally deploys fresh Deal template implementations.
  * Reusing older implementation addresses would keep the old event ABI.
@@ -136,9 +137,10 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 
 1. 创建 deal 走新的 \`DealFactory\`。
 2. 留言不再调 deal 合约本体，统一调新的 \`DealMessageHub.postMessage(dealAddress, content)\`。
-3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`APreAccepted\`、\`BExpelledOnReject\`、\`ActivePartnerCleared\`。
+3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`replaceNonVotingBAndJoin\`、\`replaceTimeoutSeconds\`、\`APreAccepted\`、\`BExpelledOnReject\`、\`ActivePartnerCleared\`。
 4. 终局事件 \`Completed\` / \`Canceled\` 已带 \`when\` 字段，前端可以直接用事件里的链上时间。
 5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`，旧域名 NFT、Rank、Market 地址继续复用。
+6. 创建 \`openTokenTokenFast = true\` 的 deal 时必须传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。新的 \`DCDomainSwap\` 默认也是 120 秒。
 
 ## ABI
 
@@ -155,6 +157,7 @@ deployments/${DEPLOYMENT_FILE}
 - DealInfoNFT 已授权新 Factory，并切换 primary factory 到新 Factory。
 - DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
 - DCDomainRank 已授权新的 Swap / Hall reporter。
+- DCDomainSwap 默认 \`replaceTimeoutSeconds = 120\` 秒；如需调整，由 owner 调 \`setReplaceTimeoutSeconds(value)\`。
 `;
   writeFileSync(file, md, "utf8");
 }
@@ -380,13 +383,14 @@ async function main() {
     deployedAt,
     deployer: dep,
     previousDeployment: backupFile,
-    upgrade: "event-time-messagehub-opentt",
+    upgrade: "event-time-messagehub-opentt-replace-timeout",
     addresses,
     abi: deploymentAbi(),
     notes: [
       "Deal template implementations are freshly deployed; old template addresses should not be used for new deals.",
       "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
       "Completed/Canceled events now include when.",
+      "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
       "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
     ],
   };

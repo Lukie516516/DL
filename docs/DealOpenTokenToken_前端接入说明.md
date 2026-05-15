@@ -38,7 +38,9 @@ joinMode = Open 或 ExactAddress
 | `init.aNftId` | A 的官方 `DealInfoNFT tokenId`；没有就传 `0` |
 | `init.title` | 标题，最大 96 bytes |
 | `init.description` | 交易描述，最大 1500 bytes，可为空 |
-| `init.timeoutSeconds` | 两个用途：Locked 后投票超时窗口；Active 阶段 B 卡单可被顶替的等待窗口 |
+| `init.timeoutSeconds` | Locked 后一方已投票、另一方不投票时的强制完成/取消等待窗口 |
+| `init.replaceTimeoutSeconds` | B 卡单/不确认后，外部 C 可顶替 B 的等待窗口；OpenTokenToken 必填，范围 60 秒到 1 天；建议默认 120 秒 |
+| `init.timeStart` / `init.timeEnd` | 合同展示/业务周期，不参与踢人判定 |
 
 如果 A 想参与信用分和 C 位候选，创建时要传自己的官方 `DealInfoNFT tokenId` 到 `aNftId`。
 
@@ -81,7 +83,7 @@ bJoinedAt
 如果一直没有进入 `Locked`，并且：
 
 ```text
-block.timestamp >= bJoinedAt + timeoutSeconds
+block.timestamp >= bJoinedAt + replaceTimeoutSeconds
 ```
 
 外部新用户可以调用：
@@ -102,6 +104,41 @@ deal 继续保持 Active
 ```
 
 如果 C 顶替 B 后，C 也卡住，那么后面的 D 也可以继续按同样规则顶替 C。
+
+## 5. Locked 后 B 不确认的顶替流程
+
+当 A 和 B 都完成注入后，状态会自动进入 `Locked`。如果 A 已经 `Accept`，但 B 一直不确认：
+
+```text
+status = Locked
+aVote = Accept
+bVote = Unset
+```
+
+并且超过：
+
+```text
+max(lockedAt, aAt) + replaceTimeoutSeconds
+```
+
+外部新用户可以调用：
+
+```solidity
+replaceNonVotingBAndJoin(uint256 optId, bool trackMe)
+```
+
+结果：
+
+```text
+旧 B 被清掉
+旧 B 已注入资产退款
+旧 B 的 InfoNFT 解锁
+新用户成为当前 B
+A 已注入资产保留
+deal 回到 Active
+```
+
+之后新 B 需要自己 `pay()`。新 B 完成注入后，合约会再次自动进入 `Locked`。
 
 前端索引事件：
 
@@ -219,7 +256,9 @@ DealCreditRecorded(deal, aTokenId, bTokenId, baseCredit, aDelta, bDelta)
 | `aNftId()` | A 绑定的官方 InfoNFT |
 | `bNftId()` | 当前 B 绑定的官方 InfoNFT |
 | `bJoinedAt()` | 当前 B 加入时间 |
-| `timeoutSeconds()` | Locked 投票超时窗口，也是 Active 顶替等待窗口 |
+| `timeoutSeconds()` | Locked 后 forceComplete / cancel 的投票超时窗口 |
+| `replaceTimeoutSeconds()` | B 卡单/不确认后可被 C 顶替的等待窗口 |
+| `timeStart()` / `timeEnd()` | 合同展示/业务周期 |
 | `lastRemovedB()` | 最近被清退/顶替的 B |
 | `aPaid()` / `bPaid()` | 双方是否已付款 |
 | `aHasPreAccepted()` | A 是否预同意 |
@@ -231,7 +270,8 @@ DealCreditRecorded(deal, aTokenId, bTokenId, baseCredit, aDelta, bDelta)
 | `Ready` 且 `b == 0` | 显示“接单” |
 | `Active` 且当前用户是 A | 可显示“踢出 B” |
 | `Active` 且当前用户是 B | 可显示“退出”或“付款” |
-| `Active` 且当前用户不是 A/B，且已超过 `bJoinedAt + timeoutSeconds` | 显示“顶替接单” |
+| `Active` 且当前用户不是 A/B，且已超过 `bJoinedAt + replaceTimeoutSeconds` | 显示“顶替接单” |
+| `Locked` 且 A 已 Accept、B 未投票、当前用户不是 A/B，且已超过 `max(lockedAt, aAt) + replaceTimeoutSeconds` | 显示“顶替 B” |
 | `Locked` 且当前用户是 A/B | 显示“确认 / 拒绝” |
 | `Completed` | 显示成交结果、DL 奖励、信用增加 |
 | `Canceled` / `Abandoned` | 显示终局状态 |
@@ -280,7 +320,8 @@ DealMessageHub.getMessages(deal, offset, limit)
 | --- | --- |
 | `1` | B 自己 `exitByB` |
 | `2` | A 调 `kickBByA` |
-| `3` | 外部用户 `replaceInactiveBAndJoin` 顶替 |
+| `3` | Active 阶段外部用户 `replaceInactiveBAndJoin` 顶替 |
+| `4` | Locked 阶段 B 不确认，外部用户 `replaceNonVotingBAndJoin` 顶替 |
 
 ## 12. 人话总结
 

@@ -129,10 +129,13 @@ event DealRewardsLogged(
 | **`exitByB`** | B | **`Ready`**，`b` 清空，退款 | **`ActivePartnerCleared(prevB, reason=1, when)`** |
 | **`kickBByA`** | A | 同上 | **`ActivePartnerCleared(prevB, reason=2, when)`** |
 | **`replaceInactiveBAndJoin`** | 外部新 B | **`Active`**，旧 B 清空并退款，新 B 成为当前 B | **`ActivePartnerCleared(prevB, reason=3, when)`** + 同 tx 的 **`Joined(newB, ...)`** |
+| **`replaceNonVotingBAndJoin`** | 外部新 B | **`Locked`** 下 A 已 Accept、B 未投票且超时，旧 B 清空并退款，新 B 成为当前 B，交易回到 Active | **`ActivePartnerCleared(prevB, reason=4, when)`** + 同 tx 的 **`Joined(newB, ...)`** |
 
 这是「退出本轮对手方 / 被踢出」，**整单仍可被 A 重新找人继续**；不要把它画成和 **`Canceled`** 同一种「交易失败终局」。
 
-`replaceInactiveBAndJoin` 只适用于 `DealOpenTokenToken` 的 `Open` 模式：`bJoinedAt + timeoutSeconds` 之后仍未进入 `Locked`，外部用户才能顶替。被清掉的旧 B 会记录为 `lastRemovedB`，不能自己马上重新 join；A 主动 `openJoinFor(lastRemovedB)` 后才允许回来。
+`replaceInactiveBAndJoin` 只适用于 `DealOpenTokenToken` 的 `Open` 模式：`bJoinedAt + replaceTimeoutSeconds` 之后仍未进入 `Locked`，外部用户才能顶替。`replaceTimeoutSeconds` 建议默认 120 秒，合约允许范围 60 秒到 1 天。
+
+`replaceNonVotingBAndJoin` 适用于 `Locked`：A 已 Accept、B 未投票，且 `max(lockedAt, aAt) + replaceTimeoutSeconds` 之后，外部用户可以顶替 B，旧 B 退款，交易回到 `Active`。被清掉的旧 B 会记录为 `lastRemovedB`，不能自己马上重新 join；A 主动 `openJoinFor(lastRemovedB)` 后才允许回来。
 
 ---
 
@@ -165,5 +168,5 @@ event DealRewardsLogged(
 - `contracts/DealFactory.sol`：`DealRewardsLogged`、`logDealRewards`、`DLMinted`  
 - `contracts/Deal.sol` / 各 Deal implementation：进程事件  
 - `contracts/DealMessageHub.sol`：链上留言写入与读取
-- `contracts/DealOpenTokenToken.sol`：同上 + `APreAccepted`、`BExpelledOnReject`、`replaceInactiveBAndJoin`
+- `contracts/DealOpenTokenToken.sol`：同上 + `APreAccepted`、`BExpelledOnReject`、`replaceInactiveBAndJoin`、`replaceNonVotingBAndJoin`
 - 部署与库拆分：`docs/Deal库拆分部署接线说明.md`
