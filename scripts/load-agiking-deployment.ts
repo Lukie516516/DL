@@ -37,8 +37,11 @@ export type AgikingDeploymentAddresses = {
   dcDomainSwap: Address;
   dcDomainHall: Address;
   dToken: Address;
-  dealTimelock: Address;
-  dealGovernor: Address;
+  dealTimelock?: Address;
+  dealGovernor?: Address;
+  dealNftGovernanceActivity?: Address;
+  nftVetoRegistry?: Address;
+  dealSeatVetoGovernor?: Address;
   voteDividendClaimer: Address;
 };
 

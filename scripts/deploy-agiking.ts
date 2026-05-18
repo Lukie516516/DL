@@ -221,33 +221,38 @@ async function main() {
   await waitFor(publicClient, await dcRank.write.setDealReporter([dcHall.address, true]));
   console.log("Domain entry permissions OK");
 
-  // —— Governance (D + timelock + governor) ——
-  const dToken = await viem.deployContract("D", [], { client });
+  // —— Governance (D + seat-veto governor) ——
+  const dInitialHolder = (process.env.D_INITIAL_HOLDER?.trim() || dep) as Address;
+  const dToken = await viem.deployContract("D", [dInitialHolder], { client });
   console.log("D (votes)", dToken.address);
+  console.log("D initial holder", dInitialHolder);
 
-  const timelock = await viem.deployContract(
-    "DealTimelock",
-    [1n, [dep] as Address[], [dep] as Address[], dep],
-    { client },
-  );
-  console.log("DealTimelock", timelock.address);
+  const nftActivity = await viem.deployContract("DealNftGovernanceActivity", [infoNft.address], { client });
+  console.log("DealNftGovernanceActivity", nftActivity.address);
+  await waitFor(publicClient, await factory.write.setGlobal(["dealNftGovernanceActivity", nftActivity.address]));
 
-  const governor = await viem.deployContract("contracts/DealDao.sol:DealGovernor", [dToken.address, timelock.address], { client });
-  console.log("DealGovernor", governor.address);
+  const nftVetoRegistry = await viem.deployContract("NftVetoRegistry", [infoNft.address, nftActivity.address], { client });
+  console.log("NftVetoRegistry", nftVetoRegistry.address);
 
-  const PROPOSER_ROLE = await timelock.read.PROPOSER_ROLE();
-  const EXECUTOR_ROLE = await timelock.read.EXECUTOR_ROLE();
-  const CANCELLER_ROLE = await timelock.read.CANCELLER_ROLE();
-
-  await waitFor(publicClient, await timelock.write.grantRole([PROPOSER_ROLE, governor.address]));
-  await waitFor(publicClient, await timelock.write.grantRole([EXECUTOR_ROLE, governor.address]));
-  await waitFor(publicClient, await timelock.write.grantRole([CANCELLER_ROLE, governor.address]));
+  const seatVetoGovernor = await viem.deployContract("DealSeatVetoGovernor", [dToken.address, nftVetoRegistry.address], { client });
+  console.log("DealSeatVetoGovernor", seatVetoGovernor.address);
+  await waitFor(publicClient, await nftVetoRegistry.write.setGovernor([seatVetoGovernor.address, true]));
+  await waitFor(publicClient, await nftActivity.write.setRecorder([factory.address, true]));
+  await waitFor(publicClient, await nftActivity.write.setRecorder([nftVetoRegistry.address, true]));
 
   // —— Vote dividend (DL as payout token) ——
-  const voteClaimer = await viem.deployContract("VoteDividendClaimer", [dToken.address, dl.address, dep], {
-    client,
-  });
+  const dividendExecutor = (process.env.DIVIDEND_EXECUTOR?.trim() || dep) as Address;
+  const dividendSource = (process.env.DIVIDEND_SOURCE?.trim() || dep) as Address;
+  const voteClaimer = await viem.deployContract(
+    "VoteDividendClaimer",
+    [dToken.address, dl.address, dividendExecutor, dividendSource],
+    { client },
+  );
   console.log("VoteDividendClaimer", voteClaimer.address);
+  console.log("Dividend executor", dividendExecutor);
+  console.log("Dividend source", dividendSource);
+  await waitFor(publicClient, await nftActivity.write.setRecorder([voteClaimer.address, true]));
+  await waitFor(publicClient, await voteClaimer.write.setGovernanceActivity([infoNft.address, nftActivity.address]));
 
   const addresses = {
     dlToken: dl.address,
@@ -281,8 +286,9 @@ async function main() {
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
     dToken: dToken.address,
-    dealTimelock: timelock.address,
-    dealGovernor: governor.address,
+    dealNftGovernanceActivity: nftActivity.address,
+    nftVetoRegistry: nftVetoRegistry.address,
+    dealSeatVetoGovernor: seatVetoGovernor.address,
     voteDividendClaimer: voteClaimer.address,
   };
 
@@ -319,8 +325,9 @@ async function main() {
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
       D: loadAbi("D.sol/D.json"),
-      DealTimelock: loadAbi("TestDealTimeLock.sol/DealTimelock.json"),
-      DealGovernor: loadAbi("DealDao.sol/DealGovernor.json"),
+      DealNftGovernanceActivity: loadAbi("DealNftGovernanceActivity.sol/DealNftGovernanceActivity.json"),
+      NftVetoRegistry: loadAbi("NftVetoRegistry.sol/NftVetoRegistry.json"),
+      DealSeatVetoGovernor: loadAbi("DealSeatVetoGovernor.sol/DealSeatVetoGovernor.json"),
       VoteDividendClaimer: loadAbi("VoteDividendClaimer.sol/VoteDividendClaimer.json"),
     },
     notes: [

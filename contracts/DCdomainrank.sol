@@ -216,6 +216,15 @@ contract DCDomainRank is ReentrancyGuard {
         emit VisitorLeft(msg.sender, domainName);
     }
 
+    /// @notice 授权域名入口可在用户主动创建/确认大厅单时，把该用户从 visitor 切为 merchant。
+    function leaveVisitorFor(string calldata domainName, address visitor) external {
+        require(isDealReporter[msg.sender], "DCDomainRank: not reporter");
+        require(visitor != address(0), "ZERO_ACCOUNT");
+        require(_visitorInDomain[domainName][visitor], "DCDomainRank: not visitor");
+        _visitorInDomain[domainName][visitor] = false;
+        emit VisitorLeft(visitor, domainName);
+    }
+
     function isVisitorActive(string calldata domainName, address user) external view returns (bool) {
         return _visitorInDomain[domainName][user];
     }

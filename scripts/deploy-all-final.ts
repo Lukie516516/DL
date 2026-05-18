@@ -37,8 +37,9 @@ const E = {
   dcDomainRank: base.dcDomainRank,
   dcDomainMarket: base.dcDomainMarket,
   dToken: base.dToken,
-  dealTimelock: base.dealTimelock,
-  dealGovernor: base.dealGovernor,
+  dealNftGovernanceActivity: base.dealNftGovernanceActivity,
+  nftVetoRegistry: base.nftVetoRegistry,
+  dealSeatVetoGovernor: base.dealSeatVetoGovernor,
   voteClaimer: base.voteDividendClaimer,
 };
 
@@ -210,8 +211,9 @@ async function main() {
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
     dToken: E.dToken,
-    dealTimelock: E.dealTimelock,
-    dealGovernor: E.dealGovernor,
+    dealNftGovernanceActivity: E.dealNftGovernanceActivity,
+    nftVetoRegistry: E.nftVetoRegistry,
+    dealSeatVetoGovernor: E.dealSeatVetoGovernor,
     voteDividendClaimer: E.voteClaimer,
   };
 
@@ -251,8 +253,9 @@ async function main() {
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
       D: loadAbi("D.sol/D.json"),
-      DealTimelock: loadAbi("TestDealTimeLock.sol/DealTimelock.json"),
-      DealGovernor: loadAbi("DealDao.sol/DealGovernor.json"),
+      DealNftGovernanceActivity: loadAbi("DealNftGovernanceActivity.sol/DealNftGovernanceActivity.json"),
+      NftVetoRegistry: loadAbi("NftVetoRegistry.sol/NftVetoRegistry.json"),
+      DealSeatVetoGovernor: loadAbi("DealSeatVetoGovernor.sol/DealSeatVetoGovernor.json"),
       VoteDividendClaimer: loadAbi("VoteDividendClaimer.sol/VoteDividendClaimer.json"),
     },
   };

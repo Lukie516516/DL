@@ -21,7 +21,7 @@
 来源：
 - `deployments/agiking-31415926.json`
 
-**重新部署域名四件套并写回地址（Rank / Market / Swap / Hall）**
+**重新部署域名大厅自动身份切换版本并写回地址（Rank / Swap / Hall）**
 
 1. 使用 **在 Agiking 上有原生 gas**、且为 **DealFactory owner**（能对工厂 `setAllowedCreateFor`）的私钥。
 2. 配置 Hardhat 变量（PowerShell 示例）：
@@ -29,21 +29,21 @@
 ```powershell
 $env:AGIKING_RPC_URL="https://rpc.agikingrpc.shop"
 $env:AGIKING_PRIVATE_KEY="0x..."   # 勿提交到仓库
-npm run deploy:domain-upgrade
+npm run deploy:agiking:domain-hall-autoswitch
 ```
 
-3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与四份合约 ABI），并在控制台打印 **§1 应用到的地址行**；请把下面 §1 的静态列表改成与 JSON 一致（或直接从 JSON 复制）。
+3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与 ABI），并生成新的 `deployments/frontend-handoff-domain-hall-autoswitch-*.md`。
 
 当前域名相关地址：
 
-- `DL / DC`: `0x6894652a26fe39b75194067527b6ad1abc2e9e8e`
-- `DCDomain`: `0xe065d4d7a69117d033410042c59baa61b410e4fa`
-- `DCDomainRank`: `0x3d2478427666fe3cdc320ad72dff8d57a39750c0`
-- `DCDomainMarket`: `0x009980b0b329bcf59718971a5ca87d299e3a3989`
-- `DCDomainSwap`: `0xa5ee6168e315c5c7d7eda62df0f857970fcd1a06`
-- `DCDomainHall`: `0xef0660b47e611702bdcff55b00f79e42a2cd296a`
-- `DealFactory`: `0x6c80549b1a2bfa3c943c61e43e87e6233e605aa4`
-- `DealReader`: `0x41eb2b2096b207c5cc6d3e91bdab7fee47e4829d`
+- `DL / DC`: `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3`
+- `DCDomain`: `0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3`
+- `DCDomainRank`: `0x5A7ff0bdb55df5094c28944f0843e20860783323`
+- `DCDomainMarket`: `0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd`
+- `DCDomainSwap`: `0xbD4d73075F82B94E1F24090BB393536BdF0C1252`
+- `DCDomainHall`: `0x264b548d3cc9266db4FE5D663431db89b29d2bc4`
+- `DealFactory`: `0xafe8feb98ff13d9637e64fdfd1297e1a9f68e8b5`
+- `DealReader`: `0x578478b5c294aaa51b09dca3dbdb79f2ea3c8e76`
 
 ---
 
@@ -495,6 +495,7 @@ const rows = await Promise.all(
 - 创建后默认不能直接 `deal.join()`
 - 必须先 `confirmHallDealCounterparty`
 - 然后被选中的人才能 `join`
+- 如果创建者当前已经是该域名的 visitor，合约会在创建/选人/确认时自动把他切换成 merchant，不需要前端先调用 `leaveVisitor`
 
 所以前端这里：
 - 不要给这类单子直接显示“立即加入 deal”
@@ -518,6 +519,7 @@ const rows = await Promise.all(
 说明：
 - 创建后先锁住 join
 - 需要后续 `confirmHallDealCounterparty`
+- 如果调用者当前是 visitor，会自动退出 visitor 身份并继续创建
 
 ### 7.3 `createHallDealTemplate23(...)`
 
@@ -549,6 +551,7 @@ const rows = await Promise.all(
 当前规则：
 - 保证金可为 `0`
 - 创建后默认不能直接 `join`
+- 如果调用者当前是 visitor，会自动退出 visitor 身份并继续创建
 
 ### 7.4 `postMessage(domainName, merchant, user, content)`
 
@@ -577,6 +580,7 @@ const rows = await Promise.all(
 
 作用：
 - 商户发送“我准备选你”信号
+- 如果调用者当前是 visitor，会自动退出 visitor 身份并作为 merchant 发信号
 
 参数：
 - `domainName: string`
@@ -587,6 +591,8 @@ const rows = await Promise.all(
 
 作用：
 - 创建者正式指定某个访客获得加入权限
+- 只有该 deal 的创建者 A 可以调用
+- 如果创建者 A 当前是 visitor，会自动退出 visitor 身份并继续确认
 
 参数：
 - `domainName: string`

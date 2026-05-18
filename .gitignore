@@ -26,6 +26,10 @@ Thumbs.db
 # Local archives
 *.zip
 
+# Generated deployment snapshots/backups
+/deployments/agiking-31415926-*.json
+/deployments/backups/
+
 # Secrets / env files
 .env
 .env.*

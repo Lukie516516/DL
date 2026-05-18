@@ -323,7 +323,17 @@ timeoutSeconds()
 
 ## 8. 这次需要重部署什么
 
-因为 `InitParams` 新增了 `replaceTimeoutSeconds`，并且 `DealOpenTokenToken`、`DCDomainSwap` ABI/逻辑发生变化，这次不能只替换前端。
+因为 `InitParams` 新增了 `replaceTimeoutSeconds`，并且 `DealOpenTokenToken`、`DCDomainSwap` ABI/逻辑发生变化，这类更新不能只替换前端。
+
+当前 Agiking 最新部署已经完成域名入口补丁：
+
+| 合约 | 当前地址 |
+| --- | --- |
+| `DCDomainRank` | `0x5A7ff0bdb55df5094c28944f0843e20860783323` |
+| `DCDomainSwap` | `0xbD4d73075F82B94E1F24090BB393536BdF0C1252` |
+| `DCDomainHall` | `0x264b548d3cc9266db4FE5D663431db89b29d2bc4` |
+
+完整地址和 ABI 以 `deployments/agiking-31415926.json` 为准。
 
 至少需要重部署：
 
@@ -352,6 +362,8 @@ newFactory.setAllowedCreateFor(newDCDomainHall, true)
 DCDomainRank.setDealReporter(newDCDomainSwap, true)
 DCDomainRank.setDealReporter(newDCDomainHall, true)
 ```
+
+注意：`DCDomainHall` 现在会在用户主动创建/确认大厅单时自动把调用者从 visitor 切换为 merchant。这个自动切换复用 `DCDomainRank.setDealReporter(newDCDomainHall, true)` 授权，所以 Hall 必须保持 reporter 权限。
 
 如果 `DCDomainSwap` 默认 120 秒不改，可以不用额外调用。
 

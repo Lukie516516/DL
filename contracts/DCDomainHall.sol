@@ -8,6 +8,7 @@ interface IDCDomainRankForHall {
     function isVisitorActive(string calldata domainName, address user) external view returns (bool);
     function isActive(string calldata domainName, address playerAddr) external view returns (bool);
     function isBlacklisted(string calldata domainName, address account) external view returns (bool);
+    function leaveVisitorFor(string calldata domainName, address visitor) external;
     function reportDeal(string calldata domainName, address deal, address merchant) external;
 }
 
@@ -194,6 +195,13 @@ contract DCDomainHall is ReentrancyGuard {
         }
     }
 
+    function _prepareMerchant(string calldata domainName, address account) internal {
+        if (rank.isVisitorActive(domainName, account)) {
+            rank.leaveVisitorFor(domainName, account);
+        }
+        require(rank.isMerchant(domainName, account), "DCDomainHall: not merchant");
+    }
+
     /**
      * @notice 模板②/③：先建单（join 锁定），再在「本 deal 专属」大厅留言，最后由商户调用 confirmHallDealCounterparty。
      */
@@ -217,7 +225,7 @@ contract DCDomainHall is ReentrancyGuard {
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
+        _prepareMerchant(domainName, msg.sender);
         require(timeoutSeconds_ >= 3600, "DCDomainHall: timeout");
         require(timeStart_ > 0, "DCDomainHall: timeStart");
         uint64 timeEnd_ = timeStart_ + DEAL_TIMEOUT;
@@ -348,7 +356,7 @@ contract DCDomainHall is ReentrancyGuard {
     ) external {
         _mustRegistered(domainName);
         require(pickedUser != address(0), "DCDomainHall: zero user");
-        require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
+        _prepareMerchant(domainName, msg.sender);
         if (bytes(note).length > MAX_MESSAGE_BYTES) revert("DCDomainHall: note too long");
         emit MerchantPickUser(domainName, msg.sender, pickedUser, uint64(block.timestamp), note);
     }
@@ -368,7 +376,7 @@ contract DCDomainHall is ReentrancyGuard {
         require(pickedUser != address(0), "DCDomainHall: zero picked");
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
+        _prepareMerchant(domainName, msg.sender);
         require(!rank.isBlacklisted(domainName, pickedUser), "DCDomainHall: picked blacklisted");
         require(rank.isVisitorActive(domainName, pickedUser), "DCDomainHall: picked not visitor");
 
@@ -437,7 +445,7 @@ contract DCDomainHall is ReentrancyGuard {
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
+        _prepareMerchant(domainName, msg.sender);
 
         (uint64 tteStart, uint64 tteEnd) = _defaultPhaseTimestamps();
 
@@ -496,12 +504,13 @@ contract DCDomainHall is ReentrancyGuard {
         require(deal != address(0) && pickedVisitor != address(0), "DCDomainHall: zero");
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        require(rank.isMerchant(domainName, msg.sender), "DCDomainHall: not merchant");
-        require(!rank.isBlacklisted(domainName, pickedVisitor), "DCDomainHall: picked bl");
-        require(rank.isVisitorActive(domainName, pickedVisitor), "DCDomainHall: not visitor");
 
         address dealA = IDealOpenJoinForHall(deal).a();
         require(dealA == msg.sender, "DCDomainHall: not deal A");
+
+        _prepareMerchant(domainName, msg.sender);
+        require(!rank.isBlacklisted(domainName, pickedVisitor), "DCDomainHall: picked bl");
+        require(rank.isVisitorActive(domainName, pickedVisitor), "DCDomainHall: not visitor");
 
         IDealOpenJoinForHall(deal).openJoinFor(pickedVisitor);
     }
