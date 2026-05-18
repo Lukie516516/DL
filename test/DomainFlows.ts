@@ -1110,7 +1110,7 @@ describe("Domain Flows", async function () {
 
     await assert.rejects(
       hallAsCarol.write.confirmHallDealCounterparty(["hall23", dealAddress, carol.account.address]),
-      /not merchant/,
+      /not deal A/,
     );
   });
 
@@ -1247,6 +1247,65 @@ describe("Domain Flows", async function () {
       rankAsAlice.write.setBlacklisted(["noself", alice.account.address, true]),
       /cannot blacklist self/,
     );
+  });
+
+  it("auto-switches a visitor to merchant when creating a DCDomainHall deal", async function () {
+    const fixture = await deployDomainFixture();
+    const { viem, publicClient, alice, bob, owner, dcDomainRank, dcDomainHall } = fixture;
+
+    await fixture.registerDomain(alice, "switch");
+
+    const rankAsBob = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: bob },
+    });
+    const rankAsOwner = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: owner },
+    });
+    const hallAsBob = await viem.getContractAt("DCDomainHall", dcDomainHall.address, {
+      client: { wallet: bob },
+    });
+
+    await waitFor(publicClient, await rankAsBob.write.enterDomain(["switch"]));
+    assert.equal(await dcDomainRank.read.isVisitorActive(["switch", bob.account.address]), true);
+    assert.equal(await dcDomainRank.read.isMerchant(["switch", bob.account.address]), false);
+
+    await assert.rejects(
+      rankAsOwner.write.leaveVisitorFor(["switch", bob.account.address]),
+      /not reporter/,
+    );
+
+    const createHash = await hallAsBob.write.createHallDealTemplate23([
+      "switch",
+      3,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      zeroAddress,
+      0n,
+      0n,
+      3600n,
+      DEFAULT_TIME_START,
+      "auto switch ete",
+      "",
+      false,
+    ]);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+    const events = await publicClient.getContractEvents({
+      address: dcDomainHall.address,
+      abi: dcDomainHall.abi,
+      eventName: "HallDealCreatedDeferred",
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+      strict: true,
+    });
+
+    assert.equal(events.length, 1);
+    assert.equal(await dcDomainRank.read.isVisitorActive(["switch", bob.account.address]), false);
+    assert.equal(await dcDomainRank.read.isMerchant(["switch", bob.account.address]), true);
+    assert.equal(await dcDomainRank.read.domainDealCount(["switch"]), 1n);
   });
 
   it("creates exact-address hall deals with pickUserAndCreateDeal and blocks other joiners", async function () {

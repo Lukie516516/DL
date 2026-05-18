@@ -159,6 +159,10 @@ interface IDealCreditGraph {
     ) external returns (uint256 aDelta, uint256 bDelta);
 }
 
+interface IDealNftGovernanceActivityRecorder {
+    function markActive(uint256 tokenId) external;
+}
+
 interface IDealActivityIndex {
     function addTracked(address user, address deal) external returns (bool changed);
     function removeTracked(address user, address deal) external returns (bool changed);
@@ -267,6 +271,7 @@ contract DealFactory is Ownable {
     address public dealMessageHub;
     address public creditGraph;
     address public dealActivityIndex;
+    address public dealNftGovernanceActivity;
     address public dealImplementationRegistry;
 
     // 归一化 token(OTHER 或 WNATIVE) => pair(DL↔token)
@@ -453,7 +458,7 @@ contract DealFactory is Ownable {
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealImplementationRegistry"}
+    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealNftGovernanceActivity","dealImplementationRegistry"}
     function setGlobal(string calldata key, address value) external onlyOwner {
         if (value == address(0)) revert ZeroAddress();
         bytes32 k = keccak256(bytes(key));
@@ -464,6 +469,7 @@ contract DealFactory is Ownable {
         else if (k == keccak256("dealMessageHub")) dealMessageHub = value;
         else if (k == keccak256("creditGraph")) creditGraph = value;
         else if (k == keccak256("dealActivityIndex")) dealActivityIndex = value;
+        else if (k == keccak256("dealNftGovernanceActivity")) dealNftGovernanceActivity = value;
         else if (k == keccak256("dealImplementationRegistry")) dealImplementationRegistry = value;
         else revert();
         if ((k == keccak256("dlToken") || k == keccak256("wrappedNative")) && value != address(0)) {
@@ -969,9 +975,15 @@ contract DealFactory is Ownable {
         bool bValid,
         uint256 baseCredit
     ) external onlyDeal {
+        if (aValid) _markNftGovernanceActivity(aTokenId);
+        if (bValid) _markNftGovernanceActivity(bTokenId);
         address graph = creditGraph;
         if (graph == address(0) || baseCredit == 0) return;
         IDealCreditGraph(graph).recordDeal(partyA, partyB, aTokenId, aValid, bTokenId, bValid, baseCredit);
+    }
+
+    function recordNftGovernanceActivity(uint256 tokenId) external onlyDeal {
+        _markNftGovernanceActivity(tokenId);
     }
 
     /* ========== 热索引回调（仅 Deal） ========== */
@@ -1198,11 +1210,18 @@ contract DealFactory is Ownable {
         isDeal[deal] = true;
 
         IDeal(deal).initialize(address(this), initiator, p.init, _buildDealConfig(p));
+        _markNftGovernanceActivity(p.init.aNftId);
 
         emit DealCreated(deal, initiator);
         emit DealCreatedV2(initiator, deal, p.init.aNftId);
         emit DealTemplateTagged(deal, p.init.templateType);
         if (p.init.openTokenTokenFast) emit DealOpenTokenTokenCreated(deal);
+    }
+
+    function _markNftGovernanceActivity(uint256 tokenId) internal {
+        address activity = dealNftGovernanceActivity;
+        if (activity == address(0) || tokenId == 0) return;
+        try IDealNftGovernanceActivityRecorder(activity).markActive(tokenId) {} catch {}
     }
 
 }

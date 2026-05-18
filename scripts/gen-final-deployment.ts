@@ -37,8 +37,9 @@ const allAbi = {
   DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
   DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
   D: loadAbi("D.sol/D.json"),
-  DealTimelock: loadAbi("TestDealTimeLock.sol/DealTimelock.json"),
-  DealGovernor: loadAbi("DealDao.sol/DealGovernor.json"),
+  DealNftGovernanceActivity: loadAbi("DealNftGovernanceActivity.sol/DealNftGovernanceActivity.json"),
+  NftVetoRegistry: loadAbi("NftVetoRegistry.sol/NftVetoRegistry.json"),
+  DealSeatVetoGovernor: loadAbi("DealSeatVetoGovernor.sol/DealSeatVetoGovernor.json"),
   VoteDividendClaimer: loadAbi("VoteDividendClaimer.sol/VoteDividendClaimer.json"),
 };
 

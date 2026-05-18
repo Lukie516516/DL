@@ -1,10 +1,10 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-15T09:31:37.210Z",
-  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-dcdomain-swap-info-nft-20260515-093137.json",
-  "upgrade": "dcdomain-swap-info-nft",
+  "deployedAt": "2026-05-18T07:41:17.098Z",
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "previousDeployment": "deployments/backups/agiking-31415926.before-domain-hall-autoswitch-20260518-074117.json",
+  "upgrade": "domain-hall-autoswitch",
   "addresses": {
     "dlToken": "0xf9606500fbbea6d220bb65fc5cea9641c6e436d3",
     "ausd": "0x61b625206675c95a93a9dd45e386ab2801f4d96c",
@@ -32,10 +32,10 @@
     "dealRouter": "0x52d02e04813f66a36b96ff9f3fb63f7ad7a695e0",
     "dealReader": "0x578478b5c294aaa51b09dca3dbdb79f2ea3c8e76",
     "dcDomain": "0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3",
-    "dcDomainRank": "0xf1bb9e705f5366febcd15a14e785fb26228fcd8c",
+    "dcDomainRank": "0x5A7ff0bdb55df5094c28944f0843e20860783323",
     "dcDomainMarket": "0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd",
-    "dcDomainSwap": "0xce1a37712e686a933eafb82bdfbda511c1a46eda",
-    "dcDomainHall": "0x5104b6c8a28382711e59d06f0e7c9728357ef519",
+    "dcDomainSwap": "0xbD4d73075F82B94E1F24090BB393536BdF0C1252",
+    "dcDomainHall": "0x264b548d3cc9266db4FE5D663431db89b29d2bc4",
     "dToken": "0x3340f3f9e27baeab1fea9fb25b646a82b5588cd2",
     "dealTimelock": "0xd553524a05b33da8aedd972fd3858889238828b6",
     "dealGovernor": "0x87f6d9a1d39cc75609678f37eb314ef0c5990586",
@@ -25474,6 +25474,24 @@
         "type": "function"
       },
       {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "visitor",
+            "type": "address"
+          }
+        ],
+        "name": "leaveVisitorFor",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
         "inputs": [],
         "name": "minDeposit",
         "outputs": [
@@ -31665,7 +31683,9 @@
     "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
     "Completed/Canceled events now include when.",
     "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
-    "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
-    "DCDomainSwap redeployed with createDealWithInfoNft(..., aNftId); old createDeal(...) remains available."
+    "DCDomainSwap redeployed with createDealWithInfoNft(..., aNftId); old createDeal(...) remains available.",
+    "DCDomainRank, DCDomainSwap and DCDomainHall redeployed for DCDomainHall visitor -> merchant auto-switch.",
+    "DCDomain, DCDomainMarket and the core Deal stack are reused.",
+    "Latest domain deployment: DCDomainRank, DCDomainSwap and DCDomainHall were redeployed; DCDomainMarket, DCDomain and core Deal contracts are reused."
   ]
 }

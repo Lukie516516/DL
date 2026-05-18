@@ -1,0 +1,265 @@
+/**
+ * Redeploy the domain trading entry contracts for visitor -> merchant auto-switch.
+ *
+ * Scope:
+ * - new DCDomainRank, because the old Rank does not expose leaveVisitorFor(...)
+ * - new DCDomainSwap and DCDomainHall, both wired to the new Rank
+ * - existing DCDomain, DCDomainMarket, DealFactory and core Deal stack are reused
+ */
+import {
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { network } from "hardhat";
+import { defineChain, formatEther, getAddress, type Address } from "viem";
+
+const AGIKING_CHAIN_ID = 31415926;
+const DEPLOYMENT_FILE = "agiking-31415926.json";
+
+type DeploymentJson = {
+  chainId: number;
+  rpcUrl: string;
+  deployedAt: string;
+  deployer: Address;
+  previousDeployment?: string;
+  upgrade?: string;
+  addresses: Record<string, Address>;
+  abi: Record<string, unknown[]>;
+  notes?: string[];
+};
+
+function agikingChain(rpcUrl: string) {
+  return defineChain({
+    id: AGIKING_CHAIN_ID,
+    name: "Agiking",
+    nativeCurrency: { decimals: 18, name: "Native", symbol: "NATIVE" },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
+}
+
+function loadAbi(relativeArtifactJson: string): unknown[] {
+  const p = join(process.cwd(), "artifacts", "contracts", relativeArtifactJson);
+  return (JSON.parse(readFileSync(p, "utf8")) as { abi: unknown[] }).abi;
+}
+
+async function waitFor(publicClient: any, hash: `0x${string}`) {
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`Transaction failed: ${hash}`);
+  return receipt;
+}
+
+async function tx(label: string, publicClient: any, hashPromise: Promise<`0x${string}`>) {
+  const hash = await hashPromise;
+  await waitFor(publicClient, hash);
+  console.log(`  OK ${label}: ${hash}`);
+}
+
+function writeHandoff(file: string, deployedAt: string, deployer: Address, addresses: Record<string, Address>) {
+  const md = `# 域名大厅自动身份切换部署交接
+
+部署时间：${deployedAt}
+
+部署钱包：\`${deployer}\`
+
+链：Agiking \`${AGIKING_CHAIN_ID}\`
+
+## 本次新部署地址
+
+| 模块 | 地址 | 前端用途 |
+| --- | --- | --- |
+| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名身份、访客/商家状态、排行榜；新增 \`leaveVisitorFor\` |
+| DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名下创建币币 deal，支持身份 NFT 参数 |
+| DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅单；创建/确认时自动 visitor -> merchant |
+
+## 复用地址
+
+| 模块 | 地址 |
+| --- | --- |
+| DCDomain | \`${addresses.dcDomain}\` |
+| DCDomainMarket | \`${addresses.dcDomainMarket}\` |
+| DealFactory | \`${addresses.dealFactory}\` |
+| DealReader | \`${addresses.dealReader}\` |
+| DealMessageHub | \`${addresses.dealMessageHub}\` |
+| DealInfoNFT | \`${addresses.dealInfoNFT}\` |
+| DL Token | \`${addresses.dlToken}\` |
+
+## 前端接线
+
+1. 域名身份/排行榜查询切到新的 \`DCDomainRank\`。
+2. 域名普通币币入口切到新的 \`DCDomainSwap\`。
+3. 域名大厅入口切到新的 \`DCDomainHall\`。
+4. ABI 使用 \`deployments/${DEPLOYMENT_FILE}\` 里的 \`DCDomainRank\`、\`DCDomainSwap\`、\`DCDomainHall\`。
+5. 大厅创建/选人/确认时，用户如果当前是 visitor，合约会自动退出 visitor 并按 merchant 继续执行；前端不需要再要求用户手动 leaveVisitor。
+
+## 链上接线
+
+- \`DealFactory.setAllowedCreateFor(DCDomainSwap, true)\` 已完成。
+- \`DealFactory.setAllowedCreateFor(DCDomainHall, true)\` 已完成。
+- \`DCDomainRank.setDealReporter(DCDomainSwap, true)\` 已完成。
+- \`DCDomainRank.setDealReporter(DCDomainHall, true)\` 已完成。
+- \`DCDomainSwap.replaceTimeoutSeconds()\` 校验为 \`120\` 秒。
+
+## 注意
+
+这次重部署了 \`DCDomainRank\`，所以新的域名访客状态、排行榜、广告充值状态从新 Rank 开始记录。域名 NFT、域名 Market、DealFactory、DealReader、MessageHub、InfoNFT 没有重部署。
+`;
+  writeFileSync(file, md, "utf8");
+}
+
+function removeOldDeploymentHandoffs(dir: string, keepFile: string) {
+  for (const name of readdirSync(dir)) {
+    if (!name.startsWith("frontend-handoff-") || !name.endsWith(".md")) continue;
+    const file = join(dir, name);
+    if (file === keepFile) continue;
+    rmSync(file);
+    console.log("Removed old handoff:", file);
+  }
+}
+
+async function main() {
+  const rpcUrl = process.env.AGIKING_RPC_URL ?? "https://rpc.agikingrpc.shop";
+  const chain = agikingChain(rpcUrl.trim());
+
+  const dir = join(process.cwd(), "deployments");
+  const currentFile = join(dir, DEPLOYMENT_FILE);
+  const current = JSON.parse(readFileSync(currentFile, "utf8")) as DeploymentJson;
+  const oldAddresses = current.addresses;
+
+  const { viem } = await network.connect({ network: "agiking", chainType: "l1" });
+  const publicClient = await viem.getPublicClient({ chain });
+  const [deployer] = await viem.getWalletClients({ chain });
+  const client = { public: publicClient, wallet: deployer } as const;
+  const dep = getAddress(deployer.account.address) as Address;
+  const balance = await publicClient.getBalance({ address: dep });
+
+  console.log("Chain:", chain.id);
+  console.log("Deployer:", dep);
+  console.log("Native balance:", formatEther(balance));
+  if (balance === 0n) throw new Error("Deployer has zero native balance; cannot pay deployment gas.");
+
+  console.log("\n--- Deploy DCDomainRank ---");
+  const rank = await viem.deployContract("DCDomainRank", [
+    oldAddresses.dlToken,
+    oldAddresses.dcDomain,
+    dep,
+  ], { client });
+  console.log("DCDomainRank:", rank.address);
+
+  console.log("\n--- Deploy DCDomainSwap ---");
+  const swap = await viem.deployContract("DCDomainSwap", [
+    oldAddresses.dcDomain,
+    rank.address,
+    oldAddresses.dealFactory,
+  ], { client });
+  console.log("DCDomainSwap:", swap.address);
+
+  console.log("\n--- Deploy DCDomainHall ---");
+  const hall = await viem.deployContract("DCDomainHall", [
+    rank.address,
+    oldAddresses.dcDomain,
+    oldAddresses.dealFactory,
+  ], { client });
+  console.log("DCDomainHall:", hall.address);
+
+  console.log("\n--- Wire permissions ---");
+  const factory = await viem.getContractAt("DealFactory", oldAddresses.dealFactory, { client });
+  await tx("Factory.allow DCDomainSwap", publicClient, factory.write.setAllowedCreateFor([swap.address, true]));
+  await tx("Factory.allow DCDomainHall", publicClient, factory.write.setAllowedCreateFor([hall.address, true]));
+  await tx("Rank.reporter DCDomainSwap", publicClient, rank.write.setDealReporter([swap.address, true]));
+  await tx("Rank.reporter DCDomainHall", publicClient, rank.write.setDealReporter([hall.address, true]));
+
+  console.log("\n--- Verify wiring ---");
+  const deployedSwap = await viem.getContractAt("DCDomainSwap", swap.address, { client });
+  const replaceTimeout = await deployedSwap.read.replaceTimeoutSeconds();
+  const pointedFactory = await deployedSwap.read.FACTORY();
+  const pointedRank = await deployedSwap.read.dcRank();
+  const hallRank = await (await viem.getContractAt("DCDomainHall", hall.address, { client })).read.rank();
+  const hallFactory = await (await viem.getContractAt("DCDomainHall", hall.address, { client })).read.dealFactory();
+  const swapReporter = await rank.read.isDealReporter([swap.address]);
+  const hallReporter = await rank.read.isDealReporter([hall.address]);
+  const swapAllowed = await factory.read.isAllowedCreateFor([swap.address]);
+  const hallAllowed = await factory.read.isAllowedCreateFor([hall.address]);
+
+  if (String(replaceTimeout) !== "120") throw new Error("Unexpected DCDomainSwap replaceTimeoutSeconds");
+  if (String(pointedFactory).toLowerCase() !== String(oldAddresses.dealFactory).toLowerCase()) {
+    throw new Error("DCDomainSwap factory mismatch");
+  }
+  if (String(pointedRank).toLowerCase() !== String(rank.address).toLowerCase()) {
+    throw new Error("DCDomainSwap rank mismatch");
+  }
+  if (String(hallRank).toLowerCase() !== String(rank.address).toLowerCase()) {
+    throw new Error("DCDomainHall rank mismatch");
+  }
+  if (String(hallFactory).toLowerCase() !== String(oldAddresses.dealFactory).toLowerCase()) {
+    throw new Error("DCDomainHall factory mismatch");
+  }
+  if (!swapReporter || !hallReporter || !swapAllowed || !hallAllowed) {
+    throw new Error("Permission verification failed");
+  }
+  console.log("  OK replaceTimeoutSeconds:", String(replaceTimeout));
+  console.log("  OK Factory + Rank pointers and permissions");
+
+  const deployedAt = new Date().toISOString();
+  const stamp = deployedAt.replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  const backupDir = join(dir, "backups");
+  mkdirSync(backupDir, { recursive: true });
+  const backupFileName = `agiking-31415926.before-domain-hall-autoswitch-${stamp}.json`;
+  const backupFile = join(backupDir, backupFileName);
+  const backupFileRef = `deployments/backups/${backupFileName}`;
+  copyFileSync(currentFile, backupFile);
+
+  const addresses: Record<string, Address> = {
+    ...oldAddresses,
+    dcDomainRank: getAddress(rank.address) as Address,
+    dcDomainSwap: getAddress(swap.address) as Address,
+    dcDomainHall: getAddress(hall.address) as Address,
+  };
+
+  const updated: DeploymentJson = {
+    ...current,
+    deployedAt,
+    deployer: dep,
+    previousDeployment: backupFileRef,
+    upgrade: "domain-hall-autoswitch",
+    addresses,
+    abi: {
+      ...current.abi,
+      DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
+      DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
+      DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
+    },
+    notes: [
+      ...(current.notes ?? []),
+      "DCDomainRank, DCDomainSwap and DCDomainHall redeployed for DCDomainHall visitor -> merchant auto-switch.",
+      "DCDomain, DCDomainMarket and the core Deal stack are reused.",
+    ],
+  };
+
+  const snapshotFile = join(dir, `agiking-31415926-${stamp}.json`);
+  const handoffFile = join(dir, `frontend-handoff-domain-hall-autoswitch-${stamp}.md`);
+  writeFileSync(currentFile, JSON.stringify(updated, null, 2), "utf8");
+  writeFileSync(snapshotFile, JSON.stringify(updated, null, 2), "utf8");
+  writeHandoff(handoffFile, deployedAt, dep, addresses);
+  removeOldDeploymentHandoffs(dir, handoffFile);
+
+  console.log("\n========== UPDATED ==========");
+  console.log("DCDomainRank:", addresses.dcDomainRank);
+  console.log("DCDomainSwap:", addresses.dcDomainSwap);
+  console.log("DCDomainHall:", addresses.dcDomainHall);
+  console.log("replaceTimeoutSeconds:", String(replaceTimeout));
+  console.log("\nWrote:");
+  console.log(" ", currentFile);
+  console.log(" ", snapshotFile);
+  console.log(" ", backupFile);
+  console.log(" ", handoffFile);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

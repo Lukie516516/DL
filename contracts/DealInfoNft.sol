@@ -55,6 +55,12 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     mapping(uint256 => uint256)  private _ownedIndex1b;
     uint256 public constant MAX_PAGE_SIZE = 100;
 
+    struct OwnerCheckpoint {
+        uint48 blockNumber;
+        address owner;
+    }
+    mapping(uint256 => OwnerCheckpoint[]) private _ownerCheckpoints;
+
     function tokensOfOwner(address owner) external view returns (uint256[] memory tokens) {
         return _ownedTokens[owner];
     }
@@ -68,6 +74,21 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         uint256 end = offset + pageLimit; if (end > total) end = total;
         uint256 n = end - offset; tokens = new uint256[](n);
         for (uint256 i = 0; i < n; ++i) tokens[i] = arr[offset + i];
+    }
+
+    function ownerOfAt(uint256 tokenId, uint256 blockNumber) external view returns (address) {
+        require(blockNumber < block.number, "FUTURE_BLOCK");
+        OwnerCheckpoint[] storage ckpts = _ownerCheckpoints[tokenId];
+        uint256 len = ckpts.length;
+        if (len == 0) return address(0);
+        uint256 low;
+        uint256 high = len;
+        while (low < high) {
+            uint256 mid = (low + high) >> 1;
+            if (ckpts[mid].blockNumber <= blockNumber) low = mid + 1;
+            else high = mid;
+        }
+        return low == 0 ? address(0) : ckpts[low - 1].owner;
     }
 
     /* ========== 媒体（可选） ========== */
@@ -355,6 +376,18 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         if (to != address(0)) {
             _ownedTokens[to].push(tokenId);
             _ownedIndex1b[tokenId] = _ownedTokens[to].length;
+        }
+        _writeOwnerCheckpoint(tokenId, to);
+    }
+
+    function _writeOwnerCheckpoint(uint256 tokenId, address owner_) internal {
+        OwnerCheckpoint[] storage ckpts = _ownerCheckpoints[tokenId];
+        uint48 currentBlock = uint48(block.number);
+        uint256 len = ckpts.length;
+        if (len != 0 && ckpts[len - 1].blockNumber == currentBlock) {
+            ckpts[len - 1].owner = owner_;
+        } else {
+            ckpts.push(OwnerCheckpoint({blockNumber: currentBlock, owner: owner_}));
         }
     }
 

@@ -18,9 +18,11 @@ contract DealGovernor is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
+    uint256 public constant D_SEAT_THRESHOLD = 250_000_000; // 2.5 D, D has 8 decimals
+
     constructor(IVotes token, TimelockController timelock)
         Governor("DealGovernor")
-        GovernorSettings(1, 50400, 0)
+        GovernorSettings(1, 50400, D_SEAT_THRESHOLD)
         GovernorVotes(token)
         GovernorVotesQuorumFraction(20)
         GovernorTimelockControl(timelock)
