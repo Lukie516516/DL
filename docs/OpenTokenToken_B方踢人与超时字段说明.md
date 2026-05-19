@@ -2,18 +2,20 @@
 
 本文说明 `DealOpenTokenToken` 里 B 方被踢、被替换、主动退出、拒绝交易的完整逻辑，以及这次升级需要重部署和重接线的合约。
 
-## 1. 三个时间字段
+## 1. 时间字段
 
 | 字段 | 来源 | 用途 | 是否用于踢 B |
 | --- | --- | --- | --- |
-| `timeStart` / `timeEnd` | 创建 deal 时传入 | 合同展示/业务周期，给前端展示开始、结束、阶段时间 | 否 |
-| `timeoutSeconds` | 创建 deal 时传入 | `Locked` 后，一方已投票、另一方不投票时，允许 `forceComplete` / `cancel` 的等待时间 | 否，不用于 C 顶替 B |
+| `createdAt` / `endedAt` | 合约自动记录 | 创建时间 / 真实结束时间；`endedAt=0` 表示未结束 | 否 |
+| `timeStart` / `timeEnd` | 合约自动兼容写入 | 兼容旧前端；分别等于 `createdAt` / `endedAt` | 否 |
+| `timeoutSeconds` | 创建 deal 时传入 | `Locked` 后的超时强制处理等待时间；A 已确认、B 未投票时可强制完成；A 已拒绝、B 未投票时不能由 A 强制取消 | 否，不用于 C 顶替 B |
 | `replaceTimeoutSeconds` | 创建 deal 时传入 | B 占坑、卡注入、卡确认时，外部 C 可顶替 B 的等待时间 | 是 |
 
 结论：
 
 ```text
-timeStart/timeEnd 是展示时间。
+createdAt/endedAt 是合约真实创建/结束时间。
+timeStart/timeEnd 只做旧接口兼容。
 timeoutSeconds 是终局强制处理时间。
 replaceTimeoutSeconds 是踢 B / 顶替 B 时间。
 ```
@@ -329,9 +331,9 @@ timeoutSeconds()
 
 | 合约 | 当前地址 |
 | --- | --- |
-| `DCDomainRank` | `0x5A7ff0bdb55df5094c28944f0843e20860783323` |
-| `DCDomainSwap` | `0xbD4d73075F82B94E1F24090BB393536BdF0C1252` |
-| `DCDomainHall` | `0x264b548d3cc9266db4FE5D663431db89b29d2bc4` |
+| `DCDomainRank` | `0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee` |
+| `DCDomainSwap` | `0x39e77dd312f5dbc2b18396937a4e97163247497d` |
+| `DCDomainHall` | `0xf6d8d7bebc381674d4a72a5d1ae0a1971422eeef` |
 
 完整地址和 ABI 以 `deployments/agiking-31415926.json` 为准。
 
@@ -363,7 +365,7 @@ DCDomainRank.setDealReporter(newDCDomainSwap, true)
 DCDomainRank.setDealReporter(newDCDomainHall, true)
 ```
 
-注意：`DCDomainHall` 现在会在用户主动创建/确认大厅单时自动把调用者从 visitor 切换为 merchant。这个自动切换复用 `DCDomainRank.setDealReporter(newDCDomainHall, true)` 授权，所以 Hall 必须保持 reporter 权限。
+注意：`DCDomainHall` 现在不再区分 visitor / merchant。前端不需要 `enterDomain` / `leaveVisitor`，只需要按 `isActive(domainName, user)` 和 `isBlacklisted(domainName, user)` 判断用户是否可参与大厅。
 
 如果 `DCDomainSwap` 默认 120 秒不改，可以不用额外调用。
 
@@ -410,7 +412,7 @@ B 进来以后会开始计时。
 如果 B 只是占坑不注入，超过 replaceTimeoutSeconds 后，C 可以顶替。
 如果 B 已经注入但不确认，且 A 已确认，超过 replaceTimeoutSeconds 后，C 也可以顶替。
 C 顶替后不会直接成交，而是回到 Active，让 C 自己注入。
-合同展示时间 timeStart/timeEnd 不参与踢人。
+createdAt/endedAt 只记录真实创建/结束时间，不参与踢人。
 终局强制时间 timeoutSeconds 不参与 C 顶替。
 真正控制踢人的字段只有 replaceTimeoutSeconds。
 ```

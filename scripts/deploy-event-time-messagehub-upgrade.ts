@@ -128,7 +128,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名入口创建普通 deal |
 | DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅/访客匹配入口 |
 | DCDomain | \`${addresses.dcDomain}\` | 域名 NFT，复用旧地址 |
-| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名身份/排行，复用旧地址 |
+| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名有效用户、黑名单、排行、分页排行榜 |
 | DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
 | USDT | \`${addresses.usdt}\` | 测试稳定币 |
@@ -139,8 +139,11 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 2. 留言不再调 deal 合约本体，统一调新的 \`DealMessageHub.postMessage(dealAddress, content)\`。
 3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`replaceNonVotingBAndJoin\`、\`replaceTimeoutSeconds\`、\`APreAccepted\`、\`BExpelledOnReject\`、\`ActivePartnerCleared\`。
 4. 终局事件 \`Completed\` / \`Canceled\` 已带 \`when\` 字段，前端可以直接用事件里的链上时间。
-5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`，旧域名 NFT、Rank、Market 地址继续复用。
+5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`，域名身份/黑名单/排行查询切到新的 \`DCDomainRank\`，旧域名 NFT、Market 地址继续复用。
 6. 创建 \`openTokenTokenFast = true\` 的 deal 时必须传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。新的 \`DCDomainSwap\` 默认也是 120 秒。
+7. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`，旧 \`timeStart/timeEnd\` 只做兼容展示。
+8. 域名下创建币币合同如果要绑定 A 的官方身份 NFT，调用 \`DCDomainSwap.createDealWithInfoNft(..., aNftId)\`；不绑定则继续调用 \`createDeal(...)\`。
+9. 域名排行榜分页调用 \`DCDomainRank.getLeaderboard(domainName, offset, limit)\`，单次 \`limit <= 50\`。
 
 ## ABI
 
@@ -149,6 +152,16 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 \`\`\`
 deployments/${DEPLOYMENT_FILE}
 \`\`\`
+
+## 相关前端文档
+
+| 文档 | 用途 |
+| --- | --- |
+| \`docs/Domain_Frontend_Call_Guide.md\` | 域名注册、域名交易、大厅、排行榜、分页 |
+| \`docs/DealOpenTokenToken_前端接入说明.md\` | OpenTokenToken 创建参数、加入/顶替/成交流程 |
+| \`docs/OpenTokenToken_B方踢人与超时字段说明.md\` | B 方踢人、C 顶替、\`replaceTimeoutSeconds\` |
+| \`docs/DCDomainSwap_身份NFT创建说明.md\` | 域名下创建币币合同时绑定 A 的官方身份 NFT |
+| \`docs/Deal_前端事件与工厂索引说明.md\` | 事件索引、系统提示、奖励和信用读取 |
 
 ## 验证结果
 
@@ -307,18 +320,21 @@ async function main() {
   await tx("DealInfoNFT.setFactory(newFactory)", publicClient, infoNft.write.setFactory([factory.address]));
 
   console.log("\n--- Deploy domain entry contracts against new Factory ---");
-  const dcSwap = await viem.deployContract("DCDomainSwap", [EXISTING.dcDomain, EXISTING.dcDomainRank, factory.address], {
+  const dcRank = await viem.deployContract("DCDomainRank", [EXISTING.dlToken, EXISTING.dcDomain, dep], {
+    client,
+  });
+  console.log("DCDomainRank:", dcRank.address);
+  const dcSwap = await viem.deployContract("DCDomainSwap", [EXISTING.dcDomain, dcRank.address, factory.address], {
     client,
   });
   console.log("DCDomainSwap:", dcSwap.address);
-  const dcHall = await viem.deployContract("DCDomainHall", [EXISTING.dcDomainRank, EXISTING.dcDomain, factory.address], {
+  const dcHall = await viem.deployContract("DCDomainHall", [dcRank.address, EXISTING.dcDomain, factory.address], {
     client,
   });
   console.log("DCDomainHall:", dcHall.address);
 
   await tx("Factory.allow DCDomainSwap", publicClient, newFactory.write.setAllowedCreateFor([dcSwap.address, true]));
   await tx("Factory.allow DCDomainHall", publicClient, newFactory.write.setAllowedCreateFor([dcHall.address, true]));
-  const dcRank = await viem.getContractAt("DCDomainRank", EXISTING.dcDomainRank, { client }) as AnyContract;
   await tx("DCDomainRank.setDealReporter(Swap)", publicClient, dcRank.write.setDealReporter([dcSwap.address, true]));
   await tx("DCDomainRank.setDealReporter(Hall)", publicClient, dcRank.write.setDealReporter([dcHall.address, true]));
 
@@ -350,7 +366,7 @@ async function main() {
     dealRouter: EXISTING.dealRouter,
     dealReader: reader.address,
     dcDomain: EXISTING.dcDomain,
-    dcDomainRank: EXISTING.dcDomainRank,
+    dcDomainRank: dcRank.address,
     dcDomainMarket: EXISTING.dcDomainMarket,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
@@ -391,7 +407,7 @@ async function main() {
       "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
       "Completed/Canceled events now include when.",
       "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
-      "DCDomain/DCDomainRank/DCDomainMarket are reused; DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
+      "DCDomain/DCDomainMarket are reused; DCDomainRank/DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
     ],
   };
 
@@ -401,6 +417,7 @@ async function main() {
 
   const handoffFile = join(dir, `frontend-handoff-agiking-31415926-${stamp}.md`);
   writeFrontendHandoff(handoffFile, deployedAt, dep, addresses);
+  writeFrontendHandoff(join(process.cwd(), "docs", "前端部署地址交接文档.md"), deployedAt, dep, addresses);
 
   console.log("\n========== DEPLOYED ADDRESSES ==========");
   console.log(JSON.stringify(addresses, null, 2));
@@ -409,6 +426,7 @@ async function main() {
   console.log(" ", timestampedFile);
   console.log(" ", backupFile);
   console.log(" ", handoffFile);
+  console.log(" ", join(process.cwd(), "docs", "前端部署地址交接文档.md"));
 }
 
 main().catch((err) => {

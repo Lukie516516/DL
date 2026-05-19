@@ -49,8 +49,6 @@ interface IDealFactory {
         string  description;
         uint64  timeoutSeconds;
         uint64  replaceTimeoutSeconds;
-        uint64  timeStart;
-        uint64  timeEnd;
         bool    isDomainDeal;
         string  domainName;
         bool    openTokenTokenFast;
@@ -71,7 +69,7 @@ interface IDealFactory {
  *         expectedB = 零地址 → Open 模式（任何人接单）
  *         expectedB = 具体地址 → ExactAddress（指定对方接单）
  *         超时固定 3600 秒（1小时）
- *         timeStart/timeEnd：非零，供前端阶段时间轴（等待加入 / 等待注入），建单时按区块时间 + TIMEOUT 递推
+ *         createdAt/endedAt：由 Deal 合约自动记录创建/终局时间
  *         openTokenTokenFast：走 DealOpenTokenToken（A 可先 pay / preAccept 等）
  *         部署在 BSC (Chain ID: 56)
  */
@@ -213,10 +211,6 @@ contract DCDomainSwap {
 
         uint8 joinMode = expectedB == address(0) ? 0 : 1; // Open / ExactAddress
 
-        uint64 ts = uint64(block.timestamp);
-        uint64 phaseJoinDeadline = ts + TIMEOUT;
-        uint64 phasePayDeadline = phaseJoinDeadline + TIMEOUT;
-
         IDealFactory.InitParams memory init = IDealFactory.InitParams({
             aSwapToken:     aSwapToken,
             aSwapAmount:    aSwapAmount,
@@ -239,8 +233,6 @@ contract DCDomainSwap {
             description:              description,
             timeoutSeconds:           TIMEOUT,
             replaceTimeoutSeconds:    replaceTimeoutSeconds,
-            timeStart:                phaseJoinDeadline,
-            timeEnd:                  phasePayDeadline,
             isDomainDeal:             true,
             domainName:               domainName,
             openTokenTokenFast:       true

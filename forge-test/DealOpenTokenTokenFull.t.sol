@@ -102,8 +102,6 @@ contract DealOpenTokenTokenFullTest is Test {
             description: "",
             timeoutSeconds: timeout,
             replaceTimeoutSeconds: 120,
-            timeStart: 1_700_000_000,
-            timeEnd: 1_800_000_000,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: true
@@ -671,8 +669,6 @@ contract OpenTTHandler is Test {
             description: "",
             timeoutSeconds: 3600,
             replaceTimeoutSeconds: 120,
-            timeStart: 1_700_000_000,
-            timeEnd: 1_800_000_000,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: true

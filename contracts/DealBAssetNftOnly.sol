@@ -96,6 +96,8 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
     uint64 public timeoutSeconds;
     uint64 public timeStart;
     uint64 public timeEnd;
+    uint64 public createdAt;
+    uint64 public endedAt;
     uint64 public aAt; uint64 public bAt;
     Vote   public aVote;     Vote   public bVote;
 
@@ -172,7 +174,6 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         string  title;
         string  description;
         uint64  timeoutSeconds; uint64 replaceTimeoutSeconds;
-        uint64  timeStart;    uint64  timeEnd;
         bool    isDomainDeal;
         string  domainName;
         /// @dev true 时使用 DealOpenTokenToken 实现；普通 Deal 必须为 false
@@ -235,8 +236,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         bNftId    = 0;
 
         title=p.title; description=p.description; timeoutSeconds=p.timeoutSeconds;
-        timeStart = p.timeStart; timeEnd = p.timeEnd;
-        _check(timeStart > 0 && timeEnd > timeStart, 13);
+        createdAt = uint64(block.timestamp); timeStart = createdAt;
 
         isDomainDeal = p.isDomainDeal;
         domainName = p.domainName;
@@ -280,8 +280,11 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         else if (_trackBActive)       IFactoryIndex(factory).onParticipantRemoved(prevB);
         _trackA=false; _trackBActive=false;
 
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Abandoned;
-        emit DealAbandoned(a, uint64(block.timestamp));
+        emit DealAbandoned(a, ts);
     }
 
     /* ========== A 或授权合约：指定 B（供 DCDomainHall 等调用） ========== */
@@ -409,10 +412,6 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
                 _complete(CompletionReason.ForcedByA);
                 return;
-            } else if (aVote == Vote.Reject) {
-                emit ForcedAfterTimeout(msg.sender, false, ts);
-                _cancel();
-                return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
@@ -433,6 +432,9 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
     /* ========== 完成 / 取消（自动结算） ========== */
     // 完成：当场派发 & 清理（先置终态，符合 CEI，降低重入窗口）
     function _complete(CompletionReason reason) internal {
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Completed;
 
         // 内部标记
@@ -458,11 +460,14 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        emit Completed(reason, uint64(block.timestamp));
+        emit Completed(reason, ts);
     }
 
     // 取消：当场退款 & 清理（先置终态，符合 CEI，降低重入窗口）
     function _cancel() internal {
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Canceled;
 
         if (aPaid) {
@@ -485,7 +490,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
-        emit Canceled(uint64(block.timestamp));
+        emit Canceled(ts);
     }
 
     /* ========== 自动锁定判定 ========== */

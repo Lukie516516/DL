@@ -1,8 +1,8 @@
 /**
- * Redeploy the domain trading entry contracts for visitor -> merchant auto-switch.
+ * Redeploy the domain trading entry contracts for open domain access.
  *
  * Scope:
- * - new DCDomainRank, because the old Rank does not expose leaveVisitorFor(...)
+ * - new DCDomainRank, because visitor/merchant restrictions are removed
  * - new DCDomainSwap and DCDomainHall, both wired to the new Rank
  * - existing DCDomain, DCDomainMarket, DealFactory and core Deal stack are reused
  */
@@ -60,7 +60,7 @@ async function tx(label: string, publicClient: any, hashPromise: Promise<`0x${st
 }
 
 function writeHandoff(file: string, deployedAt: string, deployer: Address, addresses: Record<string, Address>) {
-  const md = `# 域名大厅自动身份切换部署交接
+  const md = `# 域名大厅开放参与部署交接
 
 部署时间：${deployedAt}
 
@@ -72,9 +72,9 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 
 | 模块 | 地址 | 前端用途 |
 | --- | --- | --- |
-| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名身份、访客/商家状态、排行榜；新增 \`leaveVisitorFor\` |
+| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名有效用户、黑名单、排行榜；visitor 入口仅兼容 |
 | DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名下创建币币 deal，支持身份 NFT 参数 |
-| DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅单；创建/确认时自动 visitor -> merchant |
+| DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅单；不再区分 visitor/merchant |
 
 ## 复用地址
 
@@ -90,11 +90,11 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 
 ## 前端接线
 
-1. 域名身份/排行榜查询切到新的 \`DCDomainRank\`。
+1. 域名有效用户/排行榜查询切到新的 \`DCDomainRank\`。
 2. 域名普通币币入口切到新的 \`DCDomainSwap\`。
 3. 域名大厅入口切到新的 \`DCDomainHall\`。
 4. ABI 使用 \`deployments/${DEPLOYMENT_FILE}\` 里的 \`DCDomainRank\`、\`DCDomainSwap\`、\`DCDomainHall\`。
-5. 大厅创建/选人/确认时，用户如果当前是 visitor，合约会自动退出 visitor 并按 merchant 继续执行；前端不需要再要求用户手动 leaveVisitor。
+5. 大厅不再要求 visitor/merchant 身份；前端不需要 enterDomain/leaveVisitor，只需要按黑名单和有效域名判断。
 
 ## 链上接线
 
@@ -106,7 +106,7 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 
 ## 注意
 
-这次重部署了 \`DCDomainRank\`，所以新的域名访客状态、排行榜、广告充值状态从新 Rank 开始记录。域名 NFT、域名 Market、DealFactory、DealReader、MessageHub、InfoNFT 没有重部署。
+这次重部署了 \`DCDomainRank\`，新的排行榜和广告充值状态从新 Rank 开始记录；visitor 状态不再作为业务权限。域名 NFT、域名 Market、DealFactory、DealReader、MessageHub、InfoNFT 没有重部署。
 `;
   writeFileSync(file, md, "utf8");
 }
@@ -208,7 +208,7 @@ async function main() {
   const stamp = deployedAt.replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
   const backupDir = join(dir, "backups");
   mkdirSync(backupDir, { recursive: true });
-  const backupFileName = `agiking-31415926.before-domain-hall-autoswitch-${stamp}.json`;
+  const backupFileName = `agiking-31415926.before-domain-open-access-${stamp}.json`;
   const backupFile = join(backupDir, backupFileName);
   const backupFileRef = `deployments/backups/${backupFileName}`;
   copyFileSync(currentFile, backupFile);
@@ -220,12 +220,18 @@ async function main() {
     dcDomainHall: getAddress(hall.address) as Address,
   };
 
+  const priorNotes = (current.notes ?? []).filter((note) =>
+    !note.includes("domain-hall-autoswitch") &&
+    !note.includes("visitor -> merchant") &&
+    !note.includes("auto-switch")
+  );
+
   const updated: DeploymentJson = {
     ...current,
     deployedAt,
     deployer: dep,
     previousDeployment: backupFileRef,
-    upgrade: "domain-hall-autoswitch",
+    upgrade: "domain-open-access",
     addresses,
     abi: {
       ...current.abi,
@@ -234,14 +240,14 @@ async function main() {
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
     },
     notes: [
-      ...(current.notes ?? []),
-      "DCDomainRank, DCDomainSwap and DCDomainHall redeployed for DCDomainHall visitor -> merchant auto-switch.",
+      ...priorNotes,
+      "DCDomainRank, DCDomainSwap and DCDomainHall redeployed for DCDomainHall open domain access.",
       "DCDomain, DCDomainMarket and the core Deal stack are reused.",
     ],
   };
 
   const snapshotFile = join(dir, `agiking-31415926-${stamp}.json`);
-  const handoffFile = join(dir, `frontend-handoff-domain-hall-autoswitch-${stamp}.md`);
+  const handoffFile = join(dir, `frontend-handoff-domain-open-access-${stamp}.md`);
   writeFileSync(currentFile, JSON.stringify(updated, null, 2), "utf8");
   writeFileSync(snapshotFile, JSON.stringify(updated, null, 2), "utf8");
   writeHandoff(handoffFile, deployedAt, dep, addresses);
