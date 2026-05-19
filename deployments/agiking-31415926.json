@@ -1,9 +1,9 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-19T05:54:36.151Z",
+  "deployedAt": "2026-05-19T15:02:28.800Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260519-055436.json",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260519-150228.json",
   "upgrade": "event-time-messagehub-opentt-replace-timeout",
   "addresses": {
     "dlToken": "0xf9606500fbbea6d220bb65fc5cea9641c6e436d3",
@@ -12,30 +12,32 @@
     "wrappedNative": "0x631b09c6905ce136074be938c82a1df16443e676",
     "dealLib": "0xae3a1cd41021d172b24ea730b20457e676c46c09",
     "dealAssetNftLib": "0x537ec145ef2664f39c4faa6ab6ae3a93c67377d8",
-    "dealImplementation": "0x6c11a9a74226385c4e6f732bed4492f0b065cc3a",
-    "dealNoAssetImplementation": "0x134ff49f465fb719c7164514e05772cd31b66966",
-    "dealAAssetNftImplementation": "0x4ebf107573366bcbd8a9ff6a67156ea18b507336",
-    "dealBAssetNftImplementation": "0xd371b4ae42c20a1a9b4acaa67bb59c4519f9dfa4",
-    "dealAAssetNftOnlyImplementation": "0xf657abf74406de82105384d535be68692cee7257",
-    "dealBAssetNftOnlyImplementation": "0x5e3e647e81a4862e0f0cb3f2486f9475f73e9f34",
-    "dealOpenTokenTokenImplementation": "0x9b897fe3b532e4383cbdefba8337a4daa52eda40",
-    "dealImplementationRegistry": "0xf27ec73da0f57c2c0f19c18d28fd6c591a5029c2",
+    "dealImplementation": "0x0d4715bd583352aff5130d6cef1583022a0a9210",
+    "dealNoAssetImplementation": "0x064785806945cb55762f654388dcd0054db888e5",
+    "dealAAssetNftImplementation": "0xe45760e6ce77ea8d2d86b52a033870e1d365d9d6",
+    "dealBAssetNftImplementation": "0x3b8f0c7dd94270a1050814d5cd715059bc264690",
+    "dealAAssetNftOnlyImplementation": "0x49a9bb7646b62e37c4c4a99a26064dd2529a06c8",
+    "dealBAssetNftOnlyImplementation": "0x2d891eb5bc454114fe6d70df8fe5ec1e7fe226eb",
+    "dealOpenTokenTokenImplementation": "0xe0782928d999fed621d1ad6e71048c878f63a1f5",
+    "dealImplementationRegistry": "0xabe5d9264ecaced3a5924eeec5a61f2f4861dcdf",
     "pairImplementation": "0x3b7954b3065dbb3ad50d69195b62a8486e78aac2",
-    "dealFactory": "0xf698c84a771fb740743ba71baa5ae143b9a85c0c",
-    "dealMessageHub": "0xb900bee213ba4eda3940c1bc23d2db88364d4c6f",
+    "dealFactory": "0xc1e14786855f49b888c4add9ac6c98aaebec35b4",
+    "dealMessageHub": "0xbd4edfbf2129bbc8dc2dde220ac8e03ad6259119",
     "dealCreditGraph": "0x96a8547929ae75afc344522575f0dd59c222650d",
-    "dealActivityIndex": "0x606360240a09776448b1c06caf88610be5b3111d",
+    "dealActivityIndex": "0x39924bfb1ac162351378087072a08c9079d19e5e",
+    "dealResultIndex": "0x5d04301fd71ae2af1eef2e5ed359f5cb2373962b",
+    "dealPairManager": "0x8f77558efefc9f5ec2e2d660c9ed6b83b6f77ace",
     "dealInfoNFT": "0xdba1efb9d7ce36e8ba3f51a857e5364bd98502f3",
     "pairDlAusd": "0x314DA00dE1f773cB6abb3F8c213D17e19F56D44b",
     "pairDlUsdt": "0x9321D09a931c6eF44EAD872d01774F0C34891842",
     "dealSwapOrderBook": "0x1d293938b5f8335142aabf4cc9545dafcfc5816f",
     "dealRouter": "0x52d02e04813f66a36b96ff9f3fb63f7ad7a695e0",
-    "dealReader": "0xd7b981136821259445360f3234e2b1307f6b811d",
+    "dealReader": "0x74f73c892cccbd324d5d301655068d73189c5675",
     "dcDomain": "0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3",
-    "dcDomainRank": "0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee",
+    "dcDomainRank": "0xceb6c0e2019ef3cc912e9ef1be6e9a7ed6b776c0",
     "dcDomainMarket": "0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd",
-    "dcDomainSwap": "0x39e77dd312f5dbc2b18396937a4e97163247497d",
-    "dcDomainHall": "0xf6d8d7bebc381674d4a72a5d1ae0a1971422eeef",
+    "dcDomainSwap": "0xa57074d99130081d5732233dae4c2121461e8e15",
+    "dcDomainHall": "0x18351333566d3f33fcbe89598958a2a6ddd5de3e",
     "dToken": "0x3340f3f9e27baeab1fea9fb25b646a82b5588cd2",
     "dealTimelock": "0xd553524a05b33da8aedd972fd3858889238828b6",
     "dealGovernor": "0x87f6d9a1d39cc75609678f37eb314ef0c5990586",
@@ -12348,11 +12350,6 @@
       },
       {
         "inputs": [],
-        "name": "InvalidDlPair",
-        "type": "error"
-      },
-      {
-        "inputs": [],
         "name": "InvalidJoinMode",
         "type": "error"
       },
@@ -12411,11 +12408,6 @@
           }
         ],
         "name": "OwnableUnauthorizedAccount",
-        "type": "error"
-      },
-      {
-        "inputs": [],
-        "name": "PairExists",
         "type": "error"
       },
       {
@@ -13120,37 +13112,6 @@
         "type": "event"
       },
       {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "pair",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "avgQ112",
-            "type": "uint256"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint32",
-            "name": "ts",
-            "type": "uint32"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint32",
-            "name": "elapsed",
-            "type": "uint32"
-          }
-        ],
-        "name": "TwapRolled",
-        "type": "event"
-      },
-      {
         "inputs": [],
         "name": "MAX_DESCRIPTION_BYTES",
         "outputs": [
@@ -13738,6 +13699,32 @@
       },
       {
         "inputs": [],
+        "name": "dealPairManager",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "dealResultIndex",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "defaultFeeNonDL",
         "outputs": [
           {
@@ -14219,40 +14206,6 @@
         "inputs": [
           {
             "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "name": "obsByPair",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "p1Cumulative",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint32",
-            "name": "timestamp",
-            "type": "uint32"
-          },
-          {
-            "internalType": "bool",
-            "name": "inited",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "lastAvgQ112",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
             "name": "creator",
             "type": "address"
           },
@@ -14359,7 +14312,7 @@
         "inputs": [
           {
             "internalType": "address",
-            "name": "",
+            "name": "token",
             "type": "address"
           }
         ],
@@ -16083,6 +16036,551 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ],
+    "DealResultIndex": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "factory_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "NotFactory",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_PAGE_SIZE",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "creditDealCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "name": "creditOfDeal",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "exists",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aTokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bTokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "baseCredit",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aDelta",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bDelta",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "timestamp",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct DealResultIndex.CreditRecord",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "factory",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "newestFirst",
+            "type": "bool"
+          }
+        ],
+        "name": "getCreditDeals",
+        "outputs": [
+          {
+            "internalType": "address[]",
+            "name": "list",
+            "type": "address[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "newestFirst",
+            "type": "bool"
+          }
+        ],
+        "name": "getCreditRecords",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "exists",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aTokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bTokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "baseCredit",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "aDelta",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "bDelta",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "timestamp",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct DealResultIndex.CreditRecord[]",
+            "name": "list",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "newestFirst",
+            "type": "bool"
+          }
+        ],
+        "name": "getRewardDeals",
+        "outputs": [
+          {
+            "internalType": "address[]",
+            "name": "list",
+            "type": "address[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "newestFirst",
+            "type": "bool"
+          }
+        ],
+        "name": "getRewards",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "exists",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "cAddr",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toA",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toB",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toC",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "timestamp",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct DealResultIndex.RewardRecord[]",
+            "name": "list",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partyA",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partyB",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "aTokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "bTokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "baseCredit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "aDelta",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "bDelta",
+            "type": "uint256"
+          }
+        ],
+        "name": "recordCredit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partyA",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "toA",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "partyB",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "toB",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "cAddr",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "toC",
+            "type": "uint256"
+          }
+        ],
+        "name": "recordReward",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          }
+        ],
+        "name": "rewardDealCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "name": "rewardOfDeal",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "exists",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "cAddr",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toA",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toB",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "toC",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "timestamp",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct DealResultIndex.RewardRecord",
+            "name": "",
+            "type": "tuple"
           }
         ],
         "stateMutability": "view",
