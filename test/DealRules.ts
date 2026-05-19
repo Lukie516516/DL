@@ -99,6 +99,8 @@ async function deployFixture() {
     3600,
   ]);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
+  const dealResultIndex = await viem.deployContract("DealResultIndex", [factory.address]);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry");
   await waitFor(
     publicClient,
@@ -125,8 +127,10 @@ async function deployFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealResultIndex", dealResultIndex.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
   await waitFor(
     publicClient,
@@ -200,6 +204,7 @@ async function deployFixture() {
     dealOpenTTImpl,
     dealMessageHub,
     dealActivityIndex,
+    dealResultIndex,
     infoNft,
     createAndInitPair,
     mintInfoNft,
@@ -593,6 +598,39 @@ describe("Deal Rules", async function () {
 
     assert.equal(await creditGraph.read.creditScore([aliceInfoId]), expectedBaseCredit);
     assert.equal(await creditGraph.read.creditScore([bobInfoId]), expectedBaseCredit);
+
+    const reward = await fixture.dealResultIndex.read.rewardOfDeal([dealAddress]);
+    assert.equal(reward.exists, true);
+    assert.equal(reward.deal, getAddress(dealAddress));
+    assert.equal(reward.partyA, getAddress(alice.account.address));
+    assert.equal(reward.partyB, getAddress(bob.account.address));
+    assert.ok(reward.toA > 0n);
+    assert.equal(reward.toA, reward.toB);
+    assert.equal(await fixture.dealResultIndex.read.rewardDealCount([alice.account.address]), 1n);
+    assert.equal(await fixture.dealResultIndex.read.rewardDealCount([bob.account.address]), 1n);
+    assert.deepEqual(await fixture.dealResultIndex.read.getRewardDeals([alice.account.address, 0n, 10n, true]), [
+      getAddress(dealAddress),
+    ]);
+    const rewards = await fixture.dealResultIndex.read.getRewards([alice.account.address, 0n, 10n, true]);
+    assert.equal(rewards.length, 1);
+    assert.equal(rewards[0].deal, getAddress(dealAddress));
+
+    const credit = await fixture.dealResultIndex.read.creditOfDeal([dealAddress]);
+    assert.equal(credit.exists, true);
+    assert.equal(credit.deal, getAddress(dealAddress));
+    assert.equal(credit.aTokenId, aliceInfoId);
+    assert.equal(credit.bTokenId, bobInfoId);
+    assert.equal(credit.baseCredit, expectedBaseCredit);
+    assert.equal(credit.aDelta, expectedBaseCredit);
+    assert.equal(credit.bDelta, expectedBaseCredit);
+    assert.equal(await fixture.dealResultIndex.read.creditDealCount([aliceInfoId]), 1n);
+    assert.equal(await fixture.dealResultIndex.read.creditDealCount([bobInfoId]), 1n);
+    assert.deepEqual(await fixture.dealResultIndex.read.getCreditDeals([aliceInfoId, 0n, 10n, true]), [
+      getAddress(dealAddress),
+    ]);
+    const creditRecords = await fixture.dealResultIndex.read.getCreditRecords([aliceInfoId, 0n, 10n, true]);
+    assert.equal(creditRecords.length, 1);
+    assert.equal(creditRecords[0].deal, getAddress(dealAddress));
 
     const alicePeers = await creditGraph.read.topCreditPeers([aliceInfoId]);
     const bobPeers = await creditGraph.read.topCreditPeers([bobInfoId]);

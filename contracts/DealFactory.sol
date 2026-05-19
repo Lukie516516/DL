@@ -3,10 +3,6 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IDLMint {
     function mint(address to, uint256 amount) external;
@@ -82,50 +78,6 @@ interface IDeal {
     ) external;
 }
 
-/* ---------------- Pair light & init interfaces ---------------- */
-interface IDealPairLight {
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function getPriceCumulatives()
-        external
-        view
-        returns (uint256 p0Cum, uint256 p1Cum, uint32 ts);
-    function getReserves()
-        external
-        view
-        returns (uint112 r0, uint112 r1, uint32 ts);
-    function getEffectiveReserves()
-        external
-        view
-        returns (uint256 e0, uint256 e1, uint32 ts);
-}
-interface IDealPairInit {
-    function initialize(
-        address dlToken,
-        address otherToken,
-        address factory_,
-        uint32 feeNum_,
-        uint32 feeDen_
-    ) external;
-    function setFactory(address f) external;
-    function setFee(uint32 newNum, uint32 newDen) external;
-    function mintInitial(
-        uint256 _b1
-    ) external returns (uint amountDL, uint amountOther);
-    function setVirtualReserves(
-        uint256 newVirtualReserve0,
-        uint256 newVirtualReserve1,
-        bool enable0,
-        bool enable1
-    ) external;
-    function setVirtualReservesByBps(
-        uint32 bps0,
-        uint32 bps1,
-        bool enable0,
-        bool enable1
-    ) external;
-}
-
 /* ---------------- DealInfoNFT (写操作由 Factory 代理) ---------------- */
 interface IDealInfoNFT {
     function totalMintedOf(uint256 tokenId) external view returns (uint256);
@@ -175,6 +127,52 @@ interface IDealActivityIndex {
         returns (address[] memory);
 }
 
+interface IDealResultIndex {
+    function recordReward(
+        address deal,
+        address partyA,
+        uint256 toA,
+        address partyB,
+        uint256 toB,
+        address cAddr,
+        uint256 toC
+    ) external;
+
+    function recordCredit(
+        address deal,
+        address partyA,
+        address partyB,
+        uint256 aTokenId,
+        uint256 bTokenId,
+        uint256 baseCredit,
+        uint256 aDelta,
+        uint256 bDelta
+    ) external;
+}
+
+interface IDealPairManager {
+    function pairForToken(address token) external view returns (address);
+    function createPair(address tokenOther, uint32 feeNum, uint32 feeDen) external returns (address pair);
+    function mapExistingPair(address tokenOther, address pair) external;
+    function setPairFactory(address pair, address f) external;
+    function initPair(address pair, uint256 b1) external returns (uint256 amountDL, uint256 amountOther);
+    function mintPairOtherAndSettle(address pair)
+        external
+        returns (uint256 amountOther, bool settleAttempted, bool settleSucceeded);
+    function setPairFee(address pair, uint32 newNum, uint32 newDen) external;
+    function setPairVirtualReserves(
+        address pair,
+        uint256 virtualReserve0,
+        bool enable0,
+        uint256 virtualReserve1,
+        bool enable1
+    ) external;
+    function setPairVirtualReservesByBps(address pair, uint32 bps0, bool enable0, uint32 bps1, bool enable1)
+        external
+        returns (uint256 v0, uint256 v1);
+    function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
+}
+
 interface IDealImplementationRegistry {
     function resolveImplementation(
         uint8 templateType,
@@ -187,16 +185,9 @@ interface IDealImplementationRegistry {
 interface IOrderBookSettle {
     function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
 }
-interface IDealPairOtherLiquidity {
-    function mintOtherOnly() external returns (uint256 amountOther);
-}
-interface IDealPairVirtualView {
-    function getVirtualReserves() external view returns (uint256 v0, uint256 v1);
-}
 /* ========================================================== */
 contract DealFactory is Ownable {
     using Clones for address;
-    using SafeERC20 for IERC20;
     address private constant DEFAULT_AUSD =
         0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123;
     address private constant DEFAULT_USDT =
@@ -209,7 +200,6 @@ contract DealFactory is Ownable {
     error NotAdmin();
     error NotDeal();
     error ZeroAddress();
-    error PairExists();
     error CloneFailed();
     error CloneNoCode();
     error UseDomainEntry();
@@ -218,7 +208,6 @@ contract DealFactory is Ownable {
     error NotAllowedCreateFor();
     error InitiatorZero();
     error UnauthorizedQuoteCaller();
-    error InvalidDlPair();
     error CreateBurnNoPair();
     error CreateBurnQuantityZero();
     error InvalidTemplateType();
@@ -268,11 +257,11 @@ contract DealFactory is Ownable {
     address public dealMessageHub;
     address public creditGraph;
     address public dealActivityIndex;
+    address public dealResultIndex;
+    address public dealPairManager;
     address public dealNftGovernanceActivity;
     address public dealImplementationRegistry;
 
-    // 归一化 token(OTHER 或 WNATIVE) => pair(DL↔token)
-    mapping(address => address) public pairForToken;
     // Default recognized tokens can still be changed later via setRecognizedTokens().
     address public recognizedToken0 = DEFAULT_AUSD;
     address public recognizedToken1 = DEFAULT_USDT;
@@ -293,14 +282,6 @@ contract DealFactory is Ownable {
     address public msgPriceToken; // 0 原生
     uint256 public msgPriceAmountInToken;
 
-    /* ---------- TWAP（带最小窗口粘性） ---------- */
-    struct Obs {
-        uint256 p1Cumulative;
-        uint32 timestamp;
-        bool inited;
-        uint256 lastAvgQ112;
-    }
-    mapping(address => Obs) public obsByPair;
     uint32 public minWindowSec = 30;
 
     /* ---------- 事件 ---------- */
@@ -382,12 +363,6 @@ contract DealFactory is Ownable {
         address pricingToken,
         uint256 amountInToken
     );
-    event TwapRolled(
-        address indexed pair,
-        uint256 avgQ112,
-        uint32 ts,
-        uint32 elapsed
-    );
     event TrackedAdded(address indexed user, address indexed deal);
     event TrackedRemoved(address indexed user, address indexed deal);
     event AllowedCreateForSet(address indexed caller, bool allowed);
@@ -455,7 +430,7 @@ contract DealFactory is Ownable {
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealNftGovernanceActivity","dealImplementationRegistry"}
+    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealResultIndex","dealPairManager","dealNftGovernanceActivity","dealImplementationRegistry"}
     function setGlobal(string calldata key, address value) external onlyOwner {
         if (value == address(0)) revert ZeroAddress();
         bytes32 k = keccak256(bytes(key));
@@ -466,6 +441,8 @@ contract DealFactory is Ownable {
         else if (k == keccak256("dealMessageHub")) dealMessageHub = value;
         else if (k == keccak256("creditGraph")) creditGraph = value;
         else if (k == keccak256("dealActivityIndex")) dealActivityIndex = value;
+        else if (k == keccak256("dealResultIndex")) dealResultIndex = value;
+        else if (k == keccak256("dealPairManager")) dealPairManager = value;
         else if (k == keccak256("dealNftGovernanceActivity")) dealNftGovernanceActivity = value;
         else if (k == keccak256("dealImplementationRegistry")) dealImplementationRegistry = value;
         else revert();
@@ -615,60 +592,34 @@ contract DealFactory is Ownable {
         uint32 feeNum,
         uint32 feeDen
     ) external onlyOwner returns (address pair) {
-        if (pairForToken[tokenOther] != address(0)) revert PairExists();
-        require(pairImplementation != address(0) && dlToken != address(0));
-        require(tokenOther != address(0) && tokenOther != dlToken);
-        Ratio memory r = Ratio({num: feeNum, den: feeDen});
-        _assertRatio(r);
-
-        pair = pairImplementation.clone();
-        _assertClone(pair);
-
-        IDealPairInit(pair).initialize(
-            dlToken,
-            tokenOther,
-            address(this),
-            feeNum,
-            feeDen
-        );
-        _assertDlPair(pair);
-
+        pair = _pairManager().createPair(tokenOther, feeNum, feeDen);
         emit PairCreated(pair, tokenOther, feeNum, feeDen);
-
-        pairForToken[tokenOther] = pair;
         emit PairMapped(tokenOther, pair);
     }
 
     function setPairFactory(address pair, address f) external onlyOwner {
-        IDealPairInit(pair).setFactory(f);
+        _pairManager().setPairFactory(pair, f);
     }
     function initPair(
         address pair,
         uint256 _b1
     ) external onlyOwner returns (uint amountDL, uint amountOther) {
-        (amountDL, amountOther) = IDealPairInit(pair).mintInitial(_b1);
-        if (swapOrderBook != address(0)) {
-            IOrderBookSettle(swapOrderBook).settlePair(pair, 1, 1);
-        }
+        (amountDL, amountOther) = _pairManager().initPair(pair, _b1);
     }
     function mintPairOtherAndSettle(
         address pair
     ) external onlyOwner returns (uint256 amountOther) {
-        _assertDlPair(pair);
-        amountOther = IDealPairOtherLiquidity(pair).mintOtherOnly();
-
         bool settleAttempted;
         bool settleSucceeded;
+        (amountOther,,) = _pairManager().mintPairOtherAndSettle(pair);
         if (swapOrderBook != address(0)) {
             settleAttempted = true;
             try IOrderBookSettle(swapOrderBook).settlePair(pair, 1, 8) {
                 settleSucceeded = true;
             } catch (bytes memory reason) {
-                settleSucceeded = false;
                 emit PairOtherLiquiditySettleFailed(pair, reason);
             }
         }
-
         emit PairOtherLiquidityAddedAndSettled(
             pair,
             amountOther,
@@ -681,12 +632,12 @@ contract DealFactory is Ownable {
         uint32 newNum,
         uint32 newDen
     ) external onlyOwner {
-        IDealPairInit(pair).setFee(newNum, newDen);
+        _pairManager().setPairFee(pair, newNum, newDen);
         emit PairFeeUpdated(pair, newNum, newDen);
     }
     function setPairFeeByAdmin(address pair, uint32 newNum) external onlyAdmin {
         require(1 <= newNum && 200 >= newNum);
-        IDealPairInit(pair).setFee(newNum, 10000);
+        _pairManager().setPairFee(pair, newNum, 10000);
         emit PairFeeUpdated(pair, newNum, 10000);
     }
     function setPairVirtualReserves(
@@ -696,13 +647,7 @@ contract DealFactory is Ownable {
         uint256 virtualReserve1,
         bool enable1
     ) external onlyOwner {
-        _assertDlPair(pair);
-        IDealPairInit(pair).setVirtualReserves(
-            virtualReserve0,
-            virtualReserve1,
-            enable0,
-            enable1
-        );
+        _pairManager().setPairVirtualReserves(pair, virtualReserve0, enable0, virtualReserve1, enable1);
         emit PairVirtualReservesUpdated(
             pair,
             virtualReserve0,
@@ -718,16 +663,7 @@ contract DealFactory is Ownable {
         uint32 bps1,
         bool enable1
     ) external onlyOwner {
-        if (bps0 > 10_000 || bps1 > 10_000) revert RatioInvalid();
-        _assertDlPair(pair);
-        IDealPairInit(pair).setVirtualReservesByBps(
-            bps0,
-            bps1,
-            enable0,
-            enable1
-        );
-        (uint256 v0, uint256 v1) = IDealPairVirtualView(pair)
-            .getVirtualReserves();
+        (uint256 v0, uint256 v1) = _pairManager().setPairVirtualReservesByBps(pair, bps0, enable0, bps1, enable1);
         emit PairVirtualReservesUpdated(
             pair,
             v0,
@@ -737,20 +673,23 @@ contract DealFactory is Ownable {
         );
     }
     function mapExistingPair(address tokenOther, address pair) external onlyOwner {
-        if (tokenOther == address(0) || pair == address(0)) revert ZeroAddress();
-        if (pairForToken[tokenOther] != address(0)) revert PairExists();
-        _assertDlPair(pair);
-        pairForToken[tokenOther] = pair;
+        _pairManager().mapExistingPair(tokenOther, pair);
         emit PairMapped(tokenOther, pair);
+    }
+
+    function pairForToken(address token) public view returns (address) {
+        address manager = dealPairManager;
+        if (manager == address(0)) return address(0);
+        return IDealPairManager(manager).pairForToken(token);
     }
 
     function getPair(address token) external view returns (address) {
         address t = (token == address(0)) ? wrappedNative : token;
-        return pairForToken[t];
+        return pairForToken(t);
     }
     function isTokenSupported(address token) external view returns (bool) {
         address t = (token == address(0)) ? wrappedNative : token;
-        return pairForToken[t] != address(0);
+        return pairForToken(t) != address(0);
     }
 
     /* ========== TWAP：供 Deal 调用报价 ========== */
@@ -760,52 +699,7 @@ contract DealFactory is Ownable {
     ) external returns (uint256 dlOut) {
         if (!isDeal[msg.sender] && infoNft != msg.sender)
             revert UnauthorizedQuoteCaller();
-        _assertDlPair(pair);
         return _updateAndQuoteInternal(pair, amountIn);
-    }
-    function _currentP1CumulativeWithSpot(
-        address pair
-    ) internal view returns (uint256 p1CumNow, uint32 nowTs, uint256 spotQ112) {
-        (, p1CumNow, ) = IDealPairLight(pair).getPriceCumulatives();
-        (uint256 r0, uint256 r1, uint32 tsRes) = IDealPairLight(pair)
-            .getEffectiveReserves();
-        require(r0 > 0 && r1 > 0);
-        nowTs = uint32(block.timestamp);
-        uint32 elapsed = nowTs - tsRes;
-        spotQ112 = (r0 << 112) / r1;
-        if (elapsed > 0) {
-            unchecked {
-                p1CumNow += spotQ112 * elapsed;
-            }
-        }
-    }
-    function _updateAndQuoteInternal(
-        address pair,
-        uint256 amountIn
-    ) internal returns (uint256 dlOut) {
-        if (amountIn == 0 || pair == address(0)) return 0;
-        (
-            uint256 cumNow,
-            uint32 nowTs,
-            uint256 spotQ112
-        ) = _currentP1CumulativeWithSpot(pair);
-        Obs storage o = obsByPair[pair];
-        if (!o.inited) {
-            o.p1Cumulative = cumNow;
-            o.timestamp = nowTs;
-            o.inited = true;
-            o.lastAvgQ112 = spotQ112;
-            emit TwapRolled(pair, o.lastAvgQ112, nowTs, 0);
-            return (spotQ112 * amountIn) >> 112;
-        }
-        uint32 elapsed = nowTs - o.timestamp;
-        if (elapsed < minWindowSec) return (o.lastAvgQ112 * amountIn) >> 112;
-        uint256 avgQ112 = (cumNow - o.p1Cumulative) / elapsed;
-        o.p1Cumulative = cumNow;
-        o.timestamp = nowTs;
-        o.lastAvgQ112 = avgQ112;
-        emit TwapRolled(pair, avgQ112, nowTs, elapsed);
-        return (avgQ112 * amountIn) >> 112;
     }
 
     /* ========== 创建 Deal ========== */
@@ -837,7 +731,7 @@ contract DealFactory is Ownable {
         if (msgNorm == dlToken) {
             dlNeed = msgPriceAmountInToken;
         } else {
-            address msgPair = pairForToken[msgNorm];
+            address msgPair = pairForToken(msgNorm);
             if (msgPair == address(0)) return;
             dlNeed = _updateAndQuoteInternal(msgPair, msgPriceAmountInToken);
         }
@@ -933,6 +827,11 @@ contract DealFactory is Ownable {
         address cAddr,
         uint256 toC
     ) external onlyDeal {
+        address deal = msg.sender;
+        address resultIndex = dealResultIndex;
+        if (resultIndex != address(0)) {
+            try IDealResultIndex(resultIndex).recordReward(deal, partyA, toA, partyB, toB, cAddr, toC) {} catch {}
+        }
         emit DealRewardsLogged(msg.sender, partyA, partyB, toA, toB, cAddr, toC);
     }
 
@@ -972,7 +871,29 @@ contract DealFactory is Ownable {
         if (bValid) _markNftGovernanceActivity(bTokenId);
         address graph = creditGraph;
         if (graph == address(0) || baseCredit == 0) return;
-        IDealCreditGraph(graph).recordDeal(partyA, partyB, aTokenId, aValid, bTokenId, bValid, baseCredit);
+        (uint256 aDelta, uint256 bDelta) = IDealCreditGraph(graph).recordDeal(
+            partyA,
+            partyB,
+            aTokenId,
+            aValid,
+            bTokenId,
+            bValid,
+            baseCredit
+        );
+        if (aDelta == 0 && bDelta == 0) return;
+        address resultIndex = dealResultIndex;
+        if (resultIndex != address(0)) {
+            try IDealResultIndex(resultIndex).recordCredit(
+                msg.sender,
+                partyA,
+                partyB,
+                aValid ? aTokenId : 0,
+                bValid ? bTokenId : 0,
+                baseCredit,
+                aDelta,
+                bDelta
+            ) {} catch {}
+        }
     }
 
     function recordNftGovernanceActivity(uint256 tokenId) external onlyDeal {
@@ -1076,9 +997,14 @@ contract DealFactory is Ownable {
             emit CompletedAdded(user, deal);
     }
 
-    function _assertDlPair(address pair) internal view {
-        if (pair == address(0) || IDealPairLight(pair).token0() != dlToken)
-            revert InvalidDlPair();
+    function _pairManager() internal view returns (IDealPairManager manager) {
+        address addr = dealPairManager;
+        if (addr == address(0)) revert ZeroAddress();
+        manager = IDealPairManager(addr);
+    }
+
+    function _updateAndQuoteInternal(address pair, uint256 amountIn) internal returns (uint256) {
+        return _pairManager().updateAndQuoteToDL(pair, amountIn);
     }
 
     function _assertRewardPairConfigured(
@@ -1091,7 +1017,7 @@ contract DealFactory is Ownable {
             tokenNorm == recognizedToken0 ||
             tokenNorm == recognizedToken1
         ) {
-            if (pairForToken[tokenNorm] == address(0)) revert RewardPairMissing();
+            if (pairForToken(tokenNorm) == address(0)) revert RewardPairMissing();
         }
     }
 
@@ -1127,9 +1053,8 @@ contract DealFactory is Ownable {
 
     function _applyCreateBurn(address payer) internal {
         address pricingNorm = _normalizeToken(createBurnPricingToken);
-        address pair = pairForToken[pricingNorm];
+        address pair = pairForToken(pricingNorm);
         if (pair == address(0)) revert CreateBurnNoPair();
-        _assertDlPair(pair);
         uint256 dlNeed = _updateAndQuoteInternal(pair, createBurnAmountInToken);
         if (dlNeed == 0) revert CreateBurnQuantityZero();
         IDLBurnFrom(dlToken).burnFrom(payer, dlNeed);
@@ -1151,7 +1076,7 @@ contract DealFactory is Ownable {
         _assertRewardPairConfigured(bNorm, p.init.bSwapAmount);
 
         address msgNorm = _normalizeToken(msgPriceToken);
-        address msgPair = msgNorm == dlToken ? address(0) : pairForToken[msgNorm];
+        address msgPair = msgNorm == dlToken ? address(0) : pairForToken(msgNorm);
 
         cfg = IDeal.ConfigParams({
             dl: dlToken,
@@ -1162,8 +1087,8 @@ contract DealFactory is Ownable {
             recognizedToken1: recognizedToken1,
             aTokenNorm: aNorm,
             bTokenNorm: bNorm,
-            aPair: pairForToken[aNorm],
-            bPair: pairForToken[bNorm],
+            aPair: pairForToken(aNorm),
+            bPair: pairForToken(bNorm),
             feeNonDLNum: defaultFeeNonDL.num,
             feeNonDLDen: defaultFeeNonDL.den,
             mintOnFeesNum: defaultMintOnFees.num,

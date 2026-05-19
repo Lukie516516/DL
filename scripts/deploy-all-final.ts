@@ -72,6 +72,8 @@ async function main() {
   console.log("\n--- DealFactory ---");
   const factory = await viem.deployContract("DealFactory", [E.dealImpl, E.pairImpl, 3600], { client: cl });
   console.log("DealFactory:", factory.address);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address], { client: cl });
+  console.log("DealPairManager:", dealPairManager.address);
   const dealNoAssetImpl = E.dealNoAssetImpl
     ? await viem.getContractAt("DealNoAsset", E.dealNoAssetImpl, { client: cl })
     : await viem.deployContract("DealNoAsset", [], { client: cl, libraries: { DealLib: E.dealLib } });
@@ -127,6 +129,7 @@ async function main() {
   await w(pc, await factory.write.setGlobal(["dlToken", E.dlToken]));
   await w(pc, await factory.write.setGlobal(["infoNft", E.dealInfoNFT]));
   await w(pc, await factory.write.setGlobal(["wrappedNative", E.wrappedNative]));
+  await w(pc, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await w(pc, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await w(pc, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
   await w(pc, await dealImplementationRegistry.write.setDealImplementations([

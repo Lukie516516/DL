@@ -87,6 +87,7 @@ function deploymentAbi() {
     DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
     DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
     DealActivityIndex: loadAbi("DealActivityIndex.sol/DealActivityIndex.json"),
+    DealResultIndex: loadAbi("DealResultIndex.sol/DealResultIndex.json"),
     DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
     DCToken: loadAbi("DL.sol/DCToken.json"),
     DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
@@ -122,6 +123,8 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DealMessageHub | \`${addresses.dealMessageHub}\` | 留言上链唯一入口：\`postMessage(deal, content)\` |
 | DealReader | \`${addresses.dealReader}\` | 聚合读取 deal 列表/详情 |
 | DealActivityIndex | \`${addresses.dealActivityIndex}\` | 读取用户活动索引 |
+| DealResultIndex | \`${addresses.dealResultIndex}\` | 读取奖励明细、信用增量明细，避免前端扫历史 logs |
+| DealPairManager | \`${addresses.dealPairManager}\` | 工厂背后的 pair/TWAP 管理合约，前端通常仍调 Factory |
 | DealCreditGraph | \`${addresses.dealCreditGraph}\` | 读取官方 InfoNFT 信用分 |
 | DealInfoNFT | \`${addresses.dealInfoNFT}\` | 官方身份 NFT |
 | DealOpenTokenToken implementation | \`${addresses.dealOpenTokenTokenImplementation}\` | 公开币币单模板 ABI |
@@ -144,6 +147,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 7. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`，旧 \`timeStart/timeEnd\` 只做兼容展示。
 8. 域名下创建币币合同如果要绑定 A 的官方身份 NFT，调用 \`DCDomainSwap.createDealWithInfoNft(..., aNftId)\`；不绑定则继续调用 \`createDeal(...)\`。
 9. 域名排行榜分页调用 \`DCDomainRank.getLeaderboard(domainName, offset, limit)\`，单次 \`limit <= 50\`。
+10. 历史奖励和信用增量不要扫 logs，改读 \`DealResultIndex.rewardOfDeal/getRewards/creditOfDeal/getCreditRecords\`。
 
 ## ABI
 
@@ -166,6 +170,7 @@ deployments/${DEPLOYMENT_FILE}
 ## 验证结果
 
 - 新 Factory 已配置新 Hub、CreditGraph、ActivityIndex、ImplementationRegistry。
+- 新 Factory 已配置 DealResultIndex，前端可用 view 读取奖励/信用结果索引。
 - 新 Factory 已获得 DL \`MINTER_ROLE\`。
 - DealInfoNFT 已授权新 Factory，并切换 primary factory 到新 Factory。
 - DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
@@ -248,10 +253,14 @@ async function main() {
     client,
   });
   console.log("DealFactory:", factory.address);
+  const pairManager = await viem.deployContract("DealPairManager", [factory.address], { client });
+  console.log("DealPairManager:", pairManager.address);
   const messageHub = await viem.deployContract("DealMessageHub", [factory.address], { client });
   console.log("DealMessageHub:", messageHub.address);
   const activityIndex = await viem.deployContract("DealActivityIndex", [factory.address], { client });
   console.log("DealActivityIndex:", activityIndex.address);
+  const resultIndex = await viem.deployContract("DealResultIndex", [factory.address], { client });
+  console.log("DealResultIndex:", resultIndex.address);
   const registry = await viem.deployContract("DealImplementationRegistry", [], { client });
   console.log("DealImplementationRegistry:", registry.address);
   const reader = await viem.deployContract("DealReader", [], { client });
@@ -267,6 +276,8 @@ async function main() {
   await tx("setGlobal dealMessageHub", publicClient, newFactory.write.setGlobal(["dealMessageHub", messageHub.address]));
   await tx("setGlobal creditGraph", publicClient, newFactory.write.setGlobal(["creditGraph", dealCreditGraph]));
   await tx("setGlobal dealActivityIndex", publicClient, newFactory.write.setGlobal(["dealActivityIndex", activityIndex.address]));
+  await tx("setGlobal dealResultIndex", publicClient, newFactory.write.setGlobal(["dealResultIndex", resultIndex.address]));
+  await tx("setGlobal dealPairManager", publicClient, newFactory.write.setGlobal(["dealPairManager", pairManager.address]));
   await tx("setGlobal swapOrderBook", publicClient, newFactory.write.setGlobal(["swapOrderBook", EXISTING.dealSwapOrderBook]));
   await tx(
     "setDealImplementations",
@@ -359,6 +370,8 @@ async function main() {
     dealMessageHub: messageHub.address,
     dealCreditGraph,
     dealActivityIndex: activityIndex.address,
+    dealResultIndex: resultIndex.address,
+    dealPairManager: pairManager.address,
     dealInfoNFT: EXISTING.dealInfoNFT,
     pairDlAusd: EXISTING.pairDlAusd,
     pairDlUsdt: EXISTING.pairDlUsdt,
@@ -379,11 +392,15 @@ async function main() {
   console.log("\n--- Smoke checks ---");
   const hubFromFactory = await newFactory.read.dealMessageHub() as Address;
   const registryFromFactory = await newFactory.read.dealImplementationRegistry() as Address;
+  const resultIndexFromFactory = await newFactory.read.dealResultIndex() as Address;
+  const pairManagerFromFactory = await newFactory.read.dealPairManager() as Address;
   const primaryFactory = await infoNft.read.factory() as Address;
   if (hubFromFactory.toLowerCase() !== messageHub.address.toLowerCase()) throw new Error("Factory hub mismatch");
   if (registryFromFactory.toLowerCase() !== registry.address.toLowerCase()) throw new Error("Factory registry mismatch");
+  if (resultIndexFromFactory.toLowerCase() !== resultIndex.address.toLowerCase()) throw new Error("Factory result index mismatch");
+  if (pairManagerFromFactory.toLowerCase() !== pairManager.address.toLowerCase()) throw new Error("Factory pair manager mismatch");
   if (primaryFactory.toLowerCase() !== factory.address.toLowerCase()) throw new Error("InfoNFT primary factory mismatch");
-  console.log("  OK factory hub/registry and InfoNFT primary factory");
+  console.log("  OK factory hub/registry/result index/pair manager and InfoNFT primary factory");
 
   const dir = join(process.cwd(), "deployments");
   const backupDir = join(dir, "backups");

@@ -57,6 +57,7 @@ async function deployBusinessFixture() {
     pairImpl.address,
     3600,
   ]);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
     "0x0000000000000000000000000000000000000000",
@@ -76,6 +77,7 @@ async function deployBusinessFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(publicClient, await factory.write.setTreasuryByAdmin([treasury.account.address]));
   await waitFor(publicClient, await dl.write.grantRole([minterRole, factory.address]));

@@ -115,6 +115,8 @@ async function main() {
     client,
   });
   console.log("DealFactory", factory.address);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address], { client });
+  console.log("DealPairManager", dealPairManager.address);
   const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address], { client });
   console.log("DealMessageHub", dealMessageHub.address);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address], { client });
@@ -132,6 +134,7 @@ async function main() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", creditGraph.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
