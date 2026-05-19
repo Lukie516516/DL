@@ -14,15 +14,62 @@
 
 ---
 
-## 2. 工厂：`DealRewardsLogged` + `logDealRewards`（索引只盯工厂时用最省事）
+## 2. 奖励结果：优先读 `DealResultIndex`，事件只做兜底
 
-### 2.1 新方法（由 **Deal clone 在成交时内部调用**，前端一般不直接调）
+新增独立索引合约 `DealResultIndex`，用于把成交后的奖励结果和信用增量结果落到 storage，前端不需要每次扫历史 logs。
+
+### 2.1 奖励 view
+
+```solidity
+rewardOfDeal(address deal) -> RewardRecord
+rewardDealCount(address user) -> uint256
+getRewardDeals(address user, uint256 offset, uint256 limit, bool newestFirst) -> address[]
+getRewards(address user, uint256 offset, uint256 limit, bool newestFirst) -> RewardRecord[]
+```
+
+`RewardRecord` 字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `exists` | 是否有奖励记录 |
+| `deal` | deal 地址 |
+| `partyA` / `partyB` | 双方地址 |
+| `cAddr` | C 位奖励接收地址 |
+| `toA` / `toB` / `toC` | 本笔增发 DL 奖励 |
+| `timestamp` | 写入奖励记录的链上时间 |
+
+### 2.2 信用增量 view
+
+```solidity
+creditOfDeal(address deal) -> CreditRecord
+creditDealCount(uint256 tokenId) -> uint256
+getCreditDeals(uint256 tokenId, uint256 offset, uint256 limit, bool newestFirst) -> address[]
+getCreditRecords(uint256 tokenId, uint256 offset, uint256 limit, bool newestFirst) -> CreditRecord[]
+```
+
+`CreditRecord` 字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `exists` | 是否有信用增量记录 |
+| `deal` | deal 地址 |
+| `partyA` / `partyB` | 双方地址 |
+| `aTokenId` / `bTokenId` | 产生信用增量的官方 InfoNFT |
+| `baseCredit` | 本笔基础信用贡献 |
+| `aDelta` / `bDelta` | 本笔实际增加信用 |
+| `timestamp` | 写入信用记录的链上时间 |
+
+`limit` 超过 100 时按 100 返回。历史旧 deal 在索引合约部署前没有 storage 结果记录，需要事件或离线迁移补录。
+
+## 3. 工厂：`DealRewardsLogged` + `logDealRewards`（事件兜底）
+
+### 3.1 方法（由 **Deal clone 在成交时内部调用**，前端一般不直接调）
 
 - **`DealFactory.logDealRewards(partyA, toA, partyB, toB, cAddr, toC)`**  
   - **权限**：仅工厂登记的 Deal / OpenTT 实例（`onlyDeal`）可调用。  
   - **作用**：在工厂上打一笔汇总日志，内容与各 Deal 上的 `RewardsMinted` 一致，便于**只订阅工厂地址**做奖励展示/扫链。
 
-### 2.2 事件
+### 3.2 事件
 
 ```solidity
 event DealRewardsLogged(
@@ -39,7 +86,7 @@ event DealRewardsLogged(
 - **`deal`**：发起调用的 **Deal / OpenTT clone 地址**（`msg.sender`）。  
 - 与 **`DLMinted(to, amount, deal)`** 的关系：`mintDL` 每转一笔 DL 仍会发 `DLMinted`（最多 3 条）；`DealRewardsLogged` 是**同一笔成交的奖励汇总（1 条）**。
 
-### 2.3 最简单用法
+### 3.3 事件用法
 
 1. 订阅 **`DealFactory` 地址** 上的 `DealRewardsLogged`。  
 2. 用 `deal` 索引过滤「某合约实例」；用 `partyA` / `partyB` 过滤「某地址参与的成交」。  
@@ -47,11 +94,11 @@ event DealRewardsLogged(
 
 ---
 
-## 3. Deal / OpenTT（clone）上的进程事件（交易时间线）
+## 4. Deal / OpenTT（clone）上的进程事件（交易时间线）
 
 以下事件在 **`Deal` 与 `DealOpenTokenToken` 实例地址**上发出（模板一致；OpenTT 另有 §3.2 的补充事件）。
 
-### 3.1 带 `when` 的字段（推荐直接展示，无需再推算业务时间）
+### 4.1 带 `when` 的字段（推荐直接展示，无需再推算业务时间）
 
 | 事件 | 用途（示例文案方向） |
 |------|----------------------|
@@ -69,29 +116,29 @@ event DealRewardsLogged(
 **`Vote` 枚举（ABI 编码为 uint8）**：`Unset = 0`，`Accept = 1`，`Reject = 2`。  
 **`CompletionReason`（`Completed`）**：`BothAccepted`、`ForcedByA`、`ForcedByB`（具体数值以生成 ABI 为准）。
 
-### 3.2 OpenTT 专有
+### 4.2 OpenTT 专有
 
 | 事件 | 说明 |
 |------|------|
 | `APreAccepted(a_, at)` | A 预同意（`at` 为时间戳） |
 | `BExpelledOnReject(prevB, when)` | B 拒绝且被规则清退回 Ready（带 `when`） |
 
-### 3.3 终局时间
+### 4.3 终局时间
 
 - **`Completed(CompletionReason reason, uint64 when)`**、**`Canceled(uint64 when)`**：直接读取 `when`。  
 - 前端不需要再为这两个终局事件额外查区块时间。
 
-### 3.4 昵称 `{用户名称}`
+### 4.4 昵称 `{用户名称}`
 
 链上事件给的是 **地址**（如 `who`、`payer`、`b`）。展示名请前端用 **InfoNFT / 用户配置** 等链下或合约视图解析，不宜在事件里塞长字符串。
 
 ---
 
-## 4. 取消（`Canceled`）与废弃（`Abandoned`）：A / B 分别能做什么
+## 5. 取消（`Canceled`）与废弃（`Abandoned`）：A / B 分别能做什么
 
 合约里**没有**一个叫「cancel」的对外函数名给双方共用；前端说的「取消 / 废弃」要对应到**具体函数 + 终态 `status`**，否则会和「B 退出回到 Ready」搞混。
 
-### 4.1 废弃 `Abandoned`（整单结束；托管已清，仍可链上留言）
+### 5.1 废弃 `Abandoned`（整单结束；托管已清，仍可链上留言）
 
 | 项目 | 说明 |
 |------|------|
@@ -101,11 +148,11 @@ event DealRewardsLogged(
 | **事件** | **`DealAbandoned(initiator, when)`**，`initiator` 恒为 **A**。 |
 | **留言** | 通过 **`DealMessageHub.postMessage(deal, content)`** 写入；但 **`abandonByA` 会执行 `b = address(0)`**（见 `_refundAllToParties`），故通常 **只有 A** 仍是当前参与方；前 B 地址无法再留言。 |
 
-**没有**对称的 `abandonByB`：B 不能在同一语义下「废弃整单」；B 在 Active 阶段只能 **`exitByB`**（见下 §4.3）。
+**没有**对称的 `abandonByB`：B 不能在同一语义下「废弃整单」；B 在 Active 阶段只能 **`exitByB`**（见下 §5.3）。
 
 ---
 
-### 4.2 取消 `Canceled`（Locked 上谈判失败；退款后仍可链上留言）
+### 5.2 取消 `Canceled`（Locked 上谈判失败；退款后仍可链上留言）
 
 | 项目 | 说明 |
 |------|------|
@@ -120,7 +167,7 @@ event DealRewardsLogged(
 
 ---
 
-### 4.3 非终局：B 离开或 A 踢 B（回到 `Ready`，不是 `Canceled` / `Abandoned`）
+### 5.3 非终局：B 离开或 A 踢 B（回到 `Ready`，不是 `Canceled` / `Abandoned`）
 
 在 **`Active`** 且已有 B 时：
 
@@ -139,14 +186,14 @@ event DealRewardsLogged(
 
 ---
 
-### 4.4 OpenTT 模板多一种「拒绝即清 B」
+### 5.4 OpenTT 模板多一种「拒绝即清 B」
 
 在 **`DealOpenTokenToken`** 的 **`Locked`** 里，若 **B 投 `Reject`** 而 **A 尚未 `Reject`**，会走内部 **`_expelBOnReject`**：**清掉 B、状态回 `Ready`**，并 **`BExpelledOnReject(prevB, when)`**。  
 这不是 **`Canceled`**，也**不是** **`Abandoned`**；若 A 已 **`Reject`** 且 B 也 **`Reject`**，则仍是双方拒绝 → **`_cancel()`** → **`Canceled`**。
 
 ---
 
-### 4.5 和链上聊天的关系（再确认）
+### 5.5 和链上聊天的关系（再确认）
 
 | `status` | `DealMessageHub.postMessage(deal, content)` |
 |----------|----------------|
@@ -154,17 +201,18 @@ event DealRewardsLogged(
 
 ---
 
-## 5. 最简单集成路径（推荐）
+## 6. 最简单集成路径（推荐）
 
-1. **奖励 / 汇总**：只订 **`DealFactory`** → `DealRewardsLogged`（+ 如需 DL 明细再订 `DLMinted`）。  
-2. **单笔交易时间线**：订 **该 Deal / OpenTT 实例地址** → 上表事件；按 `when` / `at` 排序。  
+1. **奖励 / 信用结果**：优先读 **`DealResultIndex`**，不要每次扫历史 logs。
+2. **单笔交易时间线**：当前状态读 `DealReader`；完整流程再订 **该 Deal / OpenTT 实例地址** 的事件，按 `when` / `at` 排序。
 3. **成交后留言**：`Completed` 后仍调 **`DealMessageHub.postMessage(deal, content)`**。  
 4. **ABI**：本次 **`Joined` / `Paid` / `WithdrawnInActive` / `Locked` / `Completed` / `Canceled` / `BExpelledOnReject`** 等与旧版相比**签名已变或新增**，前端解码需更新 artifact。
 
 ---
 
-## 6. 相关源码（便于对 ABI）
+## 7. 相关源码（便于对 ABI）
 
+- `contracts/DealResultIndex.sol`：奖励明细、信用增量明细 view 索引
 - `contracts/DealFactory.sol`：`DealRewardsLogged`、`logDealRewards`、`DLMinted`  
 - `contracts/Deal.sol` / 各 Deal implementation：进程事件  
 - `contracts/DealMessageHub.sol`：链上留言写入与读取

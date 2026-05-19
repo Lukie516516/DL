@@ -49,6 +49,7 @@ async function deployDexFixture() {
     pairImpl.address,
     3600,
   ]);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const orderBook = await viem.deployContract("DealSwapOrderBook", [treasury.account.address]);
   const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address]);
 
@@ -61,6 +62,7 @@ async function deployDexFixture() {
 
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await waitFor(publicClient, await orderBook.write.setRouter([router.address]));
 
   async function createPairWithReserves(dlAmount: bigint, otherAmount: bigint) {

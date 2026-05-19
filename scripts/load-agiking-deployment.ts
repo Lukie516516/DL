@@ -25,6 +25,8 @@ export type AgikingDeploymentAddresses = {
   dealMessageHub: Address;
   dealCreditGraph?: Address;
   dealActivityIndex?: Address;
+  dealResultIndex?: Address;
+  dealPairManager?: Address;
   dealInfoNFT: Address;
   pairDlAusd: Address;
   pairDlUsdt: Address;

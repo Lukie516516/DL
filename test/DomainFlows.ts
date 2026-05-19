@@ -106,6 +106,7 @@ async function deployDomainFixture() {
     3600,
   ]);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
+  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry");
   await waitFor(
     publicClient,
@@ -158,6 +159,7 @@ async function deployDomainFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
