@@ -12,9 +12,6 @@ const TEMPLATE_TOKEN_TO_TOKEN = 0;
 const TEMPLATE_TOKEN_TO_NFT = 1;
 const TEMPLATE_TOKEN_TO_EMPTY = 2;
 
-const DEFAULT_TIME_START = 1_700_000_000n;
-const DEFAULT_TIME_END = 1_800_000_000n;
-
 type Address = `0x${string}`;
 
 async function waitFor(
@@ -316,8 +313,6 @@ async function createDealAndGetAddress(
         description: init.description ?? "",
         timeoutSeconds: 3600n,
         replaceTimeoutSeconds: 0n,
-        timeStart: DEFAULT_TIME_START,
-        timeEnd: DEFAULT_TIME_END,
         isDomainDeal: init.isDomainDeal ?? false,
         domainName: init.domainName ?? "",
         openTokenTokenFast: false,
@@ -714,6 +709,11 @@ describe("Domain Flows", async function () {
     assert.equal(getAddress(initialLeaderboard[0].deal), getAddress(deal1));
     assert.equal(getAddress(initialLeaderboard[1].deal), getAddress(deal2));
     assert.equal(initialLeaderboard[1].score, 0n);
+    const pageTwo = await dcDomainRank.read.getLeaderboard(["rank11", 1n, 1n]);
+    assert.equal(pageTwo.length, 1);
+    assert.equal(getAddress(pageTwo[0].deal), getAddress(deal2));
+    const outOfRange = await dcDomainRank.read.getLeaderboard(["rank11", 2n, 10n]);
+    assert.equal(outOfRange.length, 0);
 
     const blockBefore = await publicClient.getBlock();
     await testClient.setNextBlockTimestamp({ timestamp: blockBefore.timestamp + 3600n });
@@ -1035,7 +1035,6 @@ describe("Domain Flows", async function () {
       1n * ONE,
       0n,
       3600n,
-      DEFAULT_TIME_START,
       "",
       "",
       false,
@@ -1114,7 +1113,7 @@ describe("Domain Flows", async function () {
     );
   });
 
-  it("rejects non-visitors and blacklisted users in DCDomainHall flows", async function () {
+  it("allows active domain users in DCDomainHall flows and blocks blacklisted users", async function () {
     const fixture = await deployDomainFixture();
     const {
       viem,
@@ -1171,10 +1170,7 @@ describe("Domain Flows", async function () {
     });
     const dealAddress = createEvents[0].args.deal;
 
-    await assert.rejects(
-      hallAsOwner.write.postMessageOnDeal(["hallbl", dealAddress, "not allowed"]),
-      /not visitor/,
-    );
+    await waitFor(publicClient, await hallAsOwner.write.postMessageOnDeal(["hallbl", dealAddress, "allowed"]));
 
     await waitFor(publicClient, await rankAsAlice.write.setBlacklisted(["hallbl", carol.account.address, true]));
 
@@ -1189,7 +1185,7 @@ describe("Domain Flows", async function () {
     );
     await assert.rejects(
       hallAsBob.write.confirmHallDealCounterparty(["hallbl", dealAddress, carol.account.address]),
-      /picked bl/,
+      /bad picked/,
     );
 
     await waitFor(publicClient, await rankAsAlice.write.setBlacklisted(["hallbl", carol.account.address, false]));
@@ -1249,7 +1245,7 @@ describe("Domain Flows", async function () {
     );
   });
 
-  it("auto-switches a visitor to merchant when creating a DCDomainHall deal", async function () {
+  it("keeps visitor entrypoints as no-op compatibility while hall creation stays open", async function () {
     const fixture = await deployDomainFixture();
     const { viem, publicClient, alice, bob, owner, dcDomainRank, dcDomainHall } = fixture;
 
@@ -1266,8 +1262,8 @@ describe("Domain Flows", async function () {
     });
 
     await waitFor(publicClient, await rankAsBob.write.enterDomain(["switch"]));
-    assert.equal(await dcDomainRank.read.isVisitorActive(["switch", bob.account.address]), true);
-    assert.equal(await dcDomainRank.read.isMerchant(["switch", bob.account.address]), false);
+    assert.equal(await dcDomainRank.read.isVisitorActive(["switch", bob.account.address]), false);
+    assert.equal(await dcDomainRank.read.isMerchant(["switch", bob.account.address]), true);
 
     await assert.rejects(
       rankAsOwner.write.leaveVisitorFor(["switch", bob.account.address]),
@@ -1287,7 +1283,6 @@ describe("Domain Flows", async function () {
       0n,
       0n,
       3600n,
-      DEFAULT_TIME_START,
       "auto switch ete",
       "",
       false,
@@ -1393,7 +1388,6 @@ describe("Domain Flows", async function () {
         0n,
         0n,
         3600n,
-        DEFAULT_TIME_START,
         "bad tte",
         "",
         false,
@@ -1414,7 +1408,6 @@ describe("Domain Flows", async function () {
       0n,
       0n,
       3600n,
-      DEFAULT_TIME_START,
       "zero margin ete",
       "",
       false,
@@ -1514,8 +1507,6 @@ describe("Domain Flows", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: true,
             domainName: "fake12",
             openTokenTokenFast: false,

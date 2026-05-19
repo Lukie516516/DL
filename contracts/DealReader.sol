@@ -33,6 +33,8 @@ interface IDeal {
     function timeoutSeconds() external view returns (uint256);
     function timeStart() external view returns (uint256);
     function timeEnd() external view returns (uint256);
+    function createdAt() external view returns (uint256);
+    function endedAt() external view returns (uint256);
 
     function aSwapToken() external view returns (address);
     function aSwapAmount() external view returns (uint256);
@@ -100,6 +102,8 @@ contract DealReader {
         uint256 timeoutSeconds;
         uint256 timeStart;
         uint256 timeEnd;
+        uint256 createdAt;
+        uint256 endedAt;
         address aSwapToken;
         uint256 aSwapAmount;
         address aMarginToken;
@@ -137,6 +141,8 @@ contract DealReader {
         uint256 timeoutSeconds;
         uint256 timeStart;
         uint256 timeEnd;
+        uint256 createdAt;
+        uint256 endedAt;
         address aSwapToken;
         uint256 aSwapAmount;
         address aMarginToken;
@@ -213,6 +219,10 @@ contract DealReader {
         try d.timeoutSeconds() returns (uint256 v) { out.timeoutSeconds = v; } catch { ok = false; }
         try d.timeStart() returns (uint256 v) { out.timeStart = v; } catch { ok = false; }
         try d.timeEnd() returns (uint256 v) { out.timeEnd = v; } catch { ok = false; }
+        // Newer deal implementations expose explicit lifecycle timestamps.
+        // Older deployed deals may not have these methods; keep them readable.
+        try d.createdAt() returns (uint256 v) { out.createdAt = v; } catch {}
+        try d.endedAt() returns (uint256 v) { out.endedAt = v; } catch {}
 
         try d.aSwapToken() returns (address v) { out.aSwapToken = v; } catch { ok = false; }
         try d.aSwapAmount() returns (uint256 v) { out.aSwapAmount = v; } catch { ok = false; }
@@ -271,6 +281,10 @@ contract DealReader {
             try d.timeoutSeconds() returns (uint256 v) { s.timeoutSeconds = v; } catch { ok = false; }
             try d.timeStart() returns (uint256 v) { s.timeStart = v; } catch { ok = false; }
             try d.timeEnd() returns (uint256 v) { s.timeEnd = v; } catch { ok = false; }
+            // Newer deal implementations expose explicit lifecycle timestamps.
+            // Older deployed deals may not have these methods; keep them readable.
+            try d.createdAt() returns (uint256 v) { s.createdAt = v; } catch {}
+            try d.endedAt() returns (uint256 v) { s.endedAt = v; } catch {}
             try d.aSwapToken() returns (address v) { s.aSwapToken = v; } catch { ok = false; }
             try d.aSwapAmount() returns (uint256 v) { s.aSwapAmount = v; } catch { ok = false; }
             try d.aMarginToken() returns (address v) { s.aMarginToken = v; } catch { ok = false; }

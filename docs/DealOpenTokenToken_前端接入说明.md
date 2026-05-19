@@ -38,9 +38,15 @@ joinMode = Open 或 ExactAddress
 | `init.aNftId` | A 的官方 `DealInfoNFT tokenId`；没有就传 `0` |
 | `init.title` | 标题，最大 96 bytes |
 | `init.description` | 交易描述，最大 1500 bytes，可为空 |
-| `init.timeoutSeconds` | Locked 后一方已投票、另一方不投票时的强制完成/取消等待窗口 |
+| `init.timeoutSeconds` | Locked 后的超时强制处理等待窗口；A 已确认、B 未投票时可强制完成；A 已拒绝、B 未投票时不能由 A 强制取消 |
 | `init.replaceTimeoutSeconds` | B 卡单/不确认后，外部 C 可顶替 B 的等待窗口；OpenTokenToken 必填，范围 60 秒到 1 天；建议默认 120 秒 |
-| `init.timeStart` / `init.timeEnd` | 合同展示/业务周期，不参与踢人判定 |
+
+创建 deal 时不再传 `timeStart/timeEnd`。合约会自动记录：
+
+| 字段 | 说明 |
+| --- | --- |
+| `createdAt` | 创建 deal 的区块时间 |
+| `endedAt` | 成交、取消或废弃时的区块时间；未结束为 `0` |
 
 如果 A 想参与信用分和 C 位候选，创建时要传自己的官方 `DealInfoNFT tokenId` 到 `aNftId`。
 
@@ -256,9 +262,10 @@ DealCreditRecorded(deal, aTokenId, bTokenId, baseCredit, aDelta, bDelta)
 | `aNftId()` | A 绑定的官方 InfoNFT |
 | `bNftId()` | 当前 B 绑定的官方 InfoNFT |
 | `bJoinedAt()` | 当前 B 加入时间 |
-| `timeoutSeconds()` | Locked 后 forceComplete / cancel 的投票超时窗口 |
+| `timeoutSeconds()` | Locked 后 `forceComplete` 的投票超时窗口；A 已确认、B 未投票时可强制完成 |
 | `replaceTimeoutSeconds()` | B 卡单/不确认后可被 C 顶替的等待窗口 |
-| `timeStart()` / `timeEnd()` | 合同展示/业务周期 |
+| `createdAt()` / `endedAt()` | 合约自动记录的创建时间 / 真实结束时间 |
+| `timeStart()` / `timeEnd()` | 兼容旧前端；分别等于 `createdAt` / `endedAt` |
 | `lastRemovedB()` | 最近被清退/顶替的 B |
 | `aPaid()` / `bPaid()` | 双方是否已付款 |
 | `aHasPreAccepted()` | A 是否预同意 |

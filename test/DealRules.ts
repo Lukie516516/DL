@@ -6,6 +6,7 @@ import { getAddress, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const ACCEPT = 1;
+const REJECT = 2;
 const OPEN_JOIN = 0;
 const EXACT_AND_NFT_JOIN = 3;
 const TEMPLATE_TOKEN_TO_TOKEN = 0;
@@ -13,10 +14,6 @@ const TEMPLATE_TOKEN_TO_NFT = 1;
 const TEMPLATE_TOKEN_TO_EMPTY = 2;
 const TEMPLATE_EMPTY_TO_EMPTY = 3;
 const TEMPLATE_NFT_TO_EMPTY = 4;
-
-/** DealFactory / Deal 要求 timeStart、timeEnd 均非零且 timeEnd > timeStart */
-const DEFAULT_TIME_START = 1_700_000_000n;
-const DEFAULT_TIME_END = 1_800_000_000n;
 
 type Address = `0x${string}`;
 
@@ -267,8 +264,6 @@ async function createDealAndGetAddress(
     description?: string;
     timeoutSeconds?: bigint;
     replaceTimeoutSeconds?: bigint;
-    timeStart?: bigint;
-    timeEnd?: bigint;
     isDomainDeal?: boolean;
     domainName?: string;
     /** @default false */
@@ -314,8 +309,6 @@ async function createDealAndGetAddress(
         description: init.description ?? "",
         timeoutSeconds: init.timeoutSeconds ?? 3600n,
         replaceTimeoutSeconds: init.replaceTimeoutSeconds ?? (init.openTokenTokenFast ? 120n : 0n),
-        timeStart: init.timeStart ?? DEFAULT_TIME_START,
-        timeEnd: init.timeEnd ?? DEFAULT_TIME_END,
         isDomainDeal: init.isDomainDeal ?? false,
         domainName: init.domainName ?? "",
         openTokenTokenFast: init.openTokenTokenFast ?? false,
@@ -880,8 +873,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,
@@ -912,7 +903,7 @@ describe("Deal Rules", async function () {
     assert.equal(await deal.read.status(), 0);
   });
 
-  it("stores the time range as metadata without affecting the normal deal flow", async function () {
+  it("records creation and terminal timestamps without frontend time inputs", async function () {
     const fixture = await deployFixture();
     const { ausd, viem } = fixture;
     const { pairAddress: ausdPair } = await fixture.createAndInitPair(ausd.address);
@@ -927,17 +918,23 @@ describe("Deal Rules", async function () {
       bSwapToken: zeroAddress,
       bSwapAmount: 0n,
       templateType: TEMPLATE_TOKEN_TO_EMPTY,
-      timeStart: 1_700_000_000n,
-      timeEnd: 1_800_000_000n,
     });
+
+    const activeDeal = await viem.getContractAt("Deal", dealAddress);
+    const createdAt = await activeDeal.read.createdAt();
+    assert.ok(createdAt > 0n);
+    assert.equal(await activeDeal.read.timeStart(), createdAt);
+    assert.equal(await activeDeal.read.endedAt(), 0n);
+    assert.equal(await activeDeal.read.timeEnd(), 0n);
 
     await completeOpenDeal(fixture, dealAddress, {
       alice: [{ token: ausd, amount: aSwapAmount + 50n * ONE }],
     });
 
     const deal = await viem.getContractAt("Deal", dealAddress);
-    assert.equal(await deal.read.timeStart(), 1_700_000_000n);
-    assert.equal(await deal.read.timeEnd(), 1_800_000_000n);
+    const endedAt = await deal.read.endedAt();
+    assert.ok(endedAt >= createdAt);
+    assert.equal(await deal.read.timeEnd(), endedAt);
     assert.equal(await ausd.read.balanceOf([ausdPair]), pairBalanceBefore + ((aSwapAmount * 3n) / 1000n));
   });
 
@@ -998,21 +995,67 @@ describe("Deal Rules", async function () {
     );
   });
 
-  it("rejects deal force-timeout windows above one day", async function () {
+  it("allows force-timeout windows up to 100 years and rejects longer values", async function () {
     const fixture = await deployFixture();
-    const { bad } = fixture;
+    const hundredYears = 3_153_600_000n;
+
+    const okDeal = await createDealAndGetAddress(fixture, {
+      aSwapToken: zeroAddress,
+      aSwapAmount: 0n,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_EMPTY_TO_EMPTY,
+      timeoutSeconds: hundredYears,
+    });
+    assert.notEqual(okDeal, zeroAddress);
 
     await assert.rejects(
       createDealAndGetAddress(fixture, {
-        aSwapToken: bad.address,
-        aSwapAmount: 10n * ONE,
+        aSwapToken: zeroAddress,
+        aSwapAmount: 0n,
         bSwapToken: zeroAddress,
         bSwapAmount: 0n,
-        templateType: TEMPLATE_TOKEN_TO_EMPTY,
-        timeoutSeconds: 86_401n,
+        templateType: TEMPLATE_EMPTY_TO_EMPTY,
+        timeoutSeconds: hundredYears + 1n,
       }),
       /TimeoutTooLong/,
     );
+  });
+
+  it("does not let A force-cancel after A rejects and B stays silent", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, ausd, usdt } = fixture;
+    const testClient = await viem.getTestClient();
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 10n * ONE,
+      bSwapToken: usdt.address,
+      bSwapAmount: 10n * ONE,
+      templateType: TEMPLATE_TOKEN_TO_TOKEN,
+    });
+
+    const dealAlice = await viem.getContractAt("DealNoAsset", dealAddress, { client: { wallet: alice } });
+    const dealBob = await viem.getContractAt("DealNoAsset", dealAddress, { client: { wallet: bob } });
+    const ausdAlice = await viem.getContractAt("DCToken", ausd.address, { client: { wallet: alice } });
+    const usdtBob = await viem.getContractAt("DCToken", usdt.address, { client: { wallet: bob } });
+
+    await waitFor(publicClient, await ausdAlice.write.approve([dealAddress, 10n * ONE]));
+    await waitFor(publicClient, await usdtBob.write.approve([dealAddress, 10n * ONE]));
+    await waitFor(publicClient, await dealBob.write.join([0n, false]));
+    await waitFor(publicClient, await dealAlice.write.pay());
+    await waitFor(publicClient, await dealBob.write.pay());
+    assert.equal(Number(await dealAlice.read.status()), 2);
+
+    await waitFor(publicClient, await dealAlice.write.setMyVote([REJECT]));
+    const block = await publicClient.getBlock();
+    await testClient.setNextBlockTimestamp({ timestamp: block.timestamp + 3601n });
+    await testClient.mine({ blocks: 1 });
+
+    await assert.rejects(dealAlice.write.forceComplete());
+    assert.equal(Number(await dealAlice.read.status()), 2);
   });
 
   it("caps DealReader batch calls at 100 deals", async function () {
@@ -1128,8 +1171,6 @@ describe("Deal Rules", async function () {
           description: "",
           timeoutSeconds: 3600n,
           replaceTimeoutSeconds: 0n,
-          timeStart: DEFAULT_TIME_START,
-          timeEnd: DEFAULT_TIME_END,
           isDomainDeal: false,
           domainName: "",
           openTokenTokenFast: false,
@@ -1264,8 +1305,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,
@@ -1310,8 +1349,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,
@@ -1452,8 +1489,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,
@@ -1521,8 +1556,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,
@@ -1557,8 +1590,6 @@ describe("Deal Rules", async function () {
             description: "",
             timeoutSeconds: 3600n,
             replaceTimeoutSeconds: 0n,
-            timeStart: DEFAULT_TIME_START,
-            timeEnd: DEFAULT_TIME_END,
             isDomainDeal: false,
             domainName: "",
             openTokenTokenFast: false,

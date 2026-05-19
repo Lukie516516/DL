@@ -21,29 +21,29 @@
 来源：
 - `deployments/agiking-31415926.json`
 
-**重新部署域名大厅自动身份切换版本并写回地址（Rank / Swap / Hall）**
+**重新部署当前 Deal + 域名入口版本并写回地址**
 
-1. 使用 **在 Agiking 上有原生 gas**、且为 **DealFactory owner**（能对工厂 `setAllowedCreateFor`）的私钥。
+1. 使用 **在 Agiking 上有原生 gas**、且具备核心合约管理权限的部署私钥。
 2. 配置 Hardhat 变量（PowerShell 示例）：
 
 ```powershell
 $env:AGIKING_RPC_URL="https://rpc.agikingrpc.shop"
 $env:AGIKING_PRIVATE_KEY="0x..."   # 勿提交到仓库
-npm run deploy:agiking:domain-hall-autoswitch
+npm run deploy:agiking:deal-upgrade
 ```
 
-3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与 ABI），并生成新的 `deployments/frontend-handoff-domain-hall-autoswitch-*.md`。
+3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与 ABI），并生成新的 `deployments/frontend-handoff-agiking-31415926-*.md`。
 
 当前域名相关地址：
 
 - `DL / DC`: `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3`
 - `DCDomain`: `0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3`
-- `DCDomainRank`: `0x5A7ff0bdb55df5094c28944f0843e20860783323`
+- `DCDomainRank`: `0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee`
 - `DCDomainMarket`: `0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd`
-- `DCDomainSwap`: `0xbD4d73075F82B94E1F24090BB393536BdF0C1252`
-- `DCDomainHall`: `0x264b548d3cc9266db4FE5D663431db89b29d2bc4`
-- `DealFactory`: `0xafe8feb98ff13d9637e64fdfd1297e1a9f68e8b5`
-- `DealReader`: `0x578478b5c294aaa51b09dca3dbdb79f2ea3c8e76`
+- `DCDomainSwap`: `0x39e77dd312f5dbc2b18396937a4e97163247497d`
+- `DCDomainHall`: `0xf6d8d7bebc381674d4a72a5d1ae0a1971422eeef`
+- `DealFactory`: `0xf698c84a771fb740743ba71baa5ae143b9a85c0c`
+- `DealReader`: `0xd7b981136821259445360f3234e2b1307f6b811d`
 
 ---
 
@@ -55,8 +55,6 @@ npm run deploy:agiking:domain-hall-autoswitch
 - `title`：合同标题 / 展示标题，只用于展示
 
 不要把 `title` 当成 `domainName` 传给：
-- `enterDomain`
-- `isVisitorActive`
 - `createHallDealTemplate23`
 - `createTteHallDeal`
 - `createDeal`
@@ -118,7 +116,7 @@ npm run deploy:agiking:domain-hall-autoswitch
 ### 3.3 `DCDomainRank`
 
 作用：
-- 访客进入 / 离开域名
+- 域名有效用户判断
 - 黑名单（含 `blacklistedAddresses` 列表查询，见 §6.9）
 - 域名内交易排行榜
 - 域名总榜
@@ -323,10 +321,11 @@ await dcDomain.register("abc123");
 
 ## 6. `DCDomainRank` 常用方法
 
-### 6.1 `enterDomain(domainName)`
+### 6.1 `enterDomain(domainName)` / `leaveVisitor(domainName)`
 
 作用：
-- 普通用户以访客身份进入域名
+- 旧前端兼容入口。
+- 新逻辑不再区分 visitor / merchant，调用它们不会影响创建、留言、选人、充值等业务权限。
 
 参数：
 - `domainName: string`
@@ -337,18 +336,11 @@ await dcDomain.register("abc123");
 - 这里一定要传真实 `domainName`
 - 不要传标题 / 页面标题
 
-### 6.2 `leaveVisitor(domainName)`
+### 6.2 `isVisitorActive(domainName, user)`
 
 作用：
-- 主动离开访客身份
-
-参数：
-- `domainName: string`
-
-### 6.3 `isVisitorActive(domainName, user)`
-
-作用：
-- 查询某地址是不是这个域名下的访客
+- 旧前端兼容查询。
+- 新逻辑固定返回 `false`，前端不要再用它判断用户是否能参与大厅。
 
 参数：
 - `domainName: string`
@@ -358,13 +350,22 @@ await dcDomain.register("abc123");
 - `bool`
 
 注意：
-- 这里只是读当前访客状态
+- 现在是否能参与域名大厅，按 `isActive(domainName, user)` 或 `isBlacklisted(domainName, user)` 判断。
 - 如果前端想做“先判断再 enter”，最好先额外调用 `dcDomain.isRegistered(domainName)`
+
+### 6.3 `isActive(domainName, user)` / `isBlacklisted(domainName, user)`
+
+作用：
+- `isActive`：域名存在且用户未被拉黑。
+- `isBlacklisted`：查询用户是否被该域名拉黑。
+
+说明：
+- 新大厅逻辑只看这个有效用户状态，不再看 visitor / merchant。
 
 ### 6.4 域名广告费策略（域名 NFT 持有人）
 
 作用：
-- 控制该域名下商家排行榜「广告费 / 时间扣费」是否开启及扣法
+- 控制该域名下排行榜「广告费 / 时间扣费」是否开启及扣法
 
 方法：
 - `setDomainAdFeePolicy(domainName, mode, proportionalBpsPerHour, fixedHourlyRateWei)`：仅域名 NFT 持有人可调用
@@ -376,7 +377,7 @@ await dcDomain.register("abc123");
 - `2` = **等差（Fixed）**：按固定 `fixedHourlyRateWei`（DL，wei）× 经过时间折算扣费（与旧版线性逻辑一致），余额可被扣至 0
 
 注意：
-- 新注册域名默认 `mode = 0`，持有人必须先设策略，商家才能 `deposit`
+- 新注册域名默认 `mode = 0`，持有人必须先设策略，创建者才能 `deposit`
 
 ### 6.5 `deposit(domainName, deal, amount)`
 
@@ -406,7 +407,7 @@ await dcDomain.register("abc123");
 - `domainName: string`
 - `deal: address`
 
-### 6.7 `settle(domainName, deal, merchantAddr)`
+### 6.7 `settle(domainName, deal, creatorAddr)`
 
 作用：
 - 主动结算当前应扣的排行消耗
@@ -414,24 +415,36 @@ await dcDomain.register("abc123");
 参数：
 - `domainName: string`
 - `deal: address`
-- `merchantAddr: address`
+- `creatorAddr: address`
 
 ### 6.8 排行榜查询
 
 常用：
 - `getLeaderboard(domainName, limit)`
+- `getLeaderboard(domainName, offset, limit)`
 - `domainEntryCount(domainName)`
 - `getGlobalLeaderboard(limit)`
 - `globalDomainCount()`
 
+分页建议：
+- `domainEntryCount(domainName)` 读取总条目数
+- `getLeaderboard(domainName, offset, limit)` 读取分页结果
+- `limit` 范围 `1 - 50`
+- `offset >= domainEntryCount(domainName)` 时返回空数组
+
+返回结构：
+- `merchant`
+- `deal`
+- `score`
+
 ### 6.9 充值状态查询
 
 常用：
-- `myDealStatus(domainName, deal)`：依赖 `msg.sender` 作为商家；链下 `eth_call` 若未带 `from`，请改用 `myDealStatusOf`
-- `myDealStatusOf(domainName, deal, merchant)`：**推荐**前端 / 索引器使用，显式传入商家地址
-- `lastDepositAt(domainName, deal, merchant)`
-- `lastDepositAmount(domainName, deal, merchant)`
-- `depositPercent(domainName, deal, merchant)`
+- `myDealStatus(domainName, deal)`：依赖 `msg.sender` 作为创建者；链下 `eth_call` 若未带 `from`，请改用 `myDealStatusOf`
+- `myDealStatusOf(domainName, deal, creator)`：**推荐**前端 / 索引器使用，显式传入创建者地址
+- `lastDepositAt(domainName, deal, creator)`
+- `lastDepositAmount(domainName, deal, creator)`
+- `depositPercent(domainName, deal, creator)`
 - `previewHourlyRate(depositAmount)`：合约内历史「全局」公式预览；实际扣费以域名 `setDomainAdFeePolicy` 为准
 
 说明：
@@ -491,11 +504,11 @@ const rows = await Promise.all(
 
 ### 很重要
 
-这两类大厅模板当前都已经修成：
+这两类大厅模板当前规则：
 - 创建后默认不能直接 `deal.join()`
 - 必须先 `confirmHallDealCounterparty`
 - 然后被选中的人才能 `join`
-- 如果创建者当前已经是该域名的 visitor，合约会在创建/选人/确认时自动把他切换成 merchant，不需要前端先调用 `leaveVisitor`
+- 不再区分 visitor / merchant；未被拉黑的域名用户都可以创建、留言、被选中。
 
 所以前端这里：
 - 不要给这类单子直接显示“立即加入 deal”
@@ -519,7 +532,7 @@ const rows = await Promise.all(
 说明：
 - 创建后先锁住 join
 - 需要后续 `confirmHallDealCounterparty`
-- 如果调用者当前是 visitor，会自动退出 visitor 身份并继续创建
+- 调用者只需要是未被拉黑的有效域名用户。
 
 ### 7.3 `createHallDealTemplate23(...)`
 
@@ -539,7 +552,6 @@ const rows = await Promise.all(
 - `bMarginAmount: uint256`
 - `aNftId: uint256`
 - `timeoutSeconds: uint64`
-- `timeStart: uint64`
 - `title: string`
 - `description: string`，创建时上链交易描述，可为空，最大 1500 bytes
 - `trackCreator: bool`
@@ -551,36 +563,36 @@ const rows = await Promise.all(
 当前规则：
 - 保证金可为 `0`
 - 创建后默认不能直接 `join`
-- 如果调用者当前是 visitor，会自动退出 visitor 身份并继续创建
+- 调用者只需要是未被拉黑的有效域名用户。
 
-### 7.4 `postMessage(domainName, merchant, user, content)`
+### 7.4 `postMessage(domainName, userA, userB, content)`
 
 作用：
-- 商户 / 访客在普通大厅线程发消息
+- 两个未被拉黑的域名用户在普通大厅线程发消息。
 
 参数：
 - `domainName: string`
-- `merchant: address`
-- `user: address`
+- `userA: address`
+- `userB: address`
 - `content: string`
 
-### 7.5 `getMessages(domainName, merchant, user, offset, limit)`
+### 7.5 `getMessages(domainName, userA, userB, offset, limit)`
 
 作用：
 - 分页获取普通大厅线程消息
 
 参数：
 - `domainName: string`
-- `merchant: address`
-- `user: address`
+- `userA: address`
+- `userB: address`
 - `offset: uint256`
 - `limit: uint256`
 
 ### 7.6 `signalPickUser(domainName, pickedUser, note)`
 
 作用：
-- 商户发送“我准备选你”信号
-- 如果调用者当前是 visitor，会自动退出 visitor 身份并作为 merchant 发信号
+- 创建者发送“我准备选你”信号。
+- `pickedUser` 只需要是未被拉黑的有效域名用户。
 
 参数：
 - `domainName: string`
@@ -590,14 +602,13 @@ const rows = await Promise.all(
 ### 7.7 `confirmHallDealCounterparty(domainName, deal, pickedVisitor)`
 
 作用：
-- 创建者正式指定某个访客获得加入权限
+- 创建者正式指定某个地址获得加入权限
 - 只有该 deal 的创建者 A 可以调用
-- 如果创建者 A 当前是 visitor，会自动退出 visitor 身份并继续确认
 
 参数：
 - `domainName: string`
 - `deal: address`
-- `pickedVisitor: address`
+- `pickedVisitor: address`，名字沿用旧 ABI，实际含义是被选中的地址
 
 作用结果：
 - 对 deal 调 `openJoinFor(pickedVisitor)`
@@ -627,7 +638,7 @@ const rows = await Promise.all(
 ### 7.10 `pickUserAndCreateDeal(domainName, pickedUser, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, trackCreator)`
 
 作用：
-- 商户直接点对点创建一笔指定访客才能加入的 TokenToToken
+- 域名用户直接点对点创建一笔指定地址才能加入的 TokenToToken
 
 参数：
 - `domainName: string`
@@ -769,13 +780,11 @@ const rows = await Promise.all(
 5. `setDomainBackgroundUriFor`
 6. `list / listP2P`
 7. `buy`
-8. `enterDomain`
-9. `isVisitorActive`
-10. `createTteHallDeal`
-11. `postMessageOnDeal`
-12. `confirmHallDealCounterparty`
-13. 被选中的人再 `deal.join()`
-14. `deposit / myDealStatus / getLeaderboard`
+8. `createTteHallDeal`
+9. `postMessageOnDeal`
+10. `confirmHallDealCounterparty`
+11. 被选中的人再 `deal.join()`
+12. `deposit / myDealStatus / getLeaderboard`
 
 ---
 

@@ -5,10 +5,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 interface IDCDomainRankForHall {
     function isMerchant(string memory domainName, address account) external view returns (bool);
-    function isVisitorActive(string calldata domainName, address user) external view returns (bool);
     function isActive(string calldata domainName, address playerAddr) external view returns (bool);
     function isBlacklisted(string calldata domainName, address account) external view returns (bool);
-    function leaveVisitorFor(string calldata domainName, address visitor) external;
     function reportDeal(string calldata domainName, address deal, address merchant) external;
 }
 
@@ -53,8 +51,6 @@ interface IDealFactoryForHall {
         string description;
         uint64 timeoutSeconds;
         uint64 replaceTimeoutSeconds;
-        uint64 timeStart;
-        uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
         bool openTokenTokenFast;
@@ -69,7 +65,7 @@ interface IDealFactoryForHall {
 
 /**
  * @title DCDomainHall
- * @notice 商家与访客：点对点留言；先建单再在「按 deal 维度」的撮合大厅留言，最后由商家 openJoinFor 选定访客成交。
+ * @notice 域名用户撮合：点对点留言；先建单再在「按 deal 维度」的撮合大厅留言，最后由创建者 openJoinFor 选定对方成交。
  * @dev DealFactory 须 setTrustedDealRelay(本合约)。模板② 推荐 createHallDealTemplate23 + postMessageOnDeal + confirmHallDealCounterparty。
  */
 contract DCDomainHall is ReentrancyGuard {
@@ -155,13 +151,6 @@ contract DCDomainHall is ReentrancyGuard {
         require(bytes(content).length <= MAX_MESSAGE_BYTES, "DCDomainHall: too long");
     }
 
-    /// @dev 与 DealFactory 一致：timeStart/timeEnd 均非零且 timeEnd > timeStart，供前端阶段时间轴
-    function _defaultPhaseTimestamps() internal view returns (uint64 tsStart, uint64 tsEnd) {
-        uint64 ts = uint64(block.timestamp);
-        tsStart = ts + DEAL_TIMEOUT;
-        tsEnd = tsStart + DEAL_TIMEOUT;
-    }
-
     function _threadId(
         string calldata domainName,
         address merchant,
@@ -195,15 +184,12 @@ contract DCDomainHall is ReentrancyGuard {
         }
     }
 
-    function _prepareMerchant(string calldata domainName, address account) internal {
-        if (rank.isVisitorActive(domainName, account)) {
-            rank.leaveVisitorFor(domainName, account);
-        }
+    function _requireDomainUser(string calldata domainName, address account) internal view {
         require(rank.isMerchant(domainName, account), "DCDomainHall: not merchant");
     }
 
     /**
-     * @notice 模板②/③：先建单（join 锁定），再在「本 deal 专属」大厅留言，最后由商户调用 confirmHallDealCounterparty。
+     * @notice 模板②/③：先建单（join 锁定），再在「本 deal 专属」大厅留言，最后由创建者调用 confirmHallDealCounterparty。
      */
     function createHallDealTemplate23(
         string calldata domainName,
@@ -218,17 +204,14 @@ contract DCDomainHall is ReentrancyGuard {
         uint256 bMarginAmount,
         uint256 aNftId,
         uint64 timeoutSeconds_,
-        uint64 timeStart_,
         string calldata title,
         string calldata description,
         bool trackCreator
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        _prepareMerchant(domainName, msg.sender);
+        _requireDomainUser(domainName, msg.sender);
         require(timeoutSeconds_ >= 3600, "DCDomainHall: timeout");
-        require(timeStart_ > 0, "DCDomainHall: timeStart");
-        uint64 timeEnd_ = timeStart_ + DEAL_TIMEOUT;
 
         _assertTemplate2Or3(
             templateType,
@@ -260,8 +243,6 @@ contract DCDomainHall is ReentrancyGuard {
             description: description,
             timeoutSeconds: timeoutSeconds_,
             replaceTimeoutSeconds: 0,
-            timeStart: timeStart_,
-            timeEnd: timeEnd_,
             isDomainDeal: true,
             domainName: domainName,
             openTokenTokenFast: false
@@ -287,14 +268,10 @@ contract DCDomainHall is ReentrancyGuard {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         require(rank.isMerchant(domainName, merchant), "DCDomainHall: bad merchant");
-        require(!rank.isBlacklisted(domainName, user), "DCDomainHall: user blacklisted");
+        require(rank.isActive(domainName, user), "DCDomainHall: bad user");
         _limitMsg(content);
 
-        if (msg.sender == merchant) {
-            require(rank.isVisitorActive(domainName, user), "DCDomainHall: peer not visitor");
-        } else if (msg.sender == user) {
-            require(rank.isVisitorActive(domainName, user), "DCDomainHall: not visitor");
-        } else {
+        if (msg.sender != merchant && msg.sender != user) {
             revert("DCDomainHall: not participant");
         }
 
@@ -356,12 +333,13 @@ contract DCDomainHall is ReentrancyGuard {
     ) external {
         _mustRegistered(domainName);
         require(pickedUser != address(0), "DCDomainHall: zero user");
-        _prepareMerchant(domainName, msg.sender);
+        _requireDomainUser(domainName, msg.sender);
+        require(rank.isActive(domainName, pickedUser), "DCDomainHall: bad user");
         if (bytes(note).length > MAX_MESSAGE_BYTES) revert("DCDomainHall: note too long");
         emit MerchantPickUser(domainName, msg.sender, pickedUser, uint64(block.timestamp), note);
     }
 
-    /// @notice 商户对访客发起 TokenToToken 单（不经撮合会话）
+    /// @notice 域名用户对指定地址发起 TokenToToken 单（不经撮合会话）
     function pickUserAndCreateDeal(
         string calldata domainName,
         address pickedUser,
@@ -376,11 +354,8 @@ contract DCDomainHall is ReentrancyGuard {
         require(pickedUser != address(0), "DCDomainHall: zero picked");
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        _prepareMerchant(domainName, msg.sender);
-        require(!rank.isBlacklisted(domainName, pickedUser), "DCDomainHall: picked blacklisted");
-        require(rank.isVisitorActive(domainName, pickedUser), "DCDomainHall: picked not visitor");
-
-        (uint64 tsStart, uint64 tsEnd) = _defaultPhaseTimestamps();
+        _requireDomainUser(domainName, msg.sender);
+        require(rank.isActive(domainName, pickedUser), "DCDomainHall: bad picked");
 
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
@@ -404,8 +379,6 @@ contract DCDomainHall is ReentrancyGuard {
             description: description,
             timeoutSeconds: DEAL_TIMEOUT,
             replaceTimeoutSeconds: 0,
-            timeStart: tsStart,
-            timeEnd: tsEnd,
             isDomainDeal: true,
             domainName: domainName,
             openTokenTokenFast: false
@@ -445,9 +418,7 @@ contract DCDomainHall is ReentrancyGuard {
     ) external nonReentrant returns (address deal) {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
-        _prepareMerchant(domainName, msg.sender);
-
-        (uint64 tteStart, uint64 tteEnd) = _defaultPhaseTimestamps();
+        _requireDomainUser(domainName, msg.sender);
 
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
@@ -471,8 +442,6 @@ contract DCDomainHall is ReentrancyGuard {
             description: description,
             timeoutSeconds: DEAL_TIMEOUT,
             replaceTimeoutSeconds: 0,
-            timeStart: tteStart,
-            timeEnd: tteEnd,
             isDomainDeal: true,
             domainName: domainName,
             openTokenTokenFast: false
@@ -494,7 +463,7 @@ contract DCDomainHall is ReentrancyGuard {
     }
 
     /**
-     * @notice 商户在专属大厅选人后，对 Deal 调用 openJoinFor（仅 deal 创建者 A 可调）。
+     * @notice 创建者在专属大厅选人后，对 Deal 调用 openJoinFor（仅 deal 创建者 A 可调）。
      */
     function confirmHallDealCounterparty(
         string calldata domainName,
@@ -508,14 +477,13 @@ contract DCDomainHall is ReentrancyGuard {
         address dealA = IDealOpenJoinForHall(deal).a();
         require(dealA == msg.sender, "DCDomainHall: not deal A");
 
-        _prepareMerchant(domainName, msg.sender);
-        require(!rank.isBlacklisted(domainName, pickedVisitor), "DCDomainHall: picked bl");
-        require(rank.isVisitorActive(domainName, pickedVisitor), "DCDomainHall: not visitor");
+        _requireDomainUser(domainName, msg.sender);
+        require(rank.isActive(domainName, pickedVisitor), "DCDomainHall: bad picked");
 
         IDealOpenJoinForHall(deal).openJoinFor(pickedVisitor);
     }
 
-    /// @notice 某 deal 专属撮合大厅留言（商户 A 或该域名下访客）
+    /// @notice 某 deal 专属撮合大厅留言（创建者 A 或任意未拉黑域名用户）
     function postMessageOnDeal(string calldata domainName, address deal, string calldata content)
         external
         nonReentrant
@@ -530,9 +498,9 @@ contract DCDomainHall is ReentrancyGuard {
         require(rank.isMerchant(domainName, dealA), "DCDomainHall: deal A not merchant");
 
         if (msg.sender == dealA) {
-            // dealA is already verified as merchant above
+            // dealA is already verified as an active domain user above.
         } else {
-            require(rank.isVisitorActive(domainName, msg.sender), "DCDomainHall: not visitor");
+            require(rank.isActive(domainName, msg.sender), "DCDomainHall: not active");
         }
 
         dealFactory.chargeMessageFeeFrom(msg.sender);

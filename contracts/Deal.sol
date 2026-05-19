@@ -55,6 +55,8 @@ contract Deal is IERC721Receiver {
     uint64 public timeoutSeconds;
     uint64 public timeStart;
     uint64 public timeEnd;
+    uint64 public createdAt;
+    uint64 public endedAt;
     uint64 public aAt;
     uint64 public bAt;
     Vote public aVote;
@@ -119,8 +121,6 @@ contract Deal is IERC721Receiver {
         string description;
         uint64 timeoutSeconds;
         uint64 replaceTimeoutSeconds;
-        uint64 timeStart;
-        uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
         bool openTokenTokenFast;

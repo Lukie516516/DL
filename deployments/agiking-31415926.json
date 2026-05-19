@@ -1,10 +1,10 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-18T07:41:17.098Z",
-  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
-  "previousDeployment": "deployments/backups/agiking-31415926.before-domain-hall-autoswitch-20260518-074117.json",
-  "upgrade": "domain-hall-autoswitch",
+  "deployedAt": "2026-05-19T05:54:36.151Z",
+  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-event-time-messagehub-20260519-055436.json",
+  "upgrade": "event-time-messagehub-opentt-replace-timeout",
   "addresses": {
     "dlToken": "0xf9606500fbbea6d220bb65fc5cea9641c6e436d3",
     "ausd": "0x61b625206675c95a93a9dd45e386ab2801f4d96c",
@@ -12,30 +12,30 @@
     "wrappedNative": "0x631b09c6905ce136074be938c82a1df16443e676",
     "dealLib": "0xae3a1cd41021d172b24ea730b20457e676c46c09",
     "dealAssetNftLib": "0x537ec145ef2664f39c4faa6ab6ae3a93c67377d8",
-    "dealImplementation": "0x2c08cfc094105dc579b8f85680c0fac86452c3cd",
-    "dealNoAssetImplementation": "0xb392e8a50ef5717341c91a6d98c1629fa56d5516",
-    "dealAAssetNftImplementation": "0x5274916b83790219e6316406cbd2466b45fc2878",
-    "dealBAssetNftImplementation": "0xc5b795073dcb8d08bbdb8d6d8581bcdde6482e4d",
-    "dealAAssetNftOnlyImplementation": "0x37fc30e4fc29c94fc35c5ea19d3b7e313347a3d0",
-    "dealBAssetNftOnlyImplementation": "0x98f9e7ff05e288962805c725cf5e2780f81fd854",
-    "dealOpenTokenTokenImplementation": "0x200ab998be2c2a9d2fa319e45dc2c2cb34792f4e",
-    "dealImplementationRegistry": "0x93bbdf2ba9117297a5faf64a459d1ece60df5810",
+    "dealImplementation": "0x6c11a9a74226385c4e6f732bed4492f0b065cc3a",
+    "dealNoAssetImplementation": "0x134ff49f465fb719c7164514e05772cd31b66966",
+    "dealAAssetNftImplementation": "0x4ebf107573366bcbd8a9ff6a67156ea18b507336",
+    "dealBAssetNftImplementation": "0xd371b4ae42c20a1a9b4acaa67bb59c4519f9dfa4",
+    "dealAAssetNftOnlyImplementation": "0xf657abf74406de82105384d535be68692cee7257",
+    "dealBAssetNftOnlyImplementation": "0x5e3e647e81a4862e0f0cb3f2486f9475f73e9f34",
+    "dealOpenTokenTokenImplementation": "0x9b897fe3b532e4383cbdefba8337a4daa52eda40",
+    "dealImplementationRegistry": "0xf27ec73da0f57c2c0f19c18d28fd6c591a5029c2",
     "pairImplementation": "0x3b7954b3065dbb3ad50d69195b62a8486e78aac2",
-    "dealFactory": "0xafe8feb98ff13d9637e64fdfd1297e1a9f68e8b5",
-    "dealMessageHub": "0xff6b941ab43a7795b693282a98086c7b0c7fdaae",
+    "dealFactory": "0xf698c84a771fb740743ba71baa5ae143b9a85c0c",
+    "dealMessageHub": "0xb900bee213ba4eda3940c1bc23d2db88364d4c6f",
     "dealCreditGraph": "0x96a8547929ae75afc344522575f0dd59c222650d",
-    "dealActivityIndex": "0x5091dbe9bc7527ce5ea34d1ab3fb601250f704fd",
+    "dealActivityIndex": "0x606360240a09776448b1c06caf88610be5b3111d",
     "dealInfoNFT": "0xdba1efb9d7ce36e8ba3f51a857e5364bd98502f3",
     "pairDlAusd": "0x314DA00dE1f773cB6abb3F8c213D17e19F56D44b",
     "pairDlUsdt": "0x9321D09a931c6eF44EAD872d01774F0C34891842",
     "dealSwapOrderBook": "0x1d293938b5f8335142aabf4cc9545dafcfc5816f",
     "dealRouter": "0x52d02e04813f66a36b96ff9f3fb63f7ad7a695e0",
-    "dealReader": "0x578478b5c294aaa51b09dca3dbdb79f2ea3c8e76",
+    "dealReader": "0xd7b981136821259445360f3234e2b1307f6b811d",
     "dcDomain": "0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3",
-    "dcDomainRank": "0x5A7ff0bdb55df5094c28944f0843e20860783323",
+    "dcDomainRank": "0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee",
     "dcDomainMarket": "0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd",
-    "dcDomainSwap": "0xbD4d73075F82B94E1F24090BB393536BdF0C1252",
-    "dcDomainHall": "0x264b548d3cc9266db4FE5D663431db89b29d2bc4",
+    "dcDomainSwap": "0x39e77dd312f5dbc2b18396937a4e97163247497d",
+    "dcDomainHall": "0xf6d8d7bebc381674d4a72a5d1ae0a1971422eeef",
     "dToken": "0x3340f3f9e27baeab1fea9fb25b646a82b5588cd2",
     "dealTimelock": "0xd553524a05b33da8aedd972fd3858889238828b6",
     "dealGovernor": "0x87f6d9a1d39cc75609678f37eb314ef0c5990586",
@@ -1399,6 +1399,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -1431,6 +1444,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -1645,16 +1671,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -2995,6 +3011,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -3027,6 +3056,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -3241,16 +3283,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -4595,6 +4627,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -4627,6 +4672,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -4841,16 +4899,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -6229,6 +6277,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -6261,6 +6322,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -6475,16 +6549,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -7863,6 +7927,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -7895,6 +7972,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -8109,16 +8199,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -9497,6 +9577,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -9529,6 +9622,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -9743,16 +9849,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -11105,6 +11201,19 @@
       },
       {
         "inputs": [],
+        "name": "createdAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "description",
         "outputs": [
           {
@@ -11137,6 +11246,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -11338,16 +11460,6 @@
               {
                 "internalType": "uint64",
                 "name": "replaceTimeoutSeconds",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeStart",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint64",
-                "name": "timeEnd",
                 "type": "uint64"
               },
               {
@@ -12252,11 +12364,6 @@
       {
         "inputs": [],
         "name": "InvalidTemplateType",
-        "type": "error"
-      },
-      {
-        "inputs": [],
-        "name": "InvalidTimeRange",
         "type": "error"
       },
       {
@@ -13323,16 +13430,6 @@
                     "type": "uint64"
                   },
                   {
-                    "internalType": "uint64",
-                    "name": "timeStart",
-                    "type": "uint64"
-                  },
-                  {
-                    "internalType": "uint64",
-                    "name": "timeEnd",
-                    "type": "uint64"
-                  },
-                  {
                     "internalType": "bool",
                     "name": "isDomainDeal",
                     "type": "bool"
@@ -13491,16 +13588,6 @@
                     "type": "uint64"
                   },
                   {
-                    "internalType": "uint64",
-                    "name": "timeStart",
-                    "type": "uint64"
-                  },
-                  {
-                    "internalType": "uint64",
-                    "name": "timeEnd",
-                    "type": "uint64"
-                  },
-                  {
                     "internalType": "bool",
                     "name": "isDomainDeal",
                     "type": "bool"
@@ -13626,6 +13713,19 @@
       {
         "inputs": [],
         "name": "dealMessageHub",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "dealNftGovernanceActivity",
         "outputs": [
           {
             "internalType": "address",
@@ -14352,6 +14452,19 @@
           }
         ],
         "name": "recordDealCredit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "recordNftGovernanceActivity",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -19272,6 +19385,30 @@
         "type": "function"
       },
       {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "name": "ownerOfAt",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [],
         "name": "pair",
         "outputs": [
@@ -22183,6 +22320,16 @@
                 "type": "uint256"
               },
               {
+                "internalType": "uint256",
+                "name": "createdAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "endedAt",
+                "type": "uint256"
+              },
+              {
                 "internalType": "address",
                 "name": "aSwapToken",
                 "type": "address"
@@ -22388,6 +22535,16 @@
                   {
                     "internalType": "uint256",
                     "name": "timeEnd",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "createdAt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "endedAt",
                     "type": "uint256"
                   },
                   {
@@ -22769,6 +22926,16 @@
                 "type": "uint256"
               },
               {
+                "internalType": "uint256",
+                "name": "createdAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "endedAt",
+                "type": "uint256"
+              },
+              {
                 "internalType": "address",
                 "name": "aSwapToken",
                 "type": "address"
@@ -22974,6 +23141,16 @@
                   {
                     "internalType": "uint256",
                     "name": "timeEnd",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "createdAt",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "endedAt",
                     "type": "uint256"
                   },
                   {
@@ -23342,6 +23519,16 @@
               {
                 "internalType": "uint256",
                 "name": "timeEnd",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "createdAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "endedAt",
                 "type": "uint256"
               },
               {
@@ -25164,6 +25351,52 @@
           },
           {
             "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "getLeaderboard",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "merchant",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "score",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DCDomainRank.LeaderboardEntry[]",
+            "name": "entries",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
             "name": "limit",
             "type": "uint256"
           }
@@ -25345,7 +25578,7 @@
             "type": "bool"
           }
         ],
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
       },
       {
@@ -27456,11 +27689,6 @@
             "type": "uint64"
           },
           {
-            "internalType": "uint64",
-            "name": "timeStart_",
-            "type": "uint64"
-          },
-          {
             "internalType": "string",
             "name": "title",
             "type": "string"
@@ -27862,13 +28090,24 @@
     ],
     "D": [
       {
-        "inputs": [],
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "initialHolder",
+            "type": "address"
+          }
+        ],
         "stateMutability": "nonpayable",
         "type": "constructor"
       },
       {
         "inputs": [],
         "name": "BurnDisabled",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "CapExceeded",
         "type": "error"
       },
       {
@@ -28113,6 +28352,11 @@
         "type": "error"
       },
       {
+        "inputs": [],
+        "name": "ZeroInitialHolder",
+        "type": "error"
+      },
+      {
         "anonymous": false,
         "inputs": [
           {
@@ -28245,6 +28489,58 @@
         "type": "function"
       },
       {
+        "inputs": [],
+        "name": "D_DECIMALS",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_SUPPLY",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "SEAT_THRESHOLD",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "UNIT",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [
           {
             "internalType": "address",
@@ -28370,7 +28666,7 @@
             "type": "uint8"
           }
         ],
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
       },
       {
@@ -28489,6 +28785,49 @@
       {
         "inputs": [
           {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timepoint",
+            "type": "uint256"
+          }
+        ],
+        "name": "getPastBalanceOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "timepoint",
+            "type": "uint256"
+          }
+        ],
+        "name": "getPastTotalBalance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "uint256",
             "name": "timepoint",
             "type": "uint256"
@@ -28543,6 +28882,44 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasSeat",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasVotingSeat",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
           }
         ],
         "stateMutability": "view",
@@ -30321,6 +30698,19 @@
       },
       {
         "inputs": [],
+        "name": "D_SEAT_THRESHOLD",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "EXTENDED_BALLOT_TYPEHASH",
         "outputs": [
           {
@@ -31358,6 +31748,11 @@
             "internalType": "address",
             "name": "_executor",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "_dividendSource",
+            "type": "address"
           }
         ],
         "stateMutability": "nonpayable",
@@ -31397,7 +31792,7 @@
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "votes",
+            "name": "balance",
             "type": "uint256"
           },
           {
@@ -31408,6 +31803,25 @@
           }
         ],
         "name": "Claimed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "oldSource",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newSource",
+            "type": "address"
+          }
+        ],
+        "name": "DividendSourceUpdated",
         "type": "event"
       },
       {
@@ -31427,6 +31841,25 @@
           }
         ],
         "name": "ExecutorUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "infoNft",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "activity",
+            "type": "address"
+          }
+        ],
+        "name": "GovernanceActivityUpdated",
         "type": "event"
       },
       {
@@ -31471,6 +31904,24 @@
         "inputs": [
           {
             "internalType": "uint256",
+            "name": "roundId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "claimForNft",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
             "name": "",
             "type": "uint256"
           },
@@ -31502,6 +31953,19 @@
         "name": "createRound",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "dividendSource",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -31567,6 +32031,32 @@
         "type": "function"
       },
       {
+        "inputs": [],
+        "name": "governanceActivity",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "infoNft",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [
           {
             "internalType": "uint256",
@@ -31583,7 +32073,7 @@
         "outputs": [
           {
             "internalType": "uint256",
-            "name": "votes",
+            "name": "balance",
             "type": "uint256"
           },
           {
@@ -31641,11 +32131,42 @@
         "inputs": [
           {
             "internalType": "address",
+            "name": "newSource",
+            "type": "address"
+          }
+        ],
+        "name": "setDividendSource",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
             "name": "newExec",
             "type": "address"
           }
         ],
         "name": "setExecutor",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "infoNft_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "activity_",
+            "type": "address"
+          }
+        ],
+        "name": "setGovernanceActivity",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -31668,7 +32189,7 @@
         "name": "votesToken",
         "outputs": [
           {
-            "internalType": "contract IVotes",
+            "internalType": "contract IDividendSnapshotToken",
             "name": "",
             "type": "address"
           }
@@ -31683,9 +32204,6 @@
     "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
     "Completed/Canceled events now include when.",
     "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
-    "DCDomainSwap redeployed with createDealWithInfoNft(..., aNftId); old createDeal(...) remains available.",
-    "DCDomainRank, DCDomainSwap and DCDomainHall redeployed for DCDomainHall visitor -> merchant auto-switch.",
-    "DCDomain, DCDomainMarket and the core Deal stack are reused.",
-    "Latest domain deployment: DCDomainRank, DCDomainSwap and DCDomainHall were redeployed; DCDomainMarket, DCDomain and core Deal contracts are reused."
+    "DCDomain/DCDomainMarket are reused; DCDomainRank/DCDomainSwap/DCDomainHall are redeployed against the new Factory."
   ]
 }

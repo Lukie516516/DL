@@ -111,12 +111,12 @@ event DealRewardsLogged(
 |------|------|
 | **谁触发** | 不是单独一个「某方取消」按钮函数，而是逻辑走到内部 **`_cancel()`**。 |
 | **允许阶段** | 仅在 **`Locked`**（双方已付清/满足锁定条件后投票）。 |
-| **典型触发** | ① **A、B 都投 `Reject`**（`setMyVote`）；② **`forceComplete` 超时**：已投票一方选的是 **`Reject`**，对侧迟迟不投，超时后由已投方调用 `forceComplete`，走 **`_cancel()`**（会先 `ForcedAfterTimeout(..., completed: false, ...)`）。 |
+| **典型触发** | ① **A、B 都投 `Reject`**（`setMyVote`）；② **B 投 `Reject`、A 未投票**时，B 可在 `timeoutSeconds` 后调用 `forceComplete` 取消。A 投 `Reject`、B 未投票时，A 不能再靠超时强制取消。 |
 | **链上效果** | 状态 **`Canceled`**；对已付款/托管侧做退款与 `Claimed` 事件，再 **`Canceled(when)`**。 |
 | **事件** | 前序多有 **`VoteCast`**；超时取消时还有 **`ForcedAfterTimeout(caller, completed=false, when)`**；最后 **`Canceled(when)`**（该事件**不带地址**，要靠前几笔 log 判断是谁投了什么、谁调了 `forceComplete`）。 |
 | **留言** | **`DealMessageHub.postMessage(deal, content)` 允许**（仍仅当前 A/B）。 |
 
-与 **成交**对比：双方 **`Accept`** 或超时 **`Accept`** 一方 `forceComplete` → **`Completed`**，并有 `RewardsMinted` / 工厂的 `DealRewardsLogged` 等。
+与 **成交**对比：双方 **`Accept`**，或 A 已 **`Accept`** 且 B 未投票后由 A 超时 `forceComplete` → **`Completed`**，并有 `RewardsMinted` / 工厂的 `DealRewardsLogged` 等。
 
 ---
 

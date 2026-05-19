@@ -9,7 +9,7 @@
     "deploy:agiking": "hardhat run scripts/deploy-agiking.ts --network agiking",
     "deploy:agiking:deal-upgrade": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-event-time-messagehub-upgrade.ts --network agiking",
     "deploy:agiking:domain-swap-info-nft": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-dcdomain-swap-info-nft.ts --network agiking",
-    "deploy:agiking:domain-hall-autoswitch": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-domain-hall-autoswitch.ts --network agiking",
+    "deploy:agiking:domain-open-access": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-domain-open-access.ts --network agiking",
     "deploy:domain-upgrade": "hardhat run scripts/deploy-domain-upgrade.ts --network agiking"
   },
   "keywords": [],

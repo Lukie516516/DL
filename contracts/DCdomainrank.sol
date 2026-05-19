@@ -21,7 +21,7 @@ interface IDCDomain {
  * @notice 任何人都可以成为商家、发布合同，无需白名单/充值。
  *         排行榜按「每笔交易（Deal）的消耗」排序，一个商家可有 N 条上榜。
  *         充值可选：有充值才扣小时费，没充值则该条目分数为 0。
- *         访客系统不变：未发布合同的普通用户可 enterDomain 进入域名。
+ *         访客入口保留兼容 ABI，但不再作为业务权限限制。
  *         小时费结算产生的广告费暂存本合约，域名 NFT 持有人调用 withdraw(domainName) 领取。
  *         广告费模式由域名 NFT 持有人配置：None（默认，禁止充值）/ Proportional（按余额比例）/ Fixed（固定速率）。
  */
@@ -70,6 +70,7 @@ contract DCDomainRank is ReentrancyGuard {
     mapping(string => mapping(address => mapping(address => uint256))) private _lastDepositBase;
 
     // ── 域名级状态 ──
+    /// @dev visitor mapping is kept only for storage/layout and legacy event compatibility.
     mapping(string => mapping(address => bool)) private _visitorInDomain;
     mapping(string => mapping(address => bool)) private _blacklisted;
     /// @dev 与 _blacklisted 同步，供前端枚举；仅 setBlacklisted 维护
@@ -136,13 +137,12 @@ contract DCDomainRank is ReentrancyGuard {
     }
 
     // ═══════════════════════════════════════════
-    // 商家：任何人都是商家（无需白名单）
+    // 域名用户：任何未被拉黑的地址都可参与
     // ═══════════════════════════════════════════
 
     function isMerchant(string memory domainName, address account) public view returns (bool) {
         if (!dcDomain.isRegistered(domainName)) return false;
         if (_blacklisted[domainName][account]) return false;
-        if (_visitorInDomain[domainName][account]) return false;
         return true;
     }
 
@@ -205,36 +205,32 @@ contract DCDomainRank is ReentrancyGuard {
     function enterDomain(string calldata domainName) external nonReentrant {
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         require(!_blacklisted[domainName][msg.sender], "DCDomainRank: blacklisted");
-        require(!_visitorInDomain[domainName][msg.sender], "DCDomainRank: already visitor");
-        _visitorInDomain[domainName][msg.sender] = true;
         emit VisitorEntered(msg.sender, domainName);
     }
 
     function leaveVisitor(string calldata domainName) external {
-        require(_visitorInDomain[domainName][msg.sender], "DCDomainRank: not visitor");
-        _visitorInDomain[domainName][msg.sender] = false;
+        require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         emit VisitorLeft(msg.sender, domainName);
     }
 
-    /// @notice 授权域名入口可在用户主动创建/确认大厅单时，把该用户从 visitor 切为 merchant。
+    /// @notice Legacy compatibility hook. Visitor status no longer affects domain permissions.
     function leaveVisitorFor(string calldata domainName, address visitor) external {
         require(isDealReporter[msg.sender], "DCDomainRank: not reporter");
         require(visitor != address(0), "ZERO_ACCOUNT");
-        require(_visitorInDomain[domainName][visitor], "DCDomainRank: not visitor");
-        _visitorInDomain[domainName][visitor] = false;
+        require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         emit VisitorLeft(visitor, domainName);
     }
 
-    function isVisitorActive(string calldata domainName, address user) external view returns (bool) {
-        return _visitorInDomain[domainName][user];
+    function isVisitorActive(string calldata domainName, address user) external pure returns (bool) {
+        domainName;
+        user;
+        return false;
     }
 
     function kickVisitor(string calldata domainName, address visitor) external {
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         require(visitor != address(0), "ZERO_ACCOUNT");
         require(_domainOwner(domainName) == msg.sender, "DCDomainRank: not domain owner");
-        require(_visitorInDomain[domainName][visitor], "DCDomainRank: not visitor");
-        _visitorInDomain[domainName][visitor] = false;
         emit VisitorKicked(visitor, domainName, msg.sender);
         emit VisitorLeft(visitor, domainName);
     }
@@ -392,7 +388,6 @@ contract DCDomainRank is ReentrancyGuard {
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         require(_domainAdFeeMode[domainName] != uint8(AdFeeMode.None), "DCDomainRank: ad fees disabled");
         require(!_blacklisted[domainName][msg.sender], "DCDomainRank: blacklisted");
-        require(!_visitorInDomain[domainName][msg.sender], "DCDomainRank: visitors cannot deposit");
         require(amount >= minDeposit, "DCDomainRank: below minDeposit");
         require(_entryInList[domainName][deal][msg.sender], "DCDomainRank: deal not reported");
 
@@ -475,19 +470,14 @@ contract DCDomainRank is ReentrancyGuard {
         uint256 score;
     }
 
-    /// @notice 域名内排行榜：前 limit 条 (商家, 交易, 消耗额)，包含 0 分条目
-    function getLeaderboard(string calldata domainName, uint256 limit)
-        external
+    function _buildSortedLeaderboard(string memory domainName)
+        internal
         view
-        returns (LeaderboardEntry[] memory entries)
+        returns (LeaderboardEntry[] memory buf)
     {
-        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
-
         DealMerchantEntry[] storage all = _domainEntries[domainName];
         uint256 total = all.length;
-        if (total == 0) return new LeaderboardEntry[](0);
-
-        LeaderboardEntry[] memory buf = new LeaderboardEntry[](total);
+        buf = new LeaderboardEntry[](total);
         for (uint256 i; i < total; i++) {
             buf[i] = LeaderboardEntry({
                 merchant: all[i].merchant,
@@ -496,18 +486,51 @@ contract DCDomainRank is ReentrancyGuard {
             });
         }
 
-        uint256 n = total < limit ? total : limit;
-        for (uint256 i; i < n; i++) {
+        for (uint256 i; i < total; i++) {
             for (uint256 j = i + 1; j < total; j++) {
                 if (buf[j].score > buf[i].score) {
                     (buf[i], buf[j]) = (buf[j], buf[i]);
                 }
             }
         }
+    }
 
+    /// @notice 域名内排行榜：前 limit 条 (商家, 交易, 消耗额)，包含 0 分条目
+    function getLeaderboard(string calldata domainName, uint256 limit)
+        external
+        view
+        returns (LeaderboardEntry[] memory entries)
+    {
+        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
+
+        LeaderboardEntry[] memory buf = _buildSortedLeaderboard(domainName);
+        uint256 total = buf.length;
+        if (total == 0) return new LeaderboardEntry[](0);
+
+        uint256 n = total < limit ? total : limit;
         entries = new LeaderboardEntry[](n);
         for (uint256 i; i < n; i++) {
             entries[i] = buf[i];
+        }
+    }
+
+    /// @notice 域名内排行榜分页：按分数降序返回 [offset, offset + limit)。
+    function getLeaderboard(string calldata domainName, uint256 offset, uint256 limit)
+        external
+        view
+        returns (LeaderboardEntry[] memory entries)
+    {
+        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
+
+        LeaderboardEntry[] memory buf = _buildSortedLeaderboard(domainName);
+        uint256 total = buf.length;
+        if (offset >= total) return new LeaderboardEntry[](0);
+
+        uint256 remaining = total - offset;
+        uint256 n = remaining < limit ? remaining : limit;
+        entries = new LeaderboardEntry[](n);
+        for (uint256 i; i < n; i++) {
+            entries[i] = buf[offset + i];
         }
     }
 
@@ -614,10 +637,7 @@ contract DCDomainRank is ReentrancyGuard {
 
     function isParticipant(string calldata domainName, address user) external view returns (bool) {
         if (!dcDomain.isRegistered(domainName)) return false;
-        uint256 tokenId = dcDomain.tokenIdOf(domainName);
-        if (dcDomain.ownerOf(tokenId) == user) return true;
-        if (_visitorInDomain[domainName][user]) return true;
-        return false;
+        return user != address(0) && !_blacklisted[domainName][user];
     }
 
     // ═══════════════════════════════════════════

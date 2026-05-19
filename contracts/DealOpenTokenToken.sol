@@ -124,6 +124,8 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     uint64 public bJoinedAt;
     uint64 public timeStart;
     uint64 public timeEnd;
+    uint64 public createdAt;
+    uint64 public endedAt;
     uint64 public aAt;
     uint64 public bAt;
     Vote public aVote;
@@ -219,8 +221,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         string description;
         uint64 timeoutSeconds;
         uint64 replaceTimeoutSeconds;
-        uint64 timeStart;
-        uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
         bool openTokenTokenFast;
@@ -316,9 +316,8 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 replaceTimeoutSeconds <= MAX_REPLACE_TIMEOUT_SECONDS,
             57
         );
-        timeStart = p.timeStart;
-        timeEnd = p.timeEnd;
-        _check(timeStart > 0 && timeEnd > timeStart, 13);
+        createdAt = uint64(block.timestamp);
+        timeStart = createdAt;
 
         isDomainDeal = p.isDomainDeal;
         domainName = p.domainName;
@@ -372,8 +371,11 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _trackA = false;
         _trackBActive = false;
 
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Abandoned;
-        emit DealAbandoned(a, uint64(block.timestamp));
+        emit DealAbandoned(a, ts);
     }
 
     function openJoinFor(address chosenB) external inState(Status.Ready) {
@@ -611,10 +613,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
                 _complete(CompletionReason.ForcedByA);
                 return;
-            } else if (aVote == Vote.Reject) {
-                emit ForcedAfterTimeout(msg.sender, false, ts);
-                _cancel();
-                return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
@@ -645,6 +643,9 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     }
 
     function _complete(CompletionReason reason) internal {
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Completed;
 
         Fees memory f = _computeFees();
@@ -686,10 +687,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bJoinedAt = 0;
         bNftId = 0;
 
-        emit Completed(reason, uint64(block.timestamp));
+        emit Completed(reason, ts);
     }
 
     function _cancel() internal {
+        uint64 ts = uint64(block.timestamp);
+        endedAt = ts;
+        timeEnd = ts;
         status = Status.Canceled;
 
         if (aPaid) {
@@ -721,7 +725,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bJoinedAt = 0;
         bNftId = 0;
 
-        emit Canceled(uint64(block.timestamp));
+        emit Canceled(ts);
     }
 
     function _computeFees() internal returns (Fees memory f) {

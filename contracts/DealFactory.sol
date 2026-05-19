@@ -46,8 +46,6 @@ interface IDeal {
         string description;
         uint64 timeoutSeconds;
         uint64 replaceTimeoutSeconds;
-        uint64 timeStart;
-        uint64 timeEnd;
         bool isDomainDeal;
         string domainName;
         /// @dev true：clone DealOpenTokenToken（仅 TokenToToken）
@@ -228,7 +226,6 @@ contract DealFactory is Ownable {
     error InvalidAssetNftPairing();
     error ExpectedBZero();
     error GateIdZero();
-    error InvalidTimeRange();
     error InvalidTemplateShape();
     error MarginTokenNotAllowed();
     error InfoNftAmountInvalid();
@@ -241,7 +238,7 @@ contract DealFactory is Ownable {
 
     uint256 public constant MAX_TITLE_BYTES = 96;
     uint256 public constant MAX_DESCRIPTION_BYTES = 1500;
-    uint64 public constant MAX_TIMEOUT_SECONDS = 1 days;
+    uint64 public constant MAX_TIMEOUT_SECONDS = 36500 days;
     uint64 public constant MIN_REPLACE_TIMEOUT_SECONDS = 60;
     uint64 public constant MAX_REPLACE_TIMEOUT_SECONDS = 1 days;
 
@@ -870,10 +867,6 @@ contract DealFactory is Ownable {
             revert ExpectedBZero();
         if ((p.joinMode == 2 || p.joinMode == 3) && p.gateNftId == 0)
             revert GateIdZero();
-        // 前端阶段时间轴：须均为非零且 timeEnd > timeStart（与 Deal.initialize 一致）
-        if (p.timeStart == 0 || p.timeEnd == 0 || p.timeEnd <= p.timeStart)
-            revert InvalidTimeRange();
-
         if (p.templateType == uint8(IDeal.TemplateType.TokenToToken)) {
             if (!(aHasSwap && bHasSwap && !aHasAssetNft && !bHasAssetNft))
                 revert InvalidTemplateShape();
