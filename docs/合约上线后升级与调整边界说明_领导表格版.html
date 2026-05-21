@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>合约上线后升级与调整边界说明</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #d9dee8;
+      --head: #eef3ff;
+      --blue: #1d4ed8;
+      --green: #15803d;
+      --yellow: #b45309;
+      --red: #b91c1c;
+      --gray: #475467;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(1280px, calc(100vw - 48px));
+      margin: 32px auto 56px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 28px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 21px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 22px 0 26px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #fbfcff;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 960px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--head);
+      color: #1f2a44;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: #eef2f7;
+      color: #1f2937;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .low { color: var(--green); background: #dcfce7; }
+    .mid { color: var(--yellow); background: #fef3c7; }
+    .high { color: var(--red); background: #fee2e2; }
+    .info { color: var(--blue); background: #dbeafe; }
+    .gray { color: var(--gray); background: #eef2f7; }
+
+    .note {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--blue);
+      background: #f0f6ff;
+      color: #1e3a8a;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .one-line td:first-child {
+      width: 180px;
+      font-weight: 700;
+    }
+
+    @media print {
+      body { background: #fff; }
+      main {
+        width: 100%;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+        padding: 18px;
+      }
+      h2 { break-after: avoid; }
+      .table-wrap { overflow: visible; }
+      table { min-width: 0; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>合约上线后升级与调整边界说明</h1>
+    <p class="subtitle">
+      面向产品、老板和部署负责人：说明上线后哪些东西可以调，哪些可以换，哪些不能动，以及 DAO 能执行到什么程度。
+    </p>
+
+    <div class="summary">
+      <div class="card">
+        <strong>不是代理升级</strong>
+        <span>已部署合约代码不能原地改写。</span>
+      </div>
+      <div class="card">
+        <strong>新逻辑主要影响新单</strong>
+        <span>换模板 implementation 后，只影响新创建的 deal。</span>
+      </div>
+      <div class="card">
+        <strong>旧资产不能强改</strong>
+        <span>已托管资产必须按原 deal 状态机处理。</span>
+      </div>
+    </div>
+
+    <h2>1. 核心结论</h2>
+    <div class="table-wrap">
+      <table class="one-line">
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>结论</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>是否能原地升级</td>
+            <td>不能。当前不是代理合约模式，已部署合约代码不可直接改写。</td>
+          </tr>
+          <tr>
+            <td>上线后如何调整</td>
+            <td>主要靠三种方式：调参数、换模块地址、换新模板实现。</td>
+          </tr>
+          <tr>
+            <td>旧 deal 是否自动升级</td>
+            <td>不会。已经创建出来的 deal clone 仍按旧代码运行。</td>
+          </tr>
+          <tr>
+            <td>新 deal 是否能用新逻辑</td>
+            <td>可以。Factory / Registry 指向新 implementation 后，新创建的 deal 使用新逻辑。</td>
+          </tr>
+          <tr>
+            <td>已托管资产能否被新代码改流向</td>
+            <td>不能。已经进旧 deal 的资产，必须按旧 deal 的状态机释放或成交。</td>
+          </tr>
+          <tr>
+            <td>DAO 能否自动执行升级</td>
+            <td>可以，但前提是 owner / admin / role 权限交给 Timelock / DAO。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>2. 上线后调整方式</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>调整方式</th>
+            <th>怎么做</th>
+            <th>影响范围</th>
+            <th>难度</th>
+            <th>典型例子</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>调参数</td>
+            <td>调用已有 <code>setXxx</code> 方法</td>
+            <td>立即影响后续行为</td>
+            <td><span class="tag low">低</span></td>
+            <td>手续费、消息费、域名价格、超时时间</td>
+          </tr>
+          <tr>
+            <td>换模块地址</td>
+            <td>部署新模块，再把 Factory / 入口合约指向新地址</td>
+            <td>后续调用走新模块</td>
+            <td><span class="tag mid">中</span></td>
+            <td><code>DealMessageHub</code>、<code>DealResultIndex</code>、<code>DealReader</code></td>
+          </tr>
+          <tr>
+            <td>换模板实现</td>
+            <td>部署新 deal implementation，再更新 registry</td>
+            <td>只影响新建 deal</td>
+            <td><span class="tag mid">中到高</span></td>
+            <td>新 <code>DealOpenTokenToken</code>、新资产 NFT 交易模板</td>
+          </tr>
+          <tr>
+            <td>重部署核心资产</td>
+            <td>部署新 token / NFT / 域名合约，并设计迁移方案</td>
+            <td>影响最大</td>
+            <td><span class="tag high">高</span></td>
+            <td>重做 <code>D</code>、<code>DL</code>、<code>DCDomain</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>3. 可直接调整的参数</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>模块</th>
+            <th>可调整内容</th>
+            <th>方法/入口</th>
+            <th>风险</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>DealFactory</code></td>
+            <td>交易手续费、奖励比例</td>
+            <td><code>setFeesAndMintOnFees</code></td>
+            <td><span class="tag low">低</span></td>
+            <td>适合 DAO 常规提案。</td>
+          </tr>
+          <tr>
+            <td><code>DealFactory</code></td>
+            <td>国库地址</td>
+            <td><code>setTreasuryByAdmin</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>钱流向变化，建议多签/DAO 执行。</td>
+          </tr>
+          <tr>
+            <td><code>DealFactory</code></td>
+            <td>消息费用、创建 burn 费用</td>
+            <td><code>setMessagePriceRule</code> / <code>setCreateBurnRule</code></td>
+            <td><span class="tag low">低</span></td>
+            <td>可开关，可调金额。</td>
+          </tr>
+          <tr>
+            <td><code>DealFactory</code></td>
+            <td>超时、窗口时间</td>
+            <td><code>setMinTimeoutSeconds</code> / <code>setMinWindowSec</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响交易等待、强制处理和前端倒计时。</td>
+          </tr>
+          <tr>
+            <td><code>DealFactory</code></td>
+            <td>保证金币种、认可币种、入口权限</td>
+            <td><code>setAllowedMarginToken</code> / <code>setRecognizedTokens</code> / <code>setAllowedCreateFor</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响可交易资产和域名/大厅入口。</td>
+          </tr>
+          <tr>
+            <td><code>DealPairManager</code></td>
+            <td>pair 手续费、虚拟流动性</td>
+            <td><code>setPairFee</code> / <code>setPairVirtualReserves</code></td>
+            <td><span class="tag mid">中到高</span></td>
+            <td>会影响报价，调错会影响价格。</td>
+          </tr>
+          <tr>
+            <td><code>DCDomain</code></td>
+            <td>域名注册价格、收款地址、支付币种</td>
+            <td><code>setBasePrice</code> / <code>setTreasury</code> / <code>setPaymentToken</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>支付币种变更需要前端同步。</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainRank</code></td>
+            <td>最小充值、消耗速率、踢出时间</td>
+            <td><code>setMinDeposit</code> / <code>setBaseHourlyRate</code> / <code>setKickInactivitySeconds</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响域名排行和广告消耗。</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainSwap</code></td>
+            <td>B 方替换等待时间</td>
+            <td><code>setReplaceTimeoutSeconds</code></td>
+            <td><span class="tag low">低</span></td>
+            <td>用于公开币币单顶替等待。</td>
+          </tr>
+          <tr>
+            <td><code>DealInfoNFT</code></td>
+            <td>铸造价格、图片大小限制、Factory 授权</td>
+            <td><code>setMintPriceU</code> / <code>setMaxImageDataBytes</code> / <code>addFactory</code></td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响官方身份 NFT。</td>
+          </tr>
+          <tr>
+            <td><code>DealCreditGraph</code></td>
+            <td>信用 recorder 授权</td>
+            <td><code>setRecorder</code></td>
+            <td><span class="tag high">高</span></td>
+            <td>谁能写信用分，必须严格管控。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>4. 可替换模块</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>模块</th>
+            <th>能否替换</th>
+            <th>替换方式</th>
+            <th>旧数据影响</th>
+            <th>前端影响</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>DealReader</code></td>
+            <td><span class="tag low">可以</span></td>
+            <td>部署新版，前端读新地址</td>
+            <td>不影响</td>
+            <td>换地址/ABI</td>
+          </tr>
+          <tr>
+            <td><code>DealMessageHub</code></td>
+            <td><span class="tag low">可以</span></td>
+            <td>Factory 切 <code>dealMessageHub</code></td>
+            <td>旧消息事件仍在旧 hub</td>
+            <td>换地址/事件来源</td>
+          </tr>
+          <tr>
+            <td><code>DealResultIndex</code></td>
+            <td><span class="tag low">可以</span></td>
+            <td>Factory 切 <code>dealResultIndex</code></td>
+            <td>旧索引不会自动迁移</td>
+            <td>换读取地址</td>
+          </tr>
+          <tr>
+            <td><code>DealActivityIndex</code></td>
+            <td><span class="tag low">可以</span></td>
+            <td>Factory 切 <code>dealActivityIndex</code></td>
+            <td>历史活动需迁移或双读</td>
+            <td>换读取地址</td>
+          </tr>
+          <tr>
+            <td><code>DealPairManager</code></td>
+            <td><span class="tag mid">可以</span></td>
+            <td>Factory 切 <code>dealPairManager</code></td>
+            <td>pair 映射/TWAP 状态需迁移</td>
+            <td>通常不直接接</td>
+          </tr>
+          <tr>
+            <td><code>DealImplementationRegistry</code></td>
+            <td><span class="tag low">可以</span></td>
+            <td>Factory 切 <code>dealImplementationRegistry</code></td>
+            <td>不影响旧 deal</td>
+            <td>一般不用改</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainSwap</code></td>
+            <td><span class="tag mid">可以</span></td>
+            <td>部署新版，Factory/Rank 授权新地址</td>
+            <td>旧 Swap 创建的 deal 不变</td>
+            <td>换入口地址</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainHall</code></td>
+            <td><span class="tag mid">可以</span></td>
+            <td>部署新版，Factory/Rank 授权新地址</td>
+            <td>旧 Hall 数据不自动迁移</td>
+            <td>换入口地址</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainRank</code></td>
+            <td><span class="tag mid">可以</span></td>
+            <td>部署新版，Swap/Hall 指向新地址</td>
+            <td>充值/排行数据不自动迁移</td>
+            <td>换读取地址</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>5. 不能轻易动的部分</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>对象</th>
+            <th>是否能改</th>
+            <th>原因</th>
+            <th>正确处理方式</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>已创建的 deal clone</td>
+            <td><span class="tag high">不能原地改</span></td>
+            <td>每个 clone 是独立合约，代码不可变</td>
+            <td>旧单按旧逻辑结束，新单走新模板</td>
+          </tr>
+          <tr>
+            <td>已托管资产的交易状态机</td>
+            <td><span class="tag high">不能强行替换</span></td>
+            <td>直接关系到用户资产释放和成交</td>
+            <td>必须按旧状态机完成/取消/释放</td>
+          </tr>
+          <tr>
+            <td>NFT 资产托管逻辑</td>
+            <td><span class="tag high">高风险</span></td>
+            <td>涉及 <code>safeTransferFrom</code> 和资产归属</td>
+            <td>只能做新版模板，必须审计</td>
+          </tr>
+          <tr>
+            <td>信用分核心公式</td>
+            <td><span class="tag high">高风险</span></td>
+            <td>影响信用资产价值和 C 位收益</td>
+            <td>做迁移方案和公告，DAO 重大提案</td>
+          </tr>
+          <tr>
+            <td><code>DL</code></td>
+            <td><span class="tag high">不建议改</span></td>
+            <td>协议主代币，涉及供应和权限</td>
+            <td>只谨慎授权 minter/pauser</td>
+          </tr>
+          <tr>
+            <td><code>D</code></td>
+            <td><span class="tag high">基本不可改</span></td>
+            <td>总量、精度、席位门槛写死</td>
+            <td>改动基本等于重部署并迁移</td>
+          </tr>
+          <tr>
+            <td><code>DCDomain</code></td>
+            <td><span class="tag high">不建议重部署</span></td>
+            <td>域名归属资产在这个 NFT 合约里</td>
+            <td>优先调参数或换外围模块</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>6. DAO 自动执行能力</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>DAO 动作</th>
+            <th>能否做</th>
+            <th>例子</th>
+            <th>前提</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>调参数</td>
+            <td><span class="tag low">可以</span></td>
+            <td>改手续费、消息费、域名价格</td>
+            <td>owner/admin 权限交给 Timelock</td>
+          </tr>
+          <tr>
+            <td>切模块地址</td>
+            <td><span class="tag low">可以</span></td>
+            <td>切 Hub、Index、PairManager</td>
+            <td>Factory owner 归 DAO/Timelock</td>
+          </tr>
+          <tr>
+            <td>切模板实现</td>
+            <td><span class="tag mid">可以</span></td>
+            <td>Registry 指向新版 implementation</td>
+            <td>Registry owner 归 DAO/Timelock</td>
+          </tr>
+          <tr>
+            <td>授权新模块</td>
+            <td><span class="tag mid">可以</span></td>
+            <td>授权新 Swap/Hall 创建 deal</td>
+            <td>Factory/Rank owner 归 DAO/Timelock</td>
+          </tr>
+          <tr>
+            <td>授权增发</td>
+            <td><span class="tag high">可以但高风险</span></td>
+            <td>给新 Factory <code>MINTER_ROLE</code></td>
+            <td>DL admin 必须是多签/DAO</td>
+          </tr>
+          <tr>
+            <td>改旧 deal 代码</td>
+            <td><span class="tag high">不可以</span></td>
+            <td>旧 clone 原地升级</td>
+            <td>当前架构不支持</td>
+          </tr>
+          <tr>
+            <td>强改旧资产流向</td>
+            <td><span class="tag high">不可以</span></td>
+            <td>让旧合约资产按新规则走</td>
+            <td>资产必须按旧状态机处理</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>7. 权限交接建议</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>权限对象</th>
+            <th>建议归属</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>普通参数 owner/admin</td>
+            <td>DAO Timelock 或多签</td>
+            <td>防止个人钱包单点风险。</td>
+          </tr>
+          <tr>
+            <td><code>DL</code> 默认管理员</td>
+            <td>多签 / Timelock</td>
+            <td>控制增发、暂停等核心权限。</td>
+          </tr>
+          <tr>
+            <td><code>DealFactory</code> owner</td>
+            <td>Timelock</td>
+            <td>控制模块切换、费率、白名单。</td>
+          </tr>
+          <tr>
+            <td><code>DealImplementationRegistry</code> owner</td>
+            <td>Timelock</td>
+            <td>控制新 deal 模板使用哪个实现。</td>
+          </tr>
+          <tr>
+            <td><code>DealCreditGraph</code> owner</td>
+            <td>Timelock / 多签</td>
+            <td>控制谁能写信用分。</td>
+          </tr>
+          <tr>
+            <td><code>DCDomainRank</code> owner</td>
+            <td>Timelock / 多签</td>
+            <td>控制排行、充值和 reporter。</td>
+          </tr>
+          <tr>
+            <td>部署钱包</td>
+            <td>不建议长期持有核心权限</td>
+            <td>只用于部署，部署后应交权。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>8. 升级分级</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>升级级别</th>
+            <th>适用内容</th>
+            <th>是否需要审计</th>
+            <th>是否需要前端配合</th>
+            <th>治理建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>常规参数</td>
+            <td>费率、价格、开关、白名单</td>
+            <td>一般不用完整审计</td>
+            <td>少量</td>
+            <td>常规提案</td>
+          </tr>
+          <tr>
+            <td>模块替换</td>
+            <td>Reader、Index、Hub、Rank、Swap、Hall</td>
+            <td>需要测试</td>
+            <td>需要</td>
+            <td>正式提案</td>
+          </tr>
+          <tr>
+            <td>模板升级</td>
+            <td>新 Deal implementation、OpenTT 状态机</td>
+            <td>需要完整审计</td>
+            <td>需要</td>
+            <td>重大提案</td>
+          </tr>
+          <tr>
+            <td>核心资产升级</td>
+            <td>D、DL、InfoNFT、DCDomain</td>
+            <td>必须审计</td>
+            <td>必须</td>
+            <td>重大提案 + 迁移方案</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>9. 给领导的一句话版本</h2>
+    <div class="table-wrap">
+      <table class="one-line">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>升级方式</td>
+            <td>不是直接改旧合约，而是参数可调、模块可换、模板可换。</td>
+          </tr>
+          <tr>
+            <td>最容易动</td>
+            <td>手续费、消息费、域名价格、白名单、超时时间。</td>
+          </tr>
+          <tr>
+            <td>中等难度</td>
+            <td>Reader、Index、Hub、Rank、Swap/Hall 等模块替换。</td>
+          </tr>
+          <tr>
+            <td>高风险</td>
+            <td>交易模板、资产托管、信用公式、DL 增发权限。</td>
+          </tr>
+          <tr>
+            <td>不能做</td>
+            <td>已创建 deal clone 原地升级，也不能强行改变旧合约资产流向。</td>
+          </tr>
+          <tr>
+            <td>后续原则</td>
+            <td>Factory 少做事，Deal 模板只管交易，读取/索引/留言/排行放独立模块。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">
+      建议上线前完成权限交接：部署钱包只负责部署，核心 owner/admin/role 应迁到多签或 Timelock。否则 DAO 只能投票表达结果，不能自动执行链上调整。
+    </p>
+  </main>
+</body>
+</html>
