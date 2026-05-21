@@ -212,7 +212,7 @@ async function main() {
   const oldCreateBurnAmount = await oldFactory.read.createBurnAmountInToken().catch(() => 0n) as bigint;
   const oldMinWindowSec = await oldFactory.read.minWindowSec().catch(() => 30) as number;
   const dealAssetNftLib = requiredAddress("dealAssetNftLib", EXISTING.dealAssetNftLib);
-  const dealCreditGraph = requiredAddress("dealCreditGraph", EXISTING.dealCreditGraph);
+  requiredAddress("dealCreditGraph", EXISTING.dealCreditGraph);
 
   console.log("\n--- Deploy fresh Deal implementations ---");
   const dealImpl = await viem.deployContract("Deal", [], { client });
@@ -265,6 +265,8 @@ async function main() {
   console.log("DealImplementationRegistry:", registry.address);
   const reader = await viem.deployContract("DealReader", [], { client });
   console.log("DealReader:", reader.address);
+  const creditGraph = await viem.deployContract("DealCreditGraph", [EXISTING.dealInfoNFT], { client });
+  console.log("DealCreditGraph:", creditGraph.address);
 
   const newFactory = await viem.getContractAt("DealFactory", factory.address, { client }) as AnyContract;
   const newRegistry = await viem.getContractAt("DealImplementationRegistry", registry.address, { client }) as AnyContract;
@@ -274,7 +276,7 @@ async function main() {
   await tx("setGlobal infoNft", publicClient, newFactory.write.setGlobal(["infoNft", EXISTING.dealInfoNFT]));
   await tx("setGlobal wrappedNative", publicClient, newFactory.write.setGlobal(["wrappedNative", EXISTING.wrappedNative]));
   await tx("setGlobal dealMessageHub", publicClient, newFactory.write.setGlobal(["dealMessageHub", messageHub.address]));
-  await tx("setGlobal creditGraph", publicClient, newFactory.write.setGlobal(["creditGraph", dealCreditGraph]));
+  await tx("setGlobal creditGraph", publicClient, newFactory.write.setGlobal(["creditGraph", creditGraph.address]));
   await tx("setGlobal dealActivityIndex", publicClient, newFactory.write.setGlobal(["dealActivityIndex", activityIndex.address]));
   await tx("setGlobal dealResultIndex", publicClient, newFactory.write.setGlobal(["dealResultIndex", resultIndex.address]));
   await tx("setGlobal dealPairManager", publicClient, newFactory.write.setGlobal(["dealPairManager", pairManager.address]));
@@ -321,7 +323,6 @@ async function main() {
   await tx("mapExistingPair USDT", publicClient, newFactory.write.mapExistingPair([EXISTING.usdt, EXISTING.pairDlUsdt]));
 
   console.log("\n--- Permission wiring ---");
-  const creditGraph = await viem.getContractAt("DealCreditGraph", dealCreditGraph, { client }) as AnyContract;
   await tx("DealCreditGraph.setRecorder", publicClient, creditGraph.write.setRecorder([factory.address, true]));
   const dl = await viem.getContractAt("DCToken", EXISTING.dlToken, { client }) as AnyContract;
   const minterRole = await dl.read.MINTER_ROLE();
@@ -368,7 +369,7 @@ async function main() {
     pairImplementation: EXISTING.pairImplementation,
     dealFactory: factory.address,
     dealMessageHub: messageHub.address,
-    dealCreditGraph,
+    dealCreditGraph: creditGraph.address,
     dealActivityIndex: activityIndex.address,
     dealResultIndex: resultIndex.address,
     dealPairManager: pairManager.address,

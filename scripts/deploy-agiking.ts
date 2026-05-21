@@ -121,6 +121,8 @@ async function main() {
   console.log("DealMessageHub", dealMessageHub.address);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address], { client });
   console.log("DealActivityIndex", dealActivityIndex.address);
+  const dealResultIndex = await viem.deployContract("DealResultIndex", [factory.address], { client });
+  console.log("DealResultIndex", dealResultIndex.address);
   const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry", [], { client });
   console.log("DealImplementationRegistry", dealImplementationRegistry.address);
 
@@ -138,6 +140,7 @@ async function main() {
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", creditGraph.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dealResultIndex", dealResultIndex.address]));
   await waitFor(
     publicClient,
     await dealImplementationRegistry.write.setDealImplementations([
@@ -274,9 +277,11 @@ async function main() {
     dealImplementationRegistry: dealImplementationRegistry.address,
     pairImplementation: pairImpl.address,
     dealFactory: factory.address,
+    dealPairManager: dealPairManager.address,
     dealMessageHub: dealMessageHub.address,
     dealCreditGraph: creditGraph.address,
     dealActivityIndex: dealActivityIndex.address,
+    dealResultIndex: dealResultIndex.address,
     dealInfoNFT: infoNft.address,
     pairDlAusd: pairAusd,
     pairDlUsdt: pairUsdt,
@@ -318,6 +323,7 @@ async function main() {
       DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
       DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
       DealActivityIndex: loadAbi("DealActivityIndex.sol/DealActivityIndex.json"),
+      DealResultIndex: loadAbi("DealResultIndex.sol/DealResultIndex.json"),
       DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
       DealSwapOrderBook: loadAbi("DealSwapOrderBook.sol/DealSwapOrderBook.json"),
       DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
@@ -335,8 +341,9 @@ async function main() {
     },
     notes: [
       "Deal chat storage is externalized through DealMessageHub; Deal.postMessage remains available, and readers should use the hub for message pagination.",
+      "Deal process timelines and final reward/credit records are indexed through DealResultIndex; readers should use it instead of scanning historical deal logs.",
       "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
-      "DCDomainHall.createDealFor / chargeMessageFeeFrom are not on this DealFactory ABI; hall auto-create paths need a factory upgrade or different entrypoints.",
+      "DCDomainSwap and DCDomainHall are allowlisted on DealFactory and can create domain-scoped deals through the current Factory ABI.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are intentionally not deployed.",
     ],
   };
