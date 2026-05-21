@@ -177,6 +177,8 @@ async function main() {
   const pairAusd = await createInitPair(ausd.address);
   const pairUsdt = await createInitPair(usdt.address);
   console.log("pair DL↔AUSD", pairAusd, "pair DL↔USDT", pairUsdt);
+  await waitFor(publicClient, await infoNft.write.setMintPriceU([pairAusd, 88n * ONE]));
+  console.log("DealInfoNFT mint price set to 88 U via DL↔AUSD pair");
 
   // —— Order book + router ——
   const orderBook = await viem.deployContract("DealSwapOrderBook", [dep], { client });
