@@ -148,6 +148,8 @@ interface IDealResultIndex {
         uint256 aDelta,
         uint256 bDelta
     ) external;
+
+    function recordTimeline(address deal, uint8 action, address actor, bool isPartyA, uint256 value) external;
 }
 
 interface IDealPairManager {
@@ -833,6 +835,13 @@ contract DealFactory is Ownable {
             try IDealResultIndex(resultIndex).recordReward(deal, partyA, toA, partyB, toB, cAddr, toC) {} catch {}
         }
         emit DealRewardsLogged(msg.sender, partyA, partyB, toA, toB, cAddr, toC);
+    }
+
+    function recordDealTimeline(uint8 action, address actor, bool isPartyA, uint256 value) external onlyDeal {
+        address resultIndex = dealResultIndex;
+        if (resultIndex != address(0)) {
+            try IDealResultIndex(resultIndex).recordTimeline(msg.sender, action, actor, isPartyA, value) {} catch {}
+        }
     }
 
     /* ========== 代理：写 InfoNFT（仅 Deal） ========== */

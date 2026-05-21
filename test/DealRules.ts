@@ -378,6 +378,7 @@ async function createOpenTTDealAndSettle(
   assert.equal(Number(await dealAlice.read.status()), 2);
   await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
   assert.equal(Number(await dealAlice.read.status()), 3);
+  return dealAddress;
 }
 
 async function completeOpenDeal(
@@ -974,6 +975,61 @@ describe("Deal Rules", async function () {
     assert.ok(endedAt >= createdAt);
     assert.equal(await deal.read.timeEnd(), endedAt);
     assert.equal(await ausd.read.balanceOf([ausdPair]), pairBalanceBefore + ((aSwapAmount * 3n) / 1000n));
+  });
+
+  it("indexes ordinary deal process timeline without scanning clone logs", async function () {
+    const fixture = await deployFixture();
+    const { ausd, dealResultIndex } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    const aSwapAmount = 500n * ONE;
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount,
+      aMarginToken: ausd.address,
+      aMarginAmount: 50n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      templateType: TEMPLATE_TOKEN_TO_EMPTY,
+    });
+
+    await completeOpenDeal(fixture, dealAddress, {
+      alice: [{ token: ausd, amount: aSwapAmount + 50n * ONE }],
+    });
+
+    assert.equal(await dealResultIndex.read.timelineCount([dealAddress]), 6n);
+    const timeline = await dealResultIndex.read.getTimeline([dealAddress, 0n, 10n, false]);
+    assert.deepEqual(timeline.map((r) => Number(r.action)), [1, 2, 12, 4, 4, 6]);
+    assert.equal(timeline[0].actor, getAddress(fixture.bob.account.address));
+    assert.equal(timeline[1].actor, getAddress(fixture.alice.account.address));
+    assert.equal(timeline[0].isPartyA, false);
+    assert.equal(timeline[1].isPartyA, true);
+    assert.ok(timeline.every((r) => r.timestamp > 0n));
+
+    const newest = await dealResultIndex.read.getTimeline([dealAddress, 0n, 2n, true]);
+    assert.deepEqual(newest.map((r) => Number(r.action)), [6, 4]);
+  });
+
+  it("indexes OpenTokenToken process timeline including pre-accept", async function () {
+    const fixture = await deployFixture();
+    const { ausd, usdt, dealResultIndex } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const dealAddress = await createOpenTTDealAndSettle(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 1000n * ONE,
+      bSwapToken: usdt.address,
+      bSwapAmount: 1200n * ONE,
+    });
+
+    assert.equal(await dealResultIndex.read.timelineCount([dealAddress]), 7n);
+    const timeline = await dealResultIndex.read.getTimeline([dealAddress, 0n, 20n, false]);
+    assert.deepEqual(timeline.map((r) => Number(r.action)), [2, 11, 1, 2, 12, 4, 6]);
+    assert.equal(timeline[0].actor, getAddress(fixture.alice.account.address));
+    assert.equal(timeline[2].actor, getAddress(fixture.bob.account.address));
+    assert.equal(timeline[5].value, BigInt(ACCEPT));
+    assert.ok(timeline.every((r) => r.timestamp > 0n));
   });
 
   it("rejects oversized deal titles before storing them in clone state", async function () {
