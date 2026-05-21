@@ -27,6 +27,7 @@ interface IFactoryLock {
     function infoLock(uint256 tokenId, address holder) external;
     function infoUnlock(uint256 tokenId) external;
 }
+interface IFactoryTimeline { function recordDealTimeline(uint8 action, address actor, bool isPartyA, uint256 value) external; }
 
 
 /* ---------- DealInfoNFT（只读） ---------- */
@@ -285,6 +286,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         timeEnd = ts;
         status = Status.Abandoned;
         emit DealAbandoned(a, ts);
+        _recordTimeline(8, a, true, 0);
     }
 
     /* ========== A 或授权合约：指定 B（供 DCDomainHall 等调用） ========== */
@@ -323,6 +325,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         _trackBActive = trackMe;
         status = Status.Active;
         emit Joined(b, bNftLocked, uint64(block.timestamp));
+        _recordTimeline(1, b, false, bNftId);
         if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         _tryLock();
     }
@@ -350,7 +353,11 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
                 injected = true;
             }
         }
-        if (injected) emit Paid(msg.sender, msg.sender == a, uint64(block.timestamp));
+        if (injected) {
+            bool isA = msg.sender == a;
+            emit Paid(msg.sender, isA, uint64(block.timestamp));
+            _recordTimeline(2, msg.sender, isA, 0);
+        }
         _tryLock();
     }
 
@@ -360,12 +367,14 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
             emit WithdrawnInActive(a, true, uint64(block.timestamp));
+            _recordTimeline(3, a, true, 0);
         } else {
             _check(bPaid, 28); bPaid = false;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
             _sendOutAssetNftToB();
             emit WithdrawnInActive(b, false, uint64(block.timestamp));
+            _recordTimeline(3, b, false, 0);
         }
     }
 
@@ -379,6 +388,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         b = address(0);
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 1, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 1);
     }
 
     function kickBByA() external nonReentrant onlyA inState(Status.Active) {
@@ -390,6 +400,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         b = address(0);
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 2, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 2);
     }
 
     /* ========== Locked：投票 / 强制完成 / 取消 ========== */
@@ -398,7 +409,9 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         uint64 ts = uint64(block.timestamp);
         if (msg.sender == a) { aVote = v; aAt = ts; }
         else { bVote = v; bAt = ts; }
-        emit VoteCast(msg.sender, msg.sender == a, v, ts);
+        bool isA = msg.sender == a;
+        emit VoteCast(msg.sender, isA, v, ts);
+        _recordTimeline(4, msg.sender, isA, uint8(v));
 
         if (aVote == Vote.Accept && bVote == Vote.Accept) _complete(CompletionReason.BothAccepted);
         else if (aVote == Vote.Reject && bVote == Vote.Reject) _cancel();
@@ -410,6 +423,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
             _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
+                _recordTimeline(5, msg.sender, true, 1);
                 _complete(CompletionReason.ForcedByA);
                 return;
             }
@@ -417,10 +431,12 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
+                _recordTimeline(5, msg.sender, false, 1);
                 _complete(CompletionReason.ForcedByB);
                 return;
             } else if (bVote == Vote.Reject) {
                 emit ForcedAfterTimeout(msg.sender, false, ts);
+                _recordTimeline(5, msg.sender, false, 0);
                 _cancel();
                 return;
             }
@@ -461,6 +477,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
         emit Completed(reason, ts);
+        _recordTimeline(6, address(0), false, uint8(reason));
     }
 
     // 取消：当场退款 & 清理（先置终态，符合 CEI，降低重入窗口）
@@ -491,6 +508,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
 
         emit Canceled(ts);
+        _recordTimeline(7, address(0), false, 0);
     }
 
     /* ========== 自动锁定判定 ========== */
@@ -501,6 +519,7 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
             lockedAt = uint64(block.timestamp);
             aVote = Vote.Unset; bVote = Vote.Unset; aAt = 0; bAt = 0;
             emit Locked(lockedAt);
+            _recordTimeline(12, address(0), false, 0);
         }
     }
     function _isSideReadyA() internal view returns (bool) {
@@ -612,6 +631,10 @@ contract DealBAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         } else {
             if (bNftLocked && bNftId != 0) { bNftLocked=false; IFactoryLock(factory).infoUnlock(bNftId); }
         }
+    }
+
+    function _recordTimeline(uint8 action, address actor, bool isPartyA, uint256 value) internal {
+        IFactoryTimeline(factory).recordDealTimeline(action, actor, isPartyA, value);
     }
 
     function onERC721Received(address, address, uint256, bytes calldata)

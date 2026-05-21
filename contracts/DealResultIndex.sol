@@ -32,6 +32,14 @@ contract DealResultIndex {
         uint64 timestamp;
     }
 
+    struct TimelineRecord {
+        uint8 action;
+        address actor;
+        bool isPartyA;
+        uint256 value;
+        uint64 timestamp;
+    }
+
     mapping(address => RewardRecord) private _rewardByDeal;
     mapping(address => address[]) private _rewardDealsByUser;
     mapping(address => mapping(address => bool)) private _rewardDealSeenByUser;
@@ -39,6 +47,8 @@ contract DealResultIndex {
     mapping(address => CreditRecord) private _creditByDeal;
     mapping(uint256 => address[]) private _creditDealsByToken;
     mapping(uint256 => mapping(address => bool)) private _creditDealSeenByToken;
+
+    mapping(address => TimelineRecord[]) private _timelineByDeal;
 
     error NotFactory();
 
@@ -105,6 +115,22 @@ contract DealResultIndex {
 
         if (aDelta > 0) _addCreditDealFor(aTokenId, deal);
         if (bDelta > 0) _addCreditDealFor(bTokenId, deal);
+    }
+
+    function recordTimeline(address deal, uint8 action, address actor, bool isPartyA, uint256 value)
+        external
+        onlyFactory
+    {
+        if (deal == address(0) || action == 0) return;
+        _timelineByDeal[deal].push(
+            TimelineRecord({
+                action: action,
+                actor: actor,
+                isPartyA: isPartyA,
+                value: value,
+                timestamp: uint64(block.timestamp)
+            })
+        );
     }
 
     function rewardOfDeal(address deal) external view returns (RewardRecord memory) {
@@ -175,6 +201,23 @@ contract DealResultIndex {
         }
     }
 
+    function timelineCount(address deal) external view returns (uint256) {
+        return _timelineByDeal[deal].length;
+    }
+
+    function getTimeline(address deal, uint256 offset, uint256 limit, bool newestFirst)
+        external
+        view
+        returns (TimelineRecord[] memory list)
+    {
+        TimelineRecord[] storage arr = _timelineByDeal[deal];
+        uint256 n = _pageLength(arr.length, offset, limit);
+        list = new TimelineRecord[](n);
+        for (uint256 i; i < n; ++i) {
+            list[i] = _pagedTimeline(arr, offset, i, newestFirst);
+        }
+    }
+
     function _addRewardDealFor(address user, address deal) private {
         if (user == address(0) || _rewardDealSeenByUser[user][deal]) return;
         _rewardDealSeenByUser[user][deal] = true;
@@ -199,6 +242,17 @@ contract DealResultIndex {
         private
         view
         returns (address)
+    {
+        if (newestFirst) {
+            return arr[arr.length - 1 - (offset + i)];
+        }
+        return arr[offset + i];
+    }
+
+    function _pagedTimeline(TimelineRecord[] storage arr, uint256 offset, uint256 i, bool newestFirst)
+        private
+        view
+        returns (TimelineRecord memory)
     {
         if (newestFirst) {
             return arr[arr.length - 1 - (offset + i)];

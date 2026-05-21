@@ -16,7 +16,7 @@
 
 ## 2. 奖励结果：优先读 `DealResultIndex`，事件只做兜底
 
-新增独立索引合约 `DealResultIndex`，用于把成交后的奖励结果和信用增量结果落到 storage，前端不需要每次扫历史 logs。
+新增独立索引合约 `DealResultIndex`，用于把成交后的奖励结果、信用增量结果、交易过程时间线落到 storage，前端不需要每次扫历史 logs。
 
 ### 2.1 奖励 view
 
@@ -60,6 +60,71 @@ getCreditRecords(uint256 tokenId, uint256 offset, uint256 limit, bool newestFirs
 | `timestamp` | 写入信用记录的链上时间 |
 
 `limit` 超过 100 时按 100 返回。历史旧 deal 在索引合约部署前没有 storage 结果记录，需要事件或离线迁移补录。
+
+### 2.3 交易过程时间线 view
+
+用于前端展示“已加入 / 已注金 / 已投票 / 已超时 / 已被移除 / 已退出 / 已完成 / 已失败”等系统提示。
+
+```solidity
+timelineCount(address deal) -> uint256
+getTimeline(address deal, uint256 offset, uint256 limit, bool newestFirst) -> TimelineRecord[]
+```
+
+`TimelineRecord` 字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `action` | 动作编码，见下表 |
+| `actor` | 本次动作的地址；终局类可能为 `address(0)` |
+| `isPartyA` | `true` 表示 A 侧动作，`false` 表示 B 侧或系统动作 |
+| `value` | 辅助值，例如投票枚举、完成原因、清退原因 |
+| `timestamp` | 写入索引时的链上时间 |
+
+`action` 编码：
+
+| action | 对应提示 | `actor` | `value` |
+| --- | --- | --- | --- |
+| `1` | `{用户名称}已加入合约` | 加入的 B | B 的 `bNftId`，没有则 `0` |
+| `2` | `{用户名称}已完成注金` | 注金方 | `0` |
+| `3` | `{用户名称}已撤金` | 撤金方 | `0` |
+| `4` | `{用户名称}已同意/拒绝交易` | 投票方 | `1 = Accept`，`2 = Reject` |
+| `5` | `{用户名称}已超时触发` | 调用 `forceComplete` 的地址 | `1 = 强制成交`，`0 = 强制取消` |
+| `6` | `DEAL!!! / 交易完成` | `address(0)` | `CompletionReason` |
+| `7` | `交易失败` | `address(0)` | `0` |
+| `8` | `交易已废弃` | A | `0` |
+| `9` | `{用户名称}已被移除交易 / 已退出交易` | 被清掉的旧 B | `1 = B 主动退出`，`2 = A 踢 B`，`3 = Active 超时被顶替`，`4 = Locked 未投票被顶替` |
+| `10` | `{用户名称}已被移除交易` | 拒绝后被清掉的 B | `0` |
+| `11` | `A 已预同意` | A | `0` |
+| `12` | `交易进入 Locked` | `address(0)` | `0` |
+
+推荐前端读取：
+
+```text
+DealResultIndex.getTimeline(deal, 0, 50, false)
+```
+
+如需最新在前：
+
+```text
+DealResultIndex.getTimeline(deal, 0, 50, true)
+```
+
+`limit` 超过 100 时按 100 返回。历史旧 deal 在本索引逻辑上线前没有过程时间线 storage 记录，旧数据仍需要扫旧事件或离线补录。
+
+### 2.4 storage / gas 成本说明
+
+这套索引不会让已部署合约的代码体积越来越大。合约代码部署后是固定的，后续增长的是 `DealResultIndex` 里的链上状态数据。
+
+成本边界：
+
+| 项目 | 影响 |
+| --- | --- |
+| 写入过程时间线 | 每次关键动作会多写 1 条 `TimelineRecord`，该笔交易会多一点固定 gas |
+| 查询单个 deal 时间线 | 按 `deal` 地址读取自己的数组，复杂度只和 `limit` 有关，不和全链区块高度有关 |
+| 查询很多历史 deal | 前端要自己分页，不要一次性拉过大的列表 |
+| 合约体积 | 不会因为 storage 记录变多而变大 |
+
+推荐前端单次 `limit` 用 20-50；合约层超过 100 会按 100 截断。
 
 ## 3. 工厂：`DealRewardsLogged` + `logDealRewards`（事件兜底）
 
@@ -204,7 +269,7 @@ event DealRewardsLogged(
 ## 6. 最简单集成路径（推荐）
 
 1. **奖励 / 信用结果**：优先读 **`DealResultIndex`**，不要每次扫历史 logs。
-2. **单笔交易时间线**：当前状态读 `DealReader`；完整流程再订 **该 Deal / OpenTT 实例地址** 的事件，按 `when` / `at` 排序。
+2. **单笔交易时间线**：当前状态读 `DealReader`；过程提示优先读 **`DealResultIndex.getTimeline`**，事件只做旧数据兜底。
 3. **成交后留言**：`Completed` 后仍调 **`DealMessageHub.postMessage(deal, content)`**。  
 4. **ABI**：本次 **`Joined` / `Paid` / `WithdrawnInActive` / `Locked` / `Completed` / `Canceled` / `BExpelledOnReject`** 等与旧版相比**签名已变或新增**，前端解码需更新 artifact。
 

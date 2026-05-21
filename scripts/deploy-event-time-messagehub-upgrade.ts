@@ -123,7 +123,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DealMessageHub | \`${addresses.dealMessageHub}\` | 留言上链唯一入口：\`postMessage(deal, content)\` |
 | DealReader | \`${addresses.dealReader}\` | 聚合读取 deal 列表/详情 |
 | DealActivityIndex | \`${addresses.dealActivityIndex}\` | 读取用户活动索引 |
-| DealResultIndex | \`${addresses.dealResultIndex}\` | 读取奖励明细、信用增量明细，避免前端扫历史 logs |
+| DealResultIndex | \`${addresses.dealResultIndex}\` | 读取奖励明细、信用增量明细、交易过程时间线，避免前端扫历史 logs |
 | DealPairManager | \`${addresses.dealPairManager}\` | 工厂背后的 pair/TWAP 管理合约，前端通常仍调 Factory |
 | DealCreditGraph | \`${addresses.dealCreditGraph}\` | 读取官方 InfoNFT 信用分 |
 | DealInfoNFT | \`${addresses.dealInfoNFT}\` | 官方身份 NFT |
@@ -147,7 +147,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 7. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`，旧 \`timeStart/timeEnd\` 只做兼容展示。
 8. 域名下创建币币合同如果要绑定 A 的官方身份 NFT，调用 \`DCDomainSwap.createDealWithInfoNft(..., aNftId)\`；不绑定则继续调用 \`createDeal(...)\`。
 9. 域名排行榜分页调用 \`DCDomainRank.getLeaderboard(domainName, offset, limit)\`，单次 \`limit <= 50\`。
-10. 历史奖励和信用增量不要扫 logs，改读 \`DealResultIndex.rewardOfDeal/getRewards/creditOfDeal/getCreditRecords\`。
+10. 历史奖励、信用增量、交易过程时间线不要扫 logs，改读 \`DealResultIndex.rewardOfDeal/getRewards/creditOfDeal/getCreditRecords/getTimeline\`。
 
 ## ABI
 
@@ -170,7 +170,7 @@ deployments/${DEPLOYMENT_FILE}
 ## 验证结果
 
 - 新 Factory 已配置新 Hub、CreditGraph、ActivityIndex、ImplementationRegistry。
-- 新 Factory 已配置 DealResultIndex，前端可用 view 读取奖励/信用结果索引。
+- 新 Factory 已配置 DealResultIndex，前端可用 view 读取奖励/信用/交易过程时间线索引。
 - 新 Factory 已获得 DL \`MINTER_ROLE\`。
 - DealInfoNFT 已授权新 Factory，并切换 primary factory 到新 Factory。
 - DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。

@@ -51,8 +51,9 @@ interface IFactoryCreditOpen {
         uint256 baseCredit
     ) external;
 }
-
-
+interface IFactoryTimelineOpen {
+    function recordDealTimeline(uint8 action, address actor, bool isPartyA, uint256 value) external;
+}
 /**
  * @title DealOpenTokenToken
  * @notice 精简版 Open 币币：ERC20/原生互换 + Open/ExactAddress；A 可在创建时绑定 Info NFT，B 可在 join 时带 Info NFT。
@@ -134,28 +135,27 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     bool public aHasPreAccepted;
     uint64 public aPreAcceptAt;
 
-    bool public aClaimed;
-    bool public bClaimed;
+    bool private aClaimed;
+    bool private bClaimed;
 
-    uint256 public aSwapNetForB;
-    uint256 public bSwapNetForA;
+    uint256 private aSwapNetForB;
+    uint256 private bSwapNetForA;
 
-    address public dl;
-    address public infoNft;
-    address public treasury;
-    address public WNATIVE;
-    address public recognizedToken0;
-    address public recognizedToken1;
-    address public aTokenNorm;
-    address public bTokenNorm;
-    address public aPair;
-    address public bPair;
+    address private dl;
+    address private infoNft;
+    address private treasury;
+    address private WNATIVE;
+    address private recognizedToken0;
+    address private recognizedToken1;
+    address private aTokenNorm;
+    address private bTokenNorm;
+    address private aPair;
+    address private bPair;
 
-    uint32 public feeNonDLNum;
-    uint32 public feeNonDLDen;
-    uint32 public mintOnFeesNum;
-    uint32 public mintOnFeesDen;
-    address public specialNoFeeToken;
+    uint32 private feeNonDLNum;
+    uint32 private feeNonDLDen;
+    uint32 private mintOnFeesNum;
+    uint32 private mintOnFeesDen;
     address public lastRemovedB;
 
     uint64 public constant MIN_REPLACE_TIMEOUT_SECONDS = 60;
@@ -286,7 +286,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         mintOnFeesDen = c.mintOnFeesDen;
         _check(feeNonDLDen > 0 && feeNonDLNum < feeNonDLDen, 7);
         _check(mintOnFeesDen > 0 && mintOnFeesNum < mintOnFeesDen, 8);
-        specialNoFeeToken = c.specialNoFeeToken;
 
         aSwapToken = p.aSwapToken;
         aSwapAmount = p.aSwapAmount;
@@ -376,6 +375,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         timeEnd = ts;
         status = Status.Abandoned;
         emit DealAbandoned(a, ts);
+        _recordTimeline(8, a, true, 0);
     }
 
     function openJoinFor(address chosenB) external inState(Status.Ready) {
@@ -399,19 +399,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _check(b != address(0) && msg.sender != a && msg.sender != b && msg.sender != lastRemovedB, 18);
         _check(bJoinedAt != 0 && block.timestamp >= uint256(bJoinedAt) + uint256(replaceTimeoutSeconds), 58);
 
-        address prevB = b;
-        _refundFundsB();
-        _unlockNftIfLocked(false);
-        bNftId = 0;
-        if (_trackBActive) {
-            IFactoryIndex(factory).onParticipantRemoved(prevB);
-            _trackBActive = false;
-        }
-        _markRemovedB(prevB);
-        b = address(0);
-        bJoinedAt = 0;
+        address prevB = _clearB(false);
 
         emit ActivePartnerCleared(prevB, 3, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 3);
         _setJoinedB(msg.sender, optId, trackMe);
     }
 
@@ -422,17 +413,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         uint256 base = uint256(aAt > lockedAt ? aAt : lockedAt);
         _check(base != 0 && block.timestamp >= base + uint256(replaceTimeoutSeconds), 58);
 
-        address prevB = b;
-        _refundFundsB();
-        _unlockNftIfLocked(false);
-        bNftId = 0;
-        if (_trackBActive) {
-            IFactoryIndex(factory).onParticipantRemoved(prevB);
-            _trackBActive = false;
-        }
-        _markRemovedB(prevB);
-        b = address(0);
-        bJoinedAt = 0;
+        address prevB = _clearB(false);
         lockedAt = 0;
         aVote = Vote.Unset;
         bVote = Vote.Unset;
@@ -443,6 +424,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         aPreAcceptAt = uint64(block.timestamp);
 
         emit ActivePartnerCleared(prevB, 4, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 4);
         _setJoinedB(msg.sender, optId, trackMe);
     }
 
@@ -459,7 +441,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 aPaid = true;
                 injectedReady = true;
             }
-            if (injectedReady) emit Paid(a, true, uint64(block.timestamp));
+            if (injectedReady) {
+                emit Paid(a, true, uint64(block.timestamp));
+                _recordTimeline(2, a, true, 0);
+            }
             return;
         }
         _check(status == Status.Active, 3);
@@ -483,7 +468,11 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 injected = true;
             }
         }
-        if (injected) emit Paid(msg.sender, msg.sender == a, uint64(block.timestamp));
+        if (injected) {
+            bool isA = msg.sender == a;
+            emit Paid(msg.sender, isA, uint64(block.timestamp));
+            _recordTimeline(2, msg.sender, isA, 0);
+        }
         _tryLock();
     }
 
@@ -492,6 +481,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         aHasPreAccepted = true;
         aPreAcceptAt = uint64(block.timestamp);
         emit APreAccepted(a, aPreAcceptAt);
+        _recordTimeline(11, a, true, 0);
     }
 
     function withdrawAInReady() external nonReentrant onlyA inState(Status.Ready) {
@@ -501,6 +491,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _sendOut(aSwapToken, a, aSwapAmount);
         _sendOut(aMarginToken, a, aMarginAmount);
         emit WithdrawnInActive(a, true, uint64(block.timestamp));
+        _recordTimeline(3, a, true, 0);
     }
 
     function withdrawInActive() external nonReentrant inState(Status.Active) onlyAB {
@@ -510,48 +501,30 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
             emit WithdrawnInActive(a, true, uint64(block.timestamp));
+            _recordTimeline(3, a, true, 0);
         } else {
             _check(bPaid, 28);
             bPaid = false;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
             emit WithdrawnInActive(b, false, uint64(block.timestamp));
+            _recordTimeline(3, b, false, 0);
         }
     }
 
     function exitByB() external nonReentrant inState(Status.Active) {
         _check(msg.sender == b, 29);
-        address prevB = b;
-        _refundFundsA();
-        _refundFundsB();
-        _unlockNftIfLocked(false);
-        bNftId = 0;
-        _markRemovedB(prevB);
-        if (_trackBActive) {
-            IFactoryIndex(factory).onParticipantRemoved(prevB);
-            _trackBActive = false;
-        }
-        b = address(0);
-        bJoinedAt = 0;
+        address prevB = _clearB(true);
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 1, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 1);
     }
 
     function kickBByA() external nonReentrant onlyA inState(Status.Active) {
-        address prevB = b;
-        _refundFundsA();
-        _refundFundsB();
-        _unlockNftIfLocked(false);
-        bNftId = 0;
-        _markRemovedB(prevB);
-        if (_trackBActive) {
-            IFactoryIndex(factory).onParticipantRemoved(prevB);
-            _trackBActive = false;
-        }
-        b = address(0);
-        bJoinedAt = 0;
+        address prevB = _clearB(true);
         status = Status.Ready;
         emit ActivePartnerCleared(prevB, 2, uint64(block.timestamp));
+        _recordTimeline(9, prevB, false, 2);
     }
 
     function setMyVote(Vote v) external nonReentrant inState(Status.Locked) onlyAB {
@@ -562,10 +535,12 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 bVote = Vote.Reject;
                 bAt = ts;
                 emit VoteCast(b, false, v, ts);
+                _recordTimeline(4, b, false, uint8(v));
                 _cancel();
                 return;
             }
             emit VoteCast(b, false, v, ts);
+            _recordTimeline(4, b, false, uint8(v));
             _expelBOnReject();
             return;
         }
@@ -574,11 +549,13 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
                 aVote = v;
                 aAt = ts;
                 emit VoteCast(a, true, v, ts);
+                _recordTimeline(4, a, true, uint8(v));
             }
         } else {
             bVote = v;
             bAt = ts;
             emit VoteCast(b, false, v, ts);
+            _recordTimeline(4, b, false, uint8(v));
         }
 
         if (aVote == Vote.Accept && bVote == Vote.Accept) _complete(CompletionReason.BothAccepted);
@@ -586,23 +563,14 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     }
 
     function _expelBOnReject() internal {
-        address prevB = b;
-        _refundFundsB();
-        _unlockNftIfLocked(false);
-        bNftId = 0;
-        _markRemovedB(prevB);
-        if (_trackBActive) {
-            IFactoryIndex(factory).onParticipantRemoved(prevB);
-            _trackBActive = false;
-        }
-        b = address(0);
-        bJoinedAt = 0;
+        address prevB = _clearB(false);
         status = Status.Ready;
         aVote = Vote.Unset;
         bVote = Vote.Unset;
         aAt = 0;
         bAt = 0;
         emit BExpelledOnReject(prevB, uint64(block.timestamp));
+        _recordTimeline(10, prevB, false, 0);
     }
 
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {
@@ -611,6 +579,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
+                _recordTimeline(5, msg.sender, true, 1);
                 _complete(CompletionReason.ForcedByA);
                 return;
             }
@@ -618,10 +587,12 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
+                _recordTimeline(5, msg.sender, false, 1);
                 _complete(CompletionReason.ForcedByB);
                 return;
             } else if (bVote == Vote.Reject) {
                 emit ForcedAfterTimeout(msg.sender, false, ts);
+                _recordTimeline(5, msg.sender, false, 0);
                 _cancel();
                 return;
             }
@@ -688,6 +659,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bNftId = 0;
 
         emit Completed(reason, ts);
+        _recordTimeline(6, address(0), false, uint8(reason));
     }
 
     function _cancel() internal {
@@ -726,6 +698,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bNftId = 0;
 
         emit Canceled(ts);
+        _recordTimeline(7, address(0), false, 0);
     }
 
     function _computeFees() internal returns (Fees memory f) {
@@ -830,6 +803,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         bJoinedAt = uint64(block.timestamp);
         if (newB == lastRemovedB) lastRemovedB = address(0);
         emit Joined(b, bNftLocked, uint64(block.timestamp));
+        _recordTimeline(1, b, false, bNftId);
         if (_trackBActive) IFactoryIndex(factory).onJoined(b, true);
         _tryLock();
     }
@@ -837,6 +811,21 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     function _markRemovedB(address prevB) internal {
         lastRemovedB = prevB;
         if (joinMode == JoinMode.ExactAddress && expectedB == prevB) expectedB = address(0);
+    }
+
+    function _clearB(bool refundA) internal returns (address prevB) {
+        prevB = b;
+        if (refundA) _refundFundsA();
+        _refundFundsB();
+        _unlockNftIfLocked(false);
+        bNftId = 0;
+        _markRemovedB(prevB);
+        if (_trackBActive) {
+            IFactoryIndex(factory).onParticipantRemoved(prevB);
+            _trackBActive = false;
+        }
+        b = address(0);
+        bJoinedAt = 0;
     }
 
     function _lockNftForAIfAny() internal {
@@ -883,6 +872,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             bVote = Vote.Unset;
             bAt = 0;
             emit Locked(lockedAt);
+            _recordTimeline(12, address(0), false, 0);
         }
     }
 
@@ -953,6 +943,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     function _sideNeedsPayB() internal view returns (bool) {
         return bSwapAmount > 0 || bMarginAmount > 0;
+    }
+
+    function _recordTimeline(uint8 action, address actor, bool isPartyA, uint256 value) internal {
+        IFactoryTimelineOpen(factory).recordDealTimeline(action, actor, isPartyA, value);
     }
 
     receive() external payable {}
