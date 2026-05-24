@@ -1,46 +1,48 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-21T06:17:35.867Z",
-  "deployer": "0x6807ed8c44ae2a89ddb7706fa22a5b274ecd8785",
+  "deployedAt": "2026-05-24T11:06:35.921Z",
+  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
+  "upgrade": "full-redeploy-resumed",
   "addresses": {
-    "dlToken": "0xb2921fa0a1d37faa61dd68faaeb8dd09ed920514",
-    "ausd": "0x47504d727e1e3f0dc86fd2567c073c4f8710feb3",
-    "usdt": "0xce8f5b02082bfacbaaf90fa2479c9e8cc1809a6c",
-    "wrappedNative": "0x2f230d57c4a559a315706b1620b938bf690e8fa2",
-    "dealLib": "0x42e30843a0f5217cccd7521f3cf35675a2309617",
-    "dealAssetNftLib": "0xc54852a0de3e19a6a22a925392129972b86818cf",
-    "dealImplementation": "0xff1c2dfa3aeecab8642a83c9efa5908078b40cf0",
-    "dealNoAssetImplementation": "0x481aed89dc4cfd791a98545f759612193ed7bca8",
-    "dealAAssetNftImplementation": "0x16f295ceeda2519da8390ee5b77c9e68c1a354c8",
-    "dealBAssetNftImplementation": "0xb7b4f5835ce663bf045bce71aff9bf829ef728b4",
-    "dealAAssetNftOnlyImplementation": "0xc1fafdc2620975208da3ebce0c9e8865502811df",
-    "dealBAssetNftOnlyImplementation": "0x4fe5c27cc53d7c8c6c1cdb2a4921067540a736c5",
-    "dealOpenTokenTokenImplementation": "0x63f35f1306cc1ec3ae99b027e63c0f18a195312a",
-    "dealImplementationRegistry": "0x71bdd3c7e9baf25697a7ef4721f3391a57d0c2c3",
-    "pairImplementation": "0xf735686738b18b6414319a05bef2715e556219a3",
-    "dealFactory": "0xbe00604aba8b206edeb5f1ff9499f10d646eb533",
-    "dealMessageHub": "0x5a7f5272e8cd94d718754c31c63ca01704302def",
-    "dealCreditGraph": "0x74353d372f079ebedff700ca8ad2b913ecb92a56",
-    "dealActivityIndex": "0xc22e6a4df6439e7e5b077c337a60f5cae5c8dff1",
-    "dealResultIndex": "0xdcb7f056a4d9217a8844b913f9eca9ed23f3480e",
-    "dealInfoNFT": "0xe38e8d5025616a071e34be0faa48fd35da87d9f1",
-    "pairDlAusd": "0x4e403635e3D72e8a4602BAAe733EB17A374a36cb",
-    "pairDlUsdt": "0x8441676cdd71a77dF815A3c623E75320aBACe565",
-    "dealSwapOrderBook": "0x3f5680f2888ad23e3b0e3c753ce1293748c81cb9",
-    "dealRouter": "0x413e46cf39df05d790c500645be18513eba8bbe2",
-    "dealReader": "0x1b488e3c5215694ca88617b87b6e93aaaaaa1be5",
-    "dcDomain": "0x8ad644703c0f61a5d47398a0e07490a5b2754279",
-    "dcDomainRank": "0x725d62cfc1771da220e6ac50913b3da16a9dd0f3",
-    "dcDomainMarket": "0x042036a387b9d77b8c5d7f3b5ecdd8d92ac96b2f",
-    "dcDomainSwap": "0x6020c82502166f81f9c3167d8719727b92d817e1",
-    "dcDomainHall": "0x7a8906339d37d11bc77f61a8b9304aa0557e4401",
-    "dToken": "0x32a6f6074301ed6a2cfa47ad394ce6232da8ef15",
-    "dealNftGovernanceActivity": "0x56203f72aa740450adf3b111f95acede3b855935",
-    "nftVetoRegistry": "0x23e6cf128d53933ef79a8abccd9c4de813ac3e92",
-    "dealSeatVetoGovernor": "0xc3d0fa3752c0c0b96ffa28407c4c63c30f21d197",
-    "voteDividendClaimer": "0x1aceefa2a53e0feed614138bbe019f6f339b3490",
-    "dealPairManager": "0x92eeFc95776Bf915b8ce2e5fD3913BA0ac714937"
+    "dlToken": "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
+    "ausd": "0xb91cf0c6edd1b9ec971343237fd8a119f77c7abf",
+    "usdt": "0x21e6f21aa27ae519a6b7272611a1f2fd3b82dcda",
+    "wrappedNative": "0x018f505703b4ce5c4f9374390652b27e96330f5d",
+    "dealLib": "0xefc77a73b630acb1ace85b8dfcc7b7073d96961c",
+    "dealAssetNftLib": "0xabb1871111463ee36dfb8408889339be80785173",
+    "dealImplementation": "0xd366e85e5c8928bd59f8305bff4a5ecd86f15053",
+    "dealNoAssetImplementation": "0x6d3907647d135659e1371dd5f22cd16b45513d31",
+    "dealAAssetNftImplementation": "0x871d31907a5a35909f42d3c1a4dabf61a7edcff7",
+    "dealBAssetNftImplementation": "0xcf4ac6fe050c642e44a3c3c6f2d3452d56eb94bc",
+    "dealAAssetNftOnlyImplementation": "0x49acfc40e1a288115303845092a1ee193aa044bc",
+    "dealBAssetNftOnlyImplementation": "0x10f400062fd5a3ea7866648ce625c4f158d66c2c",
+    "dealOpenTokenTokenImplementation": "0x11987639eda8bf5b9dcab73fbca0ebd34b353e79",
+    "dealImplementationRegistry": "0xdfd6b53b2cbb49d7ba158439cddc094a329ce4ff",
+    "pairImplementation": "0xb1203a0895c11278d43fc83ad921e2562ba4e5cc",
+    "dealFactory": "0xd0018b79034942f741f66d941a3db2b50efe0c80",
+    "dealPairManager": "0x9a38e13611dfc01d6f25a6b363c9a6cfb084ef6b",
+    "dealMessageHub": "0xd2eff4ed6c0abca70f2bcd40a8e1ae3edfbc8e01",
+    "dealCreditGraph": "0x2020586881220d8be36c67b941f1369799eb717a",
+    "dealActivityIndex": "0x752da4ab18b38c6f38f6e91f4f612085c9de5ca9",
+    "dealResultIndex": "0xe9cca83a282608dc0f7c1b8cf44eba29de31928f",
+    "dealInfoNFT": "0x7e4b75c7b059bbaac69d00486e57990034e6e278",
+    "pairDlAusd": "0x29401FAf6Db21a2e0DB8EdC07069D450d5926C14",
+    "pairDlUsdt": "0x54c6F62cfC3E0bCc0CE3ee43E35F2B150Ec0A1dD",
+    "dealSwapOrderBook": "0xec83bfdc0b684642e409a29d6673ae03bd31ee67",
+    "dealRouter": "0x20e99790cc4212ddaaa4ea2411b8849f5c8beda1",
+    "dealReader": "0x8b0867afcb0f6cdbb62f9b8422aa945607f12159",
+    "dcDomain": "0xa18669b531fd88770eb16665a58319066b85b450",
+    "dcDomainRank": "0x6a6249d9ff4622621ab060dcc6448fb330dbc2ba",
+    "dcDomainRankReader": "0xd35d293d089bb606c5e8add607900bd97f4f49e7",
+    "dcDomainMarket": "0x16567490c1f88117466a80d3a774d1a95233fb1b",
+    "dcDomainSwap": "0x0889dec35d3c538d0f9881b0e1992c8eb8b71020",
+    "dcDomainHall": "0x293e194f8f456509474ef8502b1ffec5d530fbdc",
+    "dToken": "0x412ccca654857b546033339fb7eaa75671aadf58",
+    "dealNftGovernanceActivity": "0x858ed3c38d18118c9d2aad48f6985f3337da27ee",
+    "nftVetoRegistry": "0xca87c12a7d7dc810ef1f33f643c02ee31d7c2b19",
+    "dealSeatVetoGovernor": "0x8578d7b35f9d65a34b2804d0c508bd0a69f8d4f5",
+    "voteDividendClaimer": "0xc52cfa194231a33ee5e2aec17b16b6899e375974"
   },
   "abi": {
     "DealLib": [
@@ -25184,6 +25186,43 @@
         "anonymous": false,
         "inputs": [
           {
+            "indexed": false,
+            "internalType": "string",
+            "name": "domain",
+            "type": "string"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "merchant",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "refunded",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "totalConsumed",
+            "type": "uint256"
+          }
+        ],
+        "name": "DealAdClosed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
             "indexed": true,
             "internalType": "address",
             "name": "reporter",
@@ -25539,6 +25578,35 @@
         "type": "function"
       },
       {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "name": "closeDeal",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "refunded",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "consumed",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
         "inputs": [],
         "name": "dcDomain",
         "outputs": [
@@ -25559,6 +25627,35 @@
             "internalType": "contract IERC20",
             "name": "",
             "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "merchantAddr",
+            "type": "address"
+          }
+        ],
+        "name": "dealScoreOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
           }
         ],
         "stateMutability": "view",
@@ -25654,14 +25751,24 @@
             "internalType": "string",
             "name": "domainName",
             "type": "string"
-          }
-        ],
-        "name": "domainEntryCount",
-        "outputs": [
+          },
           {
             "internalType": "uint256",
-            "name": "",
+            "name": "index",
             "type": "uint256"
+          }
+        ],
+        "name": "domainEntryAt",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "merchant",
+            "type": "address"
           }
         ],
         "stateMutability": "view",
@@ -25728,93 +25835,6 @@
             "internalType": "uint256[]",
             "name": "counts",
             "type": "uint256[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "domainName",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "offset",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "limit",
-            "type": "uint256"
-          }
-        ],
-        "name": "getLeaderboard",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "merchant",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "deal",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "score",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct DCDomainRank.LeaderboardEntry[]",
-            "name": "entries",
-            "type": "tuple[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "domainName",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "limit",
-            "type": "uint256"
-          }
-        ],
-        "name": "getLeaderboard",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "merchant",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "deal",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "score",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct DCDomainRank.LeaderboardEntry[]",
-            "name": "entries",
-            "type": "tuple[]"
           }
         ],
         "stateMutability": "view",
@@ -25890,6 +25910,35 @@
           }
         ],
         "name": "isDealReporter",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "merchantAddr",
+            "type": "address"
+          }
+        ],
+        "name": "isDealVisible",
         "outputs": [
           {
             "internalType": "bool",
@@ -26116,6 +26165,30 @@
         "type": "function"
       },
       {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "name": "merchantOfDeal",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [],
         "name": "minDeposit",
         "outputs": [
@@ -26292,6 +26365,25 @@
           }
         ],
         "name": "previewHourlyRate",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          }
+        ],
+        "name": "rawDomainEntryCount",
         "outputs": [
           {
             "internalType": "uint256",
@@ -26548,6 +26640,222 @@
         "name": "withdraw",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ],
+    "DCDomainRankReader": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "rank_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          }
+        ],
+        "name": "domainEntryCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "deal",
+            "type": "address"
+          }
+        ],
+        "name": "getDomainDealInfo",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "merchant",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "visible",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "dealStatus",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "dealEndedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "depositedDC",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pendingConsume",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalConsumed",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "hoursRemaining",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "hourlyRate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "percent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastDepositAmount",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "getLeaderboard",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "merchant",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "score",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DCDomainRankReader.LeaderboardEntry[]",
+            "name": "entries",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "domainName",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "getLeaderboard",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "merchant",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "deal",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "score",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DCDomainRankReader.LeaderboardEntry[]",
+            "name": "entries",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "rank",
+        "outputs": [
+          {
+            "internalType": "contract IDCDomainRankReaderSource",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       }
     ],
@@ -31370,10 +31678,8 @@
     ]
   },
   "notes": [
-    "Deal chat storage is externalized through DealMessageHub; Deal.postMessage remains available, and readers should use the hub for message pagination.",
-    "Deal process timelines and final reward/credit records are indexed through DealResultIndex; readers should use it instead of scanning historical deal logs.",
-    "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
-    "DCDomainSwap and DCDomainHall are allowlisted on DealFactory and can create domain-scoped deals through the current Factory ABI.",
-    "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are intentionally not deployed."
+    "Full test deployment resumed from DealRouter after the first run exhausted native gas.",
+    "All active app-facing contracts in this deployment are owned/controlled by the deployer wallet.",
+    "Old test tokens/NFTs/deals are not part of this new deployment state."
   ]
 }

@@ -16,6 +16,11 @@ interface IDCDomain {
     function ownerOf(uint256 tokenId) external view returns (address);
 }
 
+interface IDealStatusView {
+    function status() external view returns (uint8);
+    function endedAt() external view returns (uint64);
+}
+
 /**
  * @title DCDomainRank
  * @notice 任何人都可以成为商家、发布合同，无需白名单/充值。
@@ -63,6 +68,7 @@ contract DCDomainRank is ReentrancyGuard {
     }
     mapping(string => DealMerchantEntry[]) private _domainEntries;
     mapping(string => mapping(address => mapping(address => bool))) private _entryInList;
+    mapping(string => mapping(address => address)) private _merchantOfDeal;
 
     // domain -> deal -> merchant -> 最近 deposit 时间
     mapping(string => mapping(address => mapping(address => uint256))) private _lastDepositAt;
@@ -107,6 +113,13 @@ contract DCDomainRank is ReentrancyGuard {
     event VisitorLeft(address indexed user, string domain);
     event VisitorKicked(address indexed user, string domain, address indexed kickedBy);
     event KickedInactiveDeal(string domain, address indexed deal, address indexed merchant, address indexed kicker);
+    event DealAdClosed(
+        string domain,
+        address indexed deal,
+        address indexed merchant,
+        uint256 refunded,
+        uint256 totalConsumed
+    );
     event BlacklistedSet(string indexed domain, address indexed account, bool banned);
     event KickInactivitySecondsSet(uint256 seconds_);
     event DomainAdFeePolicySet(
@@ -332,14 +345,21 @@ contract DCDomainRank is ReentrancyGuard {
         return Math.mulDiv(balance, factor, 1e18);
     }
 
-    function _pendingConsumeDeal(string memory domainName, Player storage p) internal view returns (uint256) {
+    function _billingTimestamp(address deal) internal view returns (uint256) {
+        (bool ok, uint8 s, uint64 ended) = _dealStatus(deal);
+        if (ok && s >= 3 && ended != 0) return ended;
+        return block.timestamp;
+    }
+
+    function _pendingConsumeDeal(string memory domainName, address deal, Player storage p) internal view returns (uint256) {
         if (!p.active || p.depositedDC == 0) return 0;
-        if (p.joinedAt == 0 || block.timestamp <= p.joinedAt) return 0;
+        uint256 chargeUntil = _billingTimestamp(deal);
+        if (p.joinedAt == 0 || chargeUntil <= p.joinedAt) return 0;
 
         uint8 mode = _domainAdFeeMode[domainName];
         if (mode == uint8(AdFeeMode.None)) return 0;
 
-        uint256 elapsed = block.timestamp - p.joinedAt;
+        uint256 elapsed = chargeUntil - p.joinedAt;
 
         if (mode == uint8(AdFeeMode.Fixed)) {
             uint256 rate = _domainFixedHourlyRate[domainName];
@@ -361,7 +381,7 @@ contract DCDomainRank is ReentrancyGuard {
         Player storage p = _dealPlayers[domainName][deal][merchantAddr];
         if (!p.active) return false;
 
-        uint256 consume = _pendingConsumeDeal(domainName, p);
+        uint256 consume = _pendingConsumeDeal(domainName, deal, p);
         if (consume > 0) {
             p.depositedDC -= consume;
             p.totalConsumed += consume;
@@ -382,6 +402,29 @@ contract DCDomainRank is ReentrancyGuard {
         }
     }
 
+    function _dealStatus(address deal) internal view returns (bool ok, uint8 s, uint64 ended) {
+        try IDealStatusView(deal).status() returns (uint8 status_) {
+            ok = true;
+            s = status_;
+            try IDealStatusView(deal).endedAt() returns (uint64 ended_) {
+                ended = ended_;
+            } catch {}
+            return (ok, s, ended);
+        } catch {
+            return (false, 0, 0);
+        }
+    }
+
+    function _isDealOpenForLeaderboard(address deal) internal view returns (bool) {
+        (bool ok, uint8 s, ) = _dealStatus(deal);
+        return !ok || s < 3; // Ready, Active, Locked；未知状态按兼容旧合约处理为可见
+    }
+
+    function _isDealTerminal(address deal) internal view returns (bool) {
+        (bool ok, uint8 s, ) = _dealStatus(deal);
+        return ok && s >= 3;
+    }
+
     /// @notice 为某笔交易充值（可选，充了才扣小时费）
     function deposit(string calldata domainName, address deal, uint256 amount) external nonReentrant {
         require(deal != address(0), "DCDomainRank: zero deal");
@@ -390,6 +433,7 @@ contract DCDomainRank is ReentrancyGuard {
         require(!_blacklisted[domainName][msg.sender], "DCDomainRank: blacklisted");
         require(amount >= minDeposit, "DCDomainRank: below minDeposit");
         require(_entryInList[domainName][deal][msg.sender], "DCDomainRank: deal not reported");
+        require(_isDealOpenForLeaderboard(deal), "DCDomainRank: deal closed");
 
         _settleDeal(domainName, deal, msg.sender);
 
@@ -455,88 +499,63 @@ contract DCDomainRank is ReentrancyGuard {
         if (changed) emit LeaderboardUpdated(domainName);
     }
 
+    /// @notice 交易终局后，任何人都可触发广告位结算并把未消耗余额退回原充值商家。
+    function closeDeal(string calldata domainName, address deal)
+        external
+        nonReentrant
+        returns (uint256 refunded, uint256 consumed)
+    {
+        address merchantAddr = _merchantOfDeal[domainName][deal];
+        require(merchantAddr != address(0), "DCDomainRank: deal not reported");
+        require(_isDealTerminal(deal), "DCDomainRank: deal not closed");
+
+        Player storage p = _dealPlayers[domainName][deal][merchantAddr];
+        uint256 before_ = p.depositedDC;
+
+        _settleDeal(domainName, deal, merchantAddr);
+
+        refunded = p.depositedDC;
+        consumed = before_ - refunded;
+        p.depositedDC = 0;
+        p.active = false;
+
+        if (refunded > 0) {
+            require(dcToken.transfer(merchantAddr, refunded), "DCDomainRank: refund failed");
+        }
+
+        emit Withdrawn(merchantAddr, domainName, deal, refunded, p.totalConsumed);
+        emit DealAdClosed(domainName, deal, merchantAddr, refunded, p.totalConsumed);
+        emit LeaderboardUpdated(domainName);
+    }
+
     // ═══════════════════════════════════════════
     // 域名内排行榜：按每笔交易的 totalConsumed 排序
     // ═══════════════════════════════════════════
 
     function _getDealScore(string memory domainName, address deal, address merchantAddr) internal view returns (uint256) {
         Player storage p = _dealPlayers[domainName][deal][merchantAddr];
-        return p.totalConsumed + _pendingConsumeDeal(domainName, p);
+        return p.totalConsumed + _pendingConsumeDeal(domainName, deal, p);
     }
 
-    struct LeaderboardEntry {
-        address merchant;
-        address deal;
-        uint256 score;
-    }
-
-    function _buildSortedLeaderboard(string memory domainName)
-        internal
-        view
-        returns (LeaderboardEntry[] memory buf)
-    {
-        DealMerchantEntry[] storage all = _domainEntries[domainName];
-        uint256 total = all.length;
-        buf = new LeaderboardEntry[](total);
-        for (uint256 i; i < total; i++) {
-            buf[i] = LeaderboardEntry({
-                merchant: all[i].merchant,
-                deal:     all[i].deal,
-                score:    _getDealScore(domainName, all[i].deal, all[i].merchant)
-            });
-        }
-
-        for (uint256 i; i < total; i++) {
-            for (uint256 j = i + 1; j < total; j++) {
-                if (buf[j].score > buf[i].score) {
-                    (buf[i], buf[j]) = (buf[j], buf[i]);
-                }
-            }
-        }
-    }
-
-    /// @notice 域名内排行榜：前 limit 条 (商家, 交易, 消耗额)，包含 0 分条目
-    function getLeaderboard(string calldata domainName, uint256 limit)
-        external
-        view
-        returns (LeaderboardEntry[] memory entries)
-    {
-        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
-
-        LeaderboardEntry[] memory buf = _buildSortedLeaderboard(domainName);
-        uint256 total = buf.length;
-        if (total == 0) return new LeaderboardEntry[](0);
-
-        uint256 n = total < limit ? total : limit;
-        entries = new LeaderboardEntry[](n);
-        for (uint256 i; i < n; i++) {
-            entries[i] = buf[i];
-        }
-    }
-
-    /// @notice 域名内排行榜分页：按分数降序返回 [offset, offset + limit)。
-    function getLeaderboard(string calldata domainName, uint256 offset, uint256 limit)
-        external
-        view
-        returns (LeaderboardEntry[] memory entries)
-    {
-        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
-
-        LeaderboardEntry[] memory buf = _buildSortedLeaderboard(domainName);
-        uint256 total = buf.length;
-        if (offset >= total) return new LeaderboardEntry[](0);
-
-        uint256 remaining = total - offset;
-        uint256 n = remaining < limit ? remaining : limit;
-        entries = new LeaderboardEntry[](n);
-        for (uint256 i; i < n; i++) {
-            entries[i] = buf[offset + i];
-        }
-    }
-
-    /// @notice 域名内总条目数
-    function domainEntryCount(string calldata domainName) external view returns (uint256) {
+    function rawDomainEntryCount(string calldata domainName) external view returns (uint256) {
         return _domainEntries[domainName].length;
+    }
+
+    function domainEntryAt(string calldata domainName, uint256 index)
+        external
+        view
+        returns (address deal, address merchant)
+    {
+        DealMerchantEntry storage entry = _domainEntries[domainName][index];
+        return (entry.deal, entry.merchant);
+    }
+
+    function dealScoreOf(string calldata domainName, address deal, address merchantAddr) external view returns (uint256) {
+        return _getDealScore(domainName, deal, merchantAddr);
+    }
+
+    function isDealVisible(string calldata domainName, address deal, address merchantAddr) external view returns (bool) {
+        return _isDealOpenForLeaderboard(deal) && !_blacklisted[domainName][merchantAddr];
     }
 
     // ═══════════════════════════════════════════
@@ -558,7 +577,7 @@ contract DCDomainRank is ReentrancyGuard {
         )
     {
         Player storage p = _dealPlayers[domainName][deal][merchant];
-        uint256 pending = _pendingConsumeDeal(domainName, p);
+        uint256 pending = _pendingConsumeDeal(domainName, deal, p);
         uint256 realBal = p.depositedDC > pending ? p.depositedDC - pending : 0;
         uint256 base = _lastDepositBase[domainName][deal][merchant];
 
@@ -618,6 +637,10 @@ contract DCDomainRank is ReentrancyGuard {
         return _myDealStatusView(domainName, deal, merchant);
     }
 
+    function merchantOfDeal(string calldata domainName, address deal) external view returns (address) {
+        return _merchantOfDeal[domainName][deal];
+    }
+
     function lastDepositAt(string calldata domainName, address deal, address merchant_) external view returns (uint256) {
         return _lastDepositAt[domainName][deal][merchant_];
     }
@@ -628,7 +651,7 @@ contract DCDomainRank is ReentrancyGuard {
 
     function depositPercent(string calldata domainName, address deal, address merchant_) external view returns (uint256) {
         Player storage p = _dealPlayers[domainName][deal][merchant_];
-        uint256 pending = _pendingConsumeDeal(domainName, p);
+        uint256 pending = _pendingConsumeDeal(domainName, deal, p);
         uint256 realBal = p.depositedDC > pending ? p.depositedDC - pending : 0;
         uint256 base = _lastDepositBase[domainName][deal][merchant_];
         if (base == 0 || realBal == 0) return 0;
@@ -695,6 +718,9 @@ contract DCDomainRank is ReentrancyGuard {
         if (!_entryInList[domainName][deal][merchant_]) {
             _domainEntries[domainName].push(DealMerchantEntry({deal: deal, merchant: merchant_}));
             _entryInList[domainName][deal][merchant_] = true;
+            if (_merchantOfDeal[domainName][deal] == address(0)) {
+                _merchantOfDeal[domainName][deal] = merchant_;
+            }
         }
 
         if (!_globalDomainExists[domainName]) {

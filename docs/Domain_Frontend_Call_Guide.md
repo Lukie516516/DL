@@ -21,7 +21,7 @@
 来源：
 - `deployments/agiking-31415926.json`
 
-**重新部署当前 Deal + 域名入口版本并写回地址**
+**仅重新部署域名入口 / 排行榜版本并写回地址**
 
 1. 使用 **在 Agiking 上有原生 gas**、且具备核心合约管理权限的部署私钥。
 2. 配置 Hardhat 变量（PowerShell 示例）：
@@ -29,10 +29,12 @@
 ```powershell
 $env:AGIKING_RPC_URL="https://rpc.agikingrpc.shop"
 $env:AGIKING_PRIVATE_KEY="0x..."   # 勿提交到仓库
-npm run deploy:agiking:deal-upgrade
+npm run deploy:agiking:domain-open-access
 ```
 
-3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与 ABI），并生成新的 `deployments/frontend-handoff-agiking-31415926-*.md`。
+不要为域名排行榜小改动使用 `deploy:agiking:deal-upgrade`；那个是全量 Deal 升级脚本，会重新部署 Deal 模板、Factory、Reader 等核心合约。
+
+3. 成功后脚本会 **覆盖写入** `deployments/agiking-31415926.json`（合并新地址与 ABI），并生成新的 `deployments/frontend-handoff-domain-open-access-*.md`。
 
 当前域名相关地址：
 
@@ -117,10 +119,18 @@ npm run deploy:agiking:deal-upgrade
 
 作用：
 - 域名有效用户判断
-- 黑名单（含 `blacklistedAddresses` 列表查询，见 §6.9）
+- 黑名单（含 `blacklistedAddresses` 列表查询，见 §6.11）
 - 域名内交易排行榜
 - 域名总榜
 - 对某笔交易做 DL 充值并按小时消耗
+
+### 3.3.1 `DCDomainRankReader`
+
+作用：
+- 域名排行榜只读辅助合约
+- 域名内交易排行榜分页查询
+- 按 deal 地址精确查询历史/终局 deal 详情
+- 不持有资金，不改状态；用于避免 `DCDomainRank` 本体继续变重
 
 ### 3.4 `DCDomainHall`
 
@@ -397,47 +407,99 @@ await dcDomain.register("abc123");
 - 这是排行榜充值
 - 目前仍有最小充值门槛 `minDeposit`
 - 若域名 `mode = 0`，会 revert：`DCDomainRank: ad fees disabled`
+- 已完成 / 已取消 / 已废弃的终局 deal 不能继续充值，会 revert：`DCDomainRank: deal closed`
 
 ### 6.6 `withdraw(domainName, deal)`
 
 作用：
 - 取回这笔 deal 尚未消耗完的充值
+- 用户主动取回后，这笔 deal 的排行榜余额清零，不再继续消耗
 
 参数：
 - `domainName: string`
 - `deal: address`
 
-### 6.7 `settle(domainName, deal, creatorAddr)`
+### 6.7 `closeDeal(domainName, deal)`
+
+作用：
+- 交易终局后结算广告费，并把未消耗余额退回原充值者 / 创建者
+- 任何人都可以调用，但钱只会退回原充值者，不会退给调用者
+- 适合前端在发现 deal 已完成 / 已取消 / 已废弃后顺手调用一次
+
+参数：
+- `domainName: string`
+- `deal: address`
+
+行为：
+- 已消耗部分进入域名持有人的待领取广告收益
+- 未消耗余额退回创建者
+- 终局 deal 默认不再出现在 `getLeaderboard`
+- 终局 deal 仍可通过 `DCDomainRankReader.getDomainDealInfo(domainName, deal)` 精确查到
+
+常见 revert：
+- `DCDomainRank: deal not reported`：这个 deal 没有被该域名排行榜记录
+- `DCDomainRank: deal not closed`：deal 还没进入终局状态
+
+### 6.8 `settle(domainName, deal, creatorAddr)`
 
 作用：
 - 主动结算当前应扣的排行消耗
+- 非终局场景下可用；终局退款推荐用 `closeDeal`
 
 参数：
 - `domainName: string`
 - `deal: address`
 - `creatorAddr: address`
 
-### 6.8 排行榜查询
+### 6.9 排行榜查询
 
 常用：
-- `getLeaderboard(domainName, limit)`
-- `getLeaderboard(domainName, offset, limit)`
-- `domainEntryCount(domainName)`
+- `DCDomainRankReader.getLeaderboard(domainName, limit)`
+- `DCDomainRankReader.getLeaderboard(domainName, offset, limit)`
+- `DCDomainRankReader.domainEntryCount(domainName)`
 - `getGlobalLeaderboard(limit)`
 - `globalDomainCount()`
 
 分页建议：
-- `domainEntryCount(domainName)` 读取总条目数
-- `getLeaderboard(domainName, offset, limit)` 读取分页结果
+- `DCDomainRankReader.domainEntryCount(domainName)` 读取总条目数
+- `DCDomainRankReader.getLeaderboard(domainName, offset, limit)` 读取分页结果
 - `limit` 范围 `1 - 50`
-- `offset >= domainEntryCount(domainName)` 时返回空数组
+- `offset >= DCDomainRankReader.domainEntryCount(domainName)` 时返回空数组
+
+默认榜单规则：
+- `DCDomainRankReader.getLeaderboard` 只返回未终局 deal：`Ready / Active / Locked`
+- `Completed / Canceled / Abandoned` 不进入默认榜单
+- 被域名持有人拉黑的创建者也不进入默认榜单
 
 返回结构：
 - `merchant`
 - `deal`
 - `score`
 
-### 6.9 充值状态查询
+精确搜索：
+- 如果用户在搜索框输入的是合约地址，直接调用 `DCDomainRankReader.getDomainDealInfo(domainName, deal)`
+- 这个接口可以查到已经完成 / 取消 / 废弃的历史 deal
+- 链上不做模糊搜索；按标题、昵称、短地址模糊搜建议前端或索引器做
+
+`DCDomainRankReader.getDomainDealInfo` 返回：
+
+| 下标 | 字段 | 说明 |
+| --- | --- | --- |
+| `0` | `exists` | 该 deal 是否属于这个域名榜单 |
+| `1` | `merchant` | 原充值者 / 创建者 |
+| `2` | `visible` | 是否会出现在默认 `getLeaderboard` |
+| `3` | `dealStatus` | deal 状态；旧合约读不到状态时为 `255` |
+| `4` | `dealEndedAt` | 终局时间；未终局为 `0` |
+| `5` | `depositedDC` | 当前剩余充值余额 |
+| `6` | `pendingConsume` | 当前待结算消耗 |
+| `7` | `totalConsumed` | 已消耗 + 待结算消耗 |
+| `8` | `active` | 是否还有有效充值余额 |
+| `9` | `hoursRemaining` | 按当前策略估算可持续小时数 |
+| `10` | `hourlyRate` | 当前小时扣费速率 |
+| `11` | `percent` | 当前余额占最近一次充值基准的百分比 |
+| `12` | `lastDepositAmount` | 上一次充值金额 |
+
+### 6.10 充值状态查询
 
 常用：
 - `myDealStatus(domainName, deal)`：依赖 `msg.sender` 作为创建者；链下 `eth_call` 若未带 `from`，请改用 `myDealStatusOf`
@@ -450,8 +512,9 @@ await dcDomain.register("abc123");
 说明：
 - `depositPercent`：当前余额相对最近一次充值基准的百分比
 - `lastDepositAmount`：上一次充值了多少 `DL`
+- deal 终局后，扣费时间会停在 deal 的 `endedAt`，不会因为没人结算而一直扣下去
 
-### 6.10 黑名单（列表查询与地址展示）
+### 6.11 黑名单（列表查询与地址展示）
 
 链上方法：
 
@@ -784,7 +847,7 @@ const rows = await Promise.all(
 9. `postMessageOnDeal`
 10. `confirmHallDealCounterparty`
 11. 被选中的人再 `deal.join()`
-12. `deposit / myDealStatus / getLeaderboard`
+12. `deposit / myDealStatus / DCDomainRankReader.getLeaderboard`
 
 ---
 
