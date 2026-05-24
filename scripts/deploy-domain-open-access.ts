@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { defineChain, formatEther, getAddress, type Address } from "viem";
+import { defineChain, formatEther, getAddress, isAddress, type Address } from "viem";
 
 const AGIKING_CHAIN_ID = 31415926;
 const DEPLOYMENT_FILE = "agiking-31415926.json";
@@ -73,6 +73,7 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 | 模块 | 地址 | 前端用途 |
 | --- | --- | --- |
 | DCDomainRank | \`${addresses.dcDomainRank}\` | 域名有效用户、黑名单、排行榜；visitor 入口仅兼容 |
+| DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情，只读 helper |
 | DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名下创建币币 deal，支持身份 NFT 参数 |
 | DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅单；不再区分 visitor/merchant |
 
@@ -93,8 +94,9 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 1. 域名有效用户/排行榜查询切到新的 \`DCDomainRank\`。
 2. 域名普通币币入口切到新的 \`DCDomainSwap\`。
 3. 域名大厅入口切到新的 \`DCDomainHall\`。
-4. ABI 使用 \`deployments/${DEPLOYMENT_FILE}\` 里的 \`DCDomainRank\`、\`DCDomainSwap\`、\`DCDomainHall\`。
-5. 大厅不再要求 visitor/merchant 身份；前端不需要 enterDomain/leaveVisitor，只需要按黑名单和有效域名判断。
+4. 域名排行榜分页和终局 deal 精确搜索调用新的 \`DCDomainRankReader\`：\`getLeaderboard\`、\`domainEntryCount\`、\`getDomainDealInfo\`。
+5. ABI 使用 \`deployments/${DEPLOYMENT_FILE}\` 里的 \`DCDomainRank\`、\`DCDomainRankReader\`、\`DCDomainSwap\`、\`DCDomainHall\`。
+6. 大厅不再要求 visitor/merchant 身份；前端不需要 enterDomain/leaveVisitor，只需要按黑名单和有效域名判断。
 
 ## 链上接线
 
@@ -143,35 +145,79 @@ async function main() {
   if (balance === 0n) throw new Error("Deployer has zero native balance; cannot pay deployment gas.");
 
   console.log("\n--- Deploy DCDomainRank ---");
-  const rank = await viem.deployContract("DCDomainRank", [
-    oldAddresses.dlToken,
-    oldAddresses.dcDomain,
-    dep,
-  ], { client });
-  console.log("DCDomainRank:", rank.address);
+  const resumeRank = process.env.DC_DOMAIN_RANK;
+  const rankAddress = resumeRank && isAddress(resumeRank)
+    ? (getAddress(resumeRank) as Address)
+    : undefined;
+  const rank = rankAddress
+    ? await viem.getContractAt("DCDomainRank", rankAddress, { client })
+    : await viem.deployContract("DCDomainRank", [
+        oldAddresses.dlToken,
+        oldAddresses.dcDomain,
+        dep,
+      ], { client });
+  console.log("DCDomainRank:", rank.address, rankAddress ? "(resume)" : "");
+
+  console.log("\n--- Deploy DCDomainRankReader ---");
+  const resumeRankReader = process.env.DC_DOMAIN_RANK_READER;
+  const rankReaderAddress = resumeRankReader && isAddress(resumeRankReader)
+    ? (getAddress(resumeRankReader) as Address)
+    : undefined;
+  const rankReader = rankReaderAddress
+    ? await viem.getContractAt("DCDomainRankReader", rankReaderAddress, { client })
+    : await viem.deployContract("DCDomainRankReader", [rank.address], { client });
+  console.log("DCDomainRankReader:", rankReader.address, rankReaderAddress ? "(resume)" : "");
 
   console.log("\n--- Deploy DCDomainSwap ---");
-  const swap = await viem.deployContract("DCDomainSwap", [
-    oldAddresses.dcDomain,
-    rank.address,
-    oldAddresses.dealFactory,
-  ], { client });
-  console.log("DCDomainSwap:", swap.address);
+  const resumeSwap = process.env.DC_DOMAIN_SWAP;
+  const swapAddress = resumeSwap && isAddress(resumeSwap)
+    ? (getAddress(resumeSwap) as Address)
+    : undefined;
+  const swap = swapAddress
+    ? await viem.getContractAt("DCDomainSwap", swapAddress, { client })
+    : await viem.deployContract("DCDomainSwap", [
+        oldAddresses.dcDomain,
+        rank.address,
+        oldAddresses.dealFactory,
+      ], { client });
+  console.log("DCDomainSwap:", swap.address, swapAddress ? "(resume)" : "");
 
   console.log("\n--- Deploy DCDomainHall ---");
-  const hall = await viem.deployContract("DCDomainHall", [
-    rank.address,
-    oldAddresses.dcDomain,
-    oldAddresses.dealFactory,
-  ], { client });
-  console.log("DCDomainHall:", hall.address);
+  const resumeHall = process.env.DC_DOMAIN_HALL;
+  const hallAddress = resumeHall && isAddress(resumeHall)
+    ? (getAddress(resumeHall) as Address)
+    : undefined;
+  const hall = hallAddress
+    ? await viem.getContractAt("DCDomainHall", hallAddress, { client })
+    : await viem.deployContract("DCDomainHall", [
+        rank.address,
+        oldAddresses.dcDomain,
+        oldAddresses.dealFactory,
+      ], { client });
+  console.log("DCDomainHall:", hall.address, hallAddress ? "(resume)" : "");
 
   console.log("\n--- Wire permissions ---");
   const factory = await viem.getContractAt("DealFactory", oldAddresses.dealFactory, { client });
-  await tx("Factory.allow DCDomainSwap", publicClient, factory.write.setAllowedCreateFor([swap.address, true]));
-  await tx("Factory.allow DCDomainHall", publicClient, factory.write.setAllowedCreateFor([hall.address, true]));
-  await tx("Rank.reporter DCDomainSwap", publicClient, rank.write.setDealReporter([swap.address, true]));
-  await tx("Rank.reporter DCDomainHall", publicClient, rank.write.setDealReporter([hall.address, true]));
+  if (await factory.read.isAllowedCreateFor([swap.address])) {
+    console.log("  OK Factory.allow DCDomainSwap: already true");
+  } else {
+    await tx("Factory.allow DCDomainSwap", publicClient, factory.write.setAllowedCreateFor([swap.address, true]));
+  }
+  if (await factory.read.isAllowedCreateFor([hall.address])) {
+    console.log("  OK Factory.allow DCDomainHall: already true");
+  } else {
+    await tx("Factory.allow DCDomainHall", publicClient, factory.write.setAllowedCreateFor([hall.address, true]));
+  }
+  if (await rank.read.isDealReporter([swap.address])) {
+    console.log("  OK Rank.reporter DCDomainSwap: already true");
+  } else {
+    await tx("Rank.reporter DCDomainSwap", publicClient, rank.write.setDealReporter([swap.address, true]));
+  }
+  if (await rank.read.isDealReporter([hall.address])) {
+    console.log("  OK Rank.reporter DCDomainHall: already true");
+  } else {
+    await tx("Rank.reporter DCDomainHall", publicClient, rank.write.setDealReporter([hall.address, true]));
+  }
 
   console.log("\n--- Verify wiring ---");
   const deployedSwap = await viem.getContractAt("DCDomainSwap", swap.address, { client });
@@ -216,6 +262,7 @@ async function main() {
   const addresses: Record<string, Address> = {
     ...oldAddresses,
     dcDomainRank: getAddress(rank.address) as Address,
+    dcDomainRankReader: getAddress(rankReader.address) as Address,
     dcDomainSwap: getAddress(swap.address) as Address,
     dcDomainHall: getAddress(hall.address) as Address,
   };
@@ -236,6 +283,7 @@ async function main() {
     abi: {
       ...current.abi,
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
+      DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
     },
@@ -255,6 +303,7 @@ async function main() {
 
   console.log("\n========== UPDATED ==========");
   console.log("DCDomainRank:", addresses.dcDomainRank);
+  console.log("DCDomainRankReader:", addresses.dcDomainRankReader);
   console.log("DCDomainSwap:", addresses.dcDomainSwap);
   console.log("DCDomainHall:", addresses.dcDomainHall);
   console.log("replaceTimeoutSeconds:", String(replaceTimeout));

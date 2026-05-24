@@ -35,6 +35,7 @@ export type AgikingDeploymentAddresses = {
   dealReader: Address;
   dcDomain: Address;
   dcDomainRank: Address;
+  dcDomainRankReader?: Address;
   dcDomainMarket: Address;
   dcDomainSwap: Address;
   dcDomainHall: Address;

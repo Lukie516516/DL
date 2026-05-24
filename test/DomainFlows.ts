@@ -142,6 +142,9 @@ async function deployDomainFixture() {
     dcDomain.address,
     treasury.account.address,
   ]);
+  const dcDomainRankReader = await viem.deployContract("DCDomainRankReader", [
+    dcDomainRank.address,
+  ]);
   const dcDomainHall = await viem.deployContract("DCDomainHall", [
     dcDomainRank.address,
     dcDomain.address,
@@ -255,6 +258,7 @@ async function deployDomainFixture() {
     dcDomain,
     dcDomainMarket,
     dcDomainRank,
+    dcDomainRankReader,
     dcDomainHall,
     dcDomainSwap,
     registerDomain,
@@ -634,7 +638,19 @@ describe("Domain Flows", async function () {
 
   it("tracks domain leaderboard scores, settlement, and global leaderboard ordering", async function () {
     const fixture = await deployDomainFixture();
-    const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
+    const {
+      viem,
+      publicClient,
+      alice,
+      bob,
+      carol,
+      dl,
+      dcDomainRank,
+      dcDomainRankReader,
+      dcDomainSwap,
+      ausd,
+      usdt,
+    } = fixture;
     const testClient = await viem.getTestClient();
 
     await fixture.registerDomain(alice, "rank11");
@@ -706,15 +722,15 @@ describe("Domain Flows", async function () {
     );
     await waitFor(publicClient, await rankAsBob.write.deposit(["rank11", deal1, depositAmount]));
 
-    const initialLeaderboard = await dcDomainRank.read.getLeaderboard(["rank11", 10n]);
+    const initialLeaderboard = await dcDomainRankReader.read.getLeaderboard(["rank11", 10n]);
     assert.equal(initialLeaderboard.length, 2);
     assert.equal(getAddress(initialLeaderboard[0].deal), getAddress(deal1));
     assert.equal(getAddress(initialLeaderboard[1].deal), getAddress(deal2));
     assert.equal(initialLeaderboard[1].score, 0n);
-    const pageTwo = await dcDomainRank.read.getLeaderboard(["rank11", 1n, 1n]);
+    const pageTwo = await dcDomainRankReader.read.getLeaderboard(["rank11", 1n, 1n]);
     assert.equal(pageTwo.length, 1);
     assert.equal(getAddress(pageTwo[0].deal), getAddress(deal2));
-    const outOfRange = await dcDomainRank.read.getLeaderboard(["rank11", 2n, 10n]);
+    const outOfRange = await dcDomainRankReader.read.getLeaderboard(["rank11", 2n, 10n]);
     assert.equal(outOfRange.length, 0);
 
     const blockBefore = await publicClient.getBlock();
@@ -733,10 +749,13 @@ describe("Domain Flows", async function () {
     assert.ok(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]) < 100n);
     assert.equal(await dcDomainRank.read.lastDepositAmount(["rank11", deal1, bob.account.address]), depositAmount);
 
-    const rankedAfter = await dcDomainRank.read.getLeaderboard(["rank11", 10n]);
+    const rankedAfter = await dcDomainRankReader.read.getLeaderboard(["rank11", 10n]);
     assert.equal(getAddress(rankedAfter[0].deal), getAddress(deal1));
     assert.ok(rankedAfter[0].score > 0n);
 
+    const pendingBeforeWithdraw = await dcDomainRank.read.pendingHolderRewards(["rank11"]);
+    assert.ok(pendingBeforeWithdraw >= 600n * ONE);
+    assert.ok(pendingBeforeWithdraw <= 601n * ONE);
     await waitFor(publicClient, await rankAsBob.write.withdraw(["rank11", deal1]));
     const withdrawnStatus = await rankAsBob.read.myDealStatusOf([
       "rank11",
@@ -745,6 +764,89 @@ describe("Domain Flows", async function () {
     ]);
     assert.equal(withdrawnStatus[0], 0n);
     assert.equal(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]), 0n);
+
+    const deal1AsBob = await viem.getContractAt("DealOpenTokenToken", deal1, {
+      client: { wallet: bob },
+    });
+    const deal1AsCarol = await viem.getContractAt("DealOpenTokenToken", deal1, {
+      client: { wallet: carol },
+    });
+    const ausdAsBob = await viem.getContractAt("DCToken", ausd.address, {
+      client: { wallet: bob },
+    });
+    const usdtAsCarol = await viem.getContractAt("DCToken", usdt.address, {
+      client: { wallet: carol },
+    });
+    await waitFor(publicClient, await ausdAsBob.write.approve([deal1, 11n * ONE]));
+    await waitFor(publicClient, await usdtAsCarol.write.approve([deal1, 22n * ONE]));
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
+    await waitFor(publicClient, await rankAsBob.write.deposit(["rank11", deal1, depositAmount]));
+    const statusBeforeComplete = await rankAsBob.read.myDealStatusOf([
+      "rank11",
+      deal1,
+      bob.account.address,
+    ]);
+    assert.equal(statusBeforeComplete[0], depositAmount);
+
+    await waitFor(publicClient, await deal1AsBob.write.pay());
+    await waitFor(publicClient, await deal1AsCarol.write.join([0n, false]));
+    await waitFor(publicClient, await deal1AsCarol.write.pay());
+    await waitFor(publicClient, await deal1AsBob.write.setMyVote([ACCEPT]));
+    await waitFor(publicClient, await deal1AsCarol.write.setMyVote([ACCEPT]));
+
+    const completedStatus = await rankAsBob.read.myDealStatusOf([
+      "rank11",
+      deal1,
+      bob.account.address,
+    ]);
+    await testClient.setNextBlockTimestamp({ timestamp: (await publicClient.getBlock()).timestamp + 30n * 24n * 3600n });
+    await testClient.mine({ blocks: 1 });
+    const afterLongWait = await rankAsBob.read.myDealStatusOf([
+      "rank11",
+      deal1,
+      bob.account.address,
+    ]);
+    assert.equal(afterLongWait[0], completedStatus[0], "terminal deals should stop ad billing at endedAt");
+
+    const visibleAfterComplete = await dcDomainRankReader.read.getLeaderboard(["rank11", 10n]);
+    assert.equal(visibleAfterComplete.length, 1);
+    assert.equal(getAddress(visibleAfterComplete[0].deal), getAddress(deal2));
+    assert.equal(await dcDomainRankReader.read.domainEntryCount(["rank11"]), 1n);
+
+    const dealInfoAfterComplete = await dcDomainRankReader.read.getDomainDealInfo(["rank11", deal1]);
+    assert.equal(dealInfoAfterComplete[0], true);
+    assert.equal(getAddress(dealInfoAfterComplete[1]), getAddress(bob.account.address));
+    assert.equal(dealInfoAfterComplete[2], false, "terminal deal should be searchable but hidden from leaderboard");
+    assert.equal(dealInfoAfterComplete[3], 3);
+    assert.ok(dealInfoAfterComplete[4] > 0n);
+    assert.equal(dealInfoAfterComplete[5], completedStatus[0]);
+
+    await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
+    await assert.rejects(
+      rankAsBob.write.deposit(["rank11", deal1, depositAmount]),
+      /deal closed/,
+    );
+
+    const bobBalanceBeforeClose = await dl.read.balanceOf([bob.account.address]);
+    await waitFor(publicClient, await rankAsAlicePolicy.write.closeDeal(["rank11", deal1]));
+    const bobBalanceAfterClose = await dl.read.balanceOf([bob.account.address]);
+    assert.equal(bobBalanceAfterClose - bobBalanceBeforeClose, completedStatus[0]);
+    const dealInfoAfterClose = await dcDomainRankReader.read.getDomainDealInfo(["rank11", deal1]);
+    assert.equal(dealInfoAfterClose[0], true);
+    assert.equal(dealInfoAfterClose[2], false);
+    assert.equal(dealInfoAfterClose[5], 0n);
+    assert.equal(dealInfoAfterClose[8], false);
+
+    await assert.rejects(
+      rankAsBob.write.withdraw(["rank11", deal1]),
+      /nothing to withdraw/,
+    );
+    const pendingAfterTerminalWithdraw = await dcDomainRank.read.pendingHolderRewards(["rank11"]);
+    assert.ok(pendingAfterTerminalWithdraw > pendingBeforeWithdraw);
+    const balanceBeforeReward = await dl.read.balanceOf([alice.account.address]);
+    await waitFor(publicClient, await rankAsAlicePolicy.write.withdraw(["rank11"]));
+    const balanceAfterReward = await dl.read.balanceOf([alice.account.address]);
+    assert.equal(balanceAfterReward - balanceBeforeReward, pendingAfterTerminalWithdraw);
   });
 
   it("rejects rank deposit until domain holder enables an ad fee policy", async function () {
