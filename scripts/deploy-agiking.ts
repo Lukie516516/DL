@@ -2,7 +2,7 @@
  * Deploy the full production contract set on `agiking` network.
  * Deal.sol uses viaIR:false override and omits on-chain chat to stay under EIP-170.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
 import { defineChain, zeroAddress, type Address } from "viem";
@@ -31,6 +31,88 @@ async function waitFor(
   hash: `0x${string}`,
 ) {
   return publicClient.waitForTransactionReceipt({ hash });
+}
+
+function writeFrontendHandoff(file: string, deployedAt: string, deployer: Address, addresses: Record<string, Address>) {
+  const md = `# Agiking 前端部署地址交接
+
+部署时间：${deployedAt}
+
+部署钱包：\`${deployer}\`
+
+链：Agiking \`${AGIKING_CHAIN_ID}\`
+
+> 这次是整套测试环境重新部署。前端请以本文件和 \`deployments/agiking-31415926.json\` 为准，不要继续使用旧地址。
+
+## 前端主接入地址
+
+| 模块 | 地址 | 前端用途 |
+| --- | --- | --- |
+| DealFactory | \`${addresses.dealFactory}\` | 创建 deal、读取工厂配置、索引当前 deal |
+| DealMessageHub | \`${addresses.dealMessageHub}\` | 留言上链入口：\`postMessage(deal, content)\` |
+| DealReader | \`${addresses.dealReader}\` | 聚合读取 deal 列表/详情 |
+| DealActivityIndex | \`${addresses.dealActivityIndex}\` | 读取用户活动索引 |
+| DealResultIndex | \`${addresses.dealResultIndex}\` | 读取奖励明细、信用增量、交易过程时间线，避免扫历史 logs |
+| DealPairManager | \`${addresses.dealPairManager}\` | Factory 背后的 pair/TWAP 管理，前端通常仍调 Factory |
+| DealCreditGraph | \`${addresses.dealCreditGraph}\` | 读取官方 InfoNFT 信用分 |
+| DealInfoNFT | \`${addresses.dealInfoNFT}\` | 官方身份 NFT |
+| DealOpenTokenToken implementation | \`${addresses.dealOpenTokenTokenImplementation}\` | 公开币币单模板 ABI |
+| DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名入口创建普通 deal |
+| DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅/匹配入口 |
+| DCDomain | \`${addresses.dcDomain}\` | 域名 NFT |
+| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名黑名单、广告充值/结算、域名收益 |
+| DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情 |
+| DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
+| DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
+| AUSD | \`${addresses.ausd}\` | 测试稳定币 |
+| USDT | \`${addresses.usdt}\` | 测试稳定币 |
+| WNATIVE | \`${addresses.wrappedNative}\` | 包装原生币 |
+| DealRouter | \`${addresses.dealRouter}\` | swap/router |
+| DealSwapOrderBook | \`${addresses.dealSwapOrderBook}\` | swap order book |
+| D | \`${addresses.dToken}\` | DAO/分红权代币 |
+| VoteDividendClaimer | \`${addresses.voteDividendClaimer}\` | D 持有人分红领取 |
+
+## 本次前端必须切换
+
+1. 创建 deal 走新的 \`DealFactory\`。
+2. 留言统一调新的 \`DealMessageHub.postMessage(dealAddress, content)\`。
+3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`replaceNonVotingBAndJoin\`、\`replaceTimeoutSeconds\`。
+4. 交易过程时间线读 \`DealResultIndex.getTimeline\`；历史奖励/信用增量读 \`DealResultIndex\`，不要扫历史 logs。
+5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`。
+6. 域名排行榜分页和搜索切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo\`。
+7. 域名广告充值、终局退款、域名收益领取仍调新的 \`DCDomainRank\`：\`deposit\`、\`closeDeal\`、\`withdrawDomainRewards\`。
+8. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
+9. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`。
+10. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
+
+## ABI
+
+完整 ABI 在：
+
+\`\`\`
+deployments/agiking-31415926.json
+\`\`\`
+
+## 相关前端文档
+
+| 文档 | 用途 |
+| --- | --- |
+| \`docs/Domain_Frontend_Call_Guide.md\` | 域名注册、域名交易、大厅、排行榜、分页 |
+| \`docs/DealOpenTokenToken_前端接入说明.md\` | OpenTokenToken 创建参数、加入/顶替/成交流程 |
+| \`docs/OpenTokenToken_B方踢人与超时字段说明.md\` | B 方踢人、C 顶替、\`replaceTimeoutSeconds\` |
+| \`docs/DCDomainSwap_身份NFT创建说明.md\` | 域名下创建币币合同时绑定 A 的官方身份 NFT |
+| \`docs/Deal_前端事件与工厂索引说明.md\` | 事件索引、系统提示、奖励/信用/时间线读取 |
+
+## 验证结果
+
+- 新 Factory 已配置 Hub、CreditGraph、ActivityIndex、ResultIndex、PairManager、ImplementationRegistry。
+- 新 Factory 已获得新 DL 的 \`MINTER_ROLE\`。
+- 新 DealInfoNFT 初始绑定新 Factory。
+- 新 DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
+- 新 DCDomainRank 已授权新的 Swap / Hall reporter。
+- 新 DCDomainRankReader 已指向新的 DCDomainRank。
+`;
+  writeFileSync(file, md, "utf8");
 }
 
 async function main() {
@@ -203,6 +285,8 @@ async function main() {
 
   const dcRank = await viem.deployContract("DCDomainRank", [dl.address, dcDomain.address, dep], { client });
   console.log("DCDomainRank", dcRank.address);
+  const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
+  console.log("DCDomainRankReader", dcRankReader.address);
 
   const dcMarket = await viem.deployContract(
     "DCDomainMarket",
@@ -292,6 +376,7 @@ async function main() {
     dealReader: dealReader.address,
     dcDomain: dcDomain.address,
     dcDomainRank: dcRank.address,
+    dcDomainRankReader: dcRankReader.address,
     dcDomainMarket: dcMarket.address,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
@@ -302,10 +387,11 @@ async function main() {
     voteDividendClaimer: voteClaimer.address,
   };
 
+  const deployedAt = new Date().toISOString();
   const out = {
     chainId: AGIKING_CHAIN_ID,
     rpcUrl: rpcUrl.trim(),
-    deployedAt: new Date().toISOString(),
+    deployedAt,
     deployer: dep,
     addresses,
     abi: {
@@ -332,6 +418,7 @@ async function main() {
       DealReader: loadAbi("DealReader.sol/DealReader.json"),
       DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
+      DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
       DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
@@ -352,9 +439,20 @@ async function main() {
 
   const dir = join(process.cwd(), "deployments");
   mkdirSync(dir, { recursive: true });
+  const backupDir = join(dir, "backups");
+  mkdirSync(backupDir, { recursive: true });
   const file = join(dir, `agiking-${AGIKING_CHAIN_ID}.json`);
+  const stamp = deployedAt.replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+  if (existsSync(file)) {
+    copyFileSync(file, join(backupDir, `agiking-${AGIKING_CHAIN_ID}.before-full-redeploy-${stamp}.json`));
+  }
   writeFileSync(file, JSON.stringify(out, null, 2), "utf8");
+  const handoffFile = join(dir, `frontend-handoff-agiking-${AGIKING_CHAIN_ID}-${stamp}.md`);
+  writeFrontendHandoff(handoffFile, deployedAt, dep, addresses);
+  writeFrontendHandoff(join(process.cwd(), "docs", "前端部署地址交接文档.md"), deployedAt, dep, addresses);
   console.log("Wrote", file);
+  console.log("Wrote", handoffFile);
+  console.log("Wrote", join(process.cwd(), "docs", "前端部署地址交接文档.md"));
   console.log(JSON.stringify(addresses, null, 2));
 }
 
