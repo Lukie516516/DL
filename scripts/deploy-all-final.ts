@@ -177,6 +177,8 @@ async function main() {
   console.log("  allowedCreateFor: Swap + Hall OK");
 
   const rank = await viem.getContractAt("DCDomainRank", E.dcDomainRank, { client: cl });
+  await w(pc, await factory.write.setGlobal(["dcDomainRank", E.dcDomainRank]));
+  await w(pc, await rank.write.setAutoCloser([factory.address]));
   await w(pc, await rank.write.setDealReporter([dcSwap.address, true]));
   await w(pc, await rank.write.setDealReporter([dcHall.address, true]));
   console.log("  dealReporter: Swap + Hall OK");

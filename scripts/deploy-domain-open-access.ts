@@ -94,7 +94,7 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 1. 域名有效用户/排行榜查询切到新的 \`DCDomainRank\`。
 2. 域名普通币币入口切到新的 \`DCDomainSwap\`。
 3. 域名大厅入口切到新的 \`DCDomainHall\`。
-4. 域名排行榜分页和终局 deal 精确搜索调用新的 \`DCDomainRankReader\`：\`getLeaderboard\`、\`domainEntryCount\`、\`getDomainDealInfo\`。
+4. 域名排行榜分页、状态统计和终局 deal 精确搜索调用新的 \`DCDomainRankReader\`：\`getLeaderboard\`、\`domainEntryCount\`、\`getDomainStatusCounts\`、\`getDomainDealInfo\`。
 5. ABI 使用 \`deployments/${DEPLOYMENT_FILE}\` 里的 \`DCDomainRank\`、\`DCDomainRankReader\`、\`DCDomainSwap\`、\`DCDomainHall\`。
 6. 大厅不再要求 visitor/merchant 身份；前端不需要 enterDomain/leaveVisitor，只需要按黑名单和有效域名判断。
 
@@ -198,6 +198,8 @@ async function main() {
 
   console.log("\n--- Wire permissions ---");
   const factory = await viem.getContractAt("DealFactory", oldAddresses.dealFactory, { client });
+  await tx("Factory.setGlobal dcDomainRank", publicClient, factory.write.setGlobal(["dcDomainRank", rank.address]));
+  await tx("Rank.setAutoCloser Factory", publicClient, rank.write.setAutoCloser([oldAddresses.dealFactory]));
   if (await factory.read.isAllowedCreateFor([swap.address])) {
     console.log("  OK Factory.allow DCDomainSwap: already true");
   } else {

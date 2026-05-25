@@ -208,6 +208,7 @@ contract DCDomainHall is ReentrancyGuard {
         string calldata description,
         bool trackCreator
     ) external nonReentrant returns (address deal) {
+        trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);
@@ -351,6 +352,7 @@ contract DCDomainHall is ReentrancyGuard {
         string calldata description,
         bool trackCreator
     ) external returns (address deal) {
+        trackCreator = true;
         require(pickedUser != address(0), "DCDomainHall: zero picked");
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
@@ -416,6 +418,7 @@ contract DCDomainHall is ReentrancyGuard {
         string calldata description,
         bool trackCreator
     ) external nonReentrant returns (address deal) {
+        trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);

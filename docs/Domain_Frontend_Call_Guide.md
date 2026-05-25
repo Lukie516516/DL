@@ -424,7 +424,8 @@ await dcDomain.register("abc123");
 作用：
 - 交易终局后结算广告费，并把未消耗余额退回原充值者 / 创建者
 - 任何人都可以调用，但钱只会退回原充值者，不会退给调用者
-- 适合前端在发现 deal 已完成 / 已取消 / 已废弃后顺手调用一次
+- 新版本会在 deal 进入 `Completed / Canceled / Abandoned` 时由 `DealFactory` 自动尝试调用
+- 前端一般不需要再让用户额外签名调用；这个方法保留为自动结算失败或旧数据的兜底入口
 
 参数：
 - `domainName: string`
@@ -439,6 +440,7 @@ await dcDomain.register("abc123");
 常见 revert：
 - `DCDomainRank: deal not reported`：这个 deal 没有被该域名排行榜记录
 - `DCDomainRank: deal not closed`：deal 还没进入终局状态
+- 已经结算过会直接返回 `(0, 0)`，不会重复退款或重复计入域名收益
 
 ### 6.8 `settle(domainName, deal, creatorAddr)`
 
@@ -457,6 +459,7 @@ await dcDomain.register("abc123");
 - `DCDomainRankReader.getLeaderboard(domainName, limit)`
 - `DCDomainRankReader.getLeaderboard(domainName, offset, limit)`
 - `DCDomainRankReader.domainEntryCount(domainName)`
+- `DCDomainRankReader.getDomainStatusCounts(domainName)`
 - `getGlobalLeaderboard(limit)`
 - `globalDomainCount()`
 
@@ -475,6 +478,16 @@ await dcDomain.register("abc123");
 - `merchant`
 - `deal`
 - `score`
+
+状态数量统计：
+- 前端统计域名内“完成 / 进行中 / 待处理 / 失败 / 总计”时，直接调用 `DCDomainRankReader.getDomainStatusCounts(domainName)`
+- 返回：
+  - `completed`：`Completed`
+  - `inProgress`：`Active / Locked`
+  - `pending`：`Ready`
+  - `failed`：`Canceled / Abandoned`，以及无法读取状态的异常条目
+  - `total`：该域名记录过的总 deal 数
+- 这个接口只返回数量，不返回完整列表，适合页面上的统计区
 
 精确搜索：
 - 如果用户在搜索框输入的是合约地址，直接调用 `DCDomainRankReader.getDomainDealInfo(domainName, deal)`
