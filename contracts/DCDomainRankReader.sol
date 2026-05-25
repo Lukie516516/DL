@@ -42,6 +42,14 @@ contract DCDomainRankReader {
         uint256 score;
     }
 
+    struct DomainStatusCounts {
+        uint256 completed;
+        uint256 inProgress;
+        uint256 pending;
+        uint256 failed;
+        uint256 total;
+    }
+
     constructor(address rank_) {
         require(rank_ != address(0), "ZERO_RANK");
         rank = IDCDomainRankReaderSource(rank_);
@@ -140,6 +148,32 @@ contract DCDomainRankReader {
             if (rank.isDealVisible(domainName, deal, merchant)) visible++;
         }
         return visible;
+    }
+
+    /// @notice Count all domain deals by current deal status without returning the full list.
+    /// pending=Ready, inProgress=Active/Locked, completed=Completed, failed=Canceled/Abandoned.
+    function getDomainStatusCounts(string calldata domainName)
+        external
+        view
+        returns (DomainStatusCounts memory counts)
+    {
+        uint256 total = rank.rawDomainEntryCount(domainName);
+        counts.total = total;
+        for (uint256 i; i < total; i++) {
+            (address deal,) = rank.domainEntryAt(domainName, i);
+            (bool ok, uint8 s,) = _dealStatus(deal);
+            if (!ok) {
+                counts.failed++;
+            } else if (s == 0) {
+                counts.pending++;
+            } else if (s == 1 || s == 2) {
+                counts.inProgress++;
+            } else if (s == 3) {
+                counts.completed++;
+            } else {
+                counts.failed++;
+            }
+        }
     }
 
     /// @notice Exact-address search/detail. Terminal deals hidden from the leaderboard remain searchable here.

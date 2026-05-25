@@ -187,6 +187,16 @@ interface IDealImplementationRegistry {
 interface IOrderBookSettle {
     function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
 }
+interface IDealDomainView {
+    function isDomainDeal() external view returns (bool);
+    function domainName() external view returns (string memory);
+}
+interface IDCDomainRankAutoClose {
+    function closeDeal(string calldata domainName, address deal) external returns (uint256 refunded, uint256 consumed);
+    function closeDealFromAutoCloser(string calldata domainName, address deal)
+        external
+        returns (uint256 refunded, uint256 consumed);
+}
 /* ========================================================== */
 contract DealFactory is Ownable {
     using Clones for address;
@@ -263,6 +273,7 @@ contract DealFactory is Ownable {
     address public dealPairManager;
     address public dealNftGovernanceActivity;
     address public dealImplementationRegistry;
+    address public dcDomainRank;
 
     // Default recognized tokens can still be changed later via setRecognizedTokens().
     address public recognizedToken0 = DEFAULT_AUSD;
@@ -371,6 +382,7 @@ contract DealFactory is Ownable {
     event MessageFeeCharged(address indexed payer, uint256 dlBurned);
 
     event CompletedAdded(address indexed user, address indexed deal);
+    event DomainAdAutoClosed(address indexed deal, string domainName, bool success);
 
     /* ---------------- Modifiers ---------------- */
     modifier onlyAdmin() {
@@ -432,7 +444,7 @@ contract DealFactory is Ownable {
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealResultIndex","dealPairManager","dealNftGovernanceActivity","dealImplementationRegistry"}
+    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealResultIndex","dealPairManager","dealNftGovernanceActivity","dealImplementationRegistry","dcDomainRank"}
     function setGlobal(string calldata key, address value) external onlyOwner {
         if (value == address(0)) revert ZeroAddress();
         bytes32 k = keccak256(bytes(key));
@@ -447,6 +459,7 @@ contract DealFactory is Ownable {
         else if (k == keccak256("dealPairManager")) dealPairManager = value;
         else if (k == keccak256("dealNftGovernanceActivity")) dealNftGovernanceActivity = value;
         else if (k == keccak256("dealImplementationRegistry")) dealImplementationRegistry = value;
+        else if (k == keccak256("dcDomainRank")) dcDomainRank = value;
         else revert();
         if ((k == keccak256("dlToken") || k == keccak256("wrappedNative")) && value != address(0)) {
             allowedMarginToken[value] = true;
@@ -909,6 +922,33 @@ contract DealFactory is Ownable {
         _markNftGovernanceActivity(tokenId);
     }
 
+    function _tryCloseDomainAd(address deal) internal {
+        address rank = dcDomainRank;
+        if (rank == address(0)) return;
+
+        bool domainDeal;
+        try IDealDomainView(deal).isDomainDeal() returns (bool v) {
+            domainDeal = v;
+        } catch {
+            return;
+        }
+        if (!domainDeal) return;
+
+        string memory name;
+        try IDealDomainView(deal).domainName() returns (string memory v) {
+            name = v;
+        } catch {
+            return;
+        }
+        if (bytes(name).length == 0) return;
+
+        try IDCDomainRankAutoClose(rank).closeDealFromAutoCloser(name, deal) returns (uint256, uint256) {
+            emit DomainAdAutoClosed(deal, name, true);
+        } catch {
+            emit DomainAdAutoClosed(deal, name, false);
+        }
+    }
+
     /* ========== 热索引回调（仅 Deal） ========== */
     function onCreated(address creator, bool trackCreator) external onlyDeal {
         if (trackCreator) _addTracked(creator, msg.sender);
@@ -931,15 +971,18 @@ contract DealFactory is Ownable {
         if (creator != address(0)) _removeTracked(creator, msg.sender);
         if (prevParticipant != address(0))
             _removeTracked(prevParticipant, msg.sender);
+        _tryCloseDomainAd(msg.sender);
     }
     function onClosedFor(address user) external onlyDeal {
         if (user != address(0)) _removeTracked(user, msg.sender);
+        _tryCloseDomainAd(msg.sender);
     }
 
     // 完成回调（仅完成态 & 仅 Deal 可调）
     function onCompletedFor(address user) external onlyDeal {
         if (user == address(0)) return;
         _addCompleted(user, msg.sender);
+        _tryCloseDomainAd(msg.sender);
     }
 
     /* ========== 热索引只读（活跃） ========== */

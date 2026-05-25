@@ -79,8 +79,8 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`replaceNonVotingBAndJoin\`、\`replaceTimeoutSeconds\`。
 4. 交易过程时间线读 \`DealResultIndex.getTimeline\`；历史奖励/信用增量读 \`DealResultIndex\`，不要扫历史 logs。
 5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`。
-6. 域名排行榜分页和搜索切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo\`。
-7. 域名广告充值、终局退款、域名收益领取仍调新的 \`DCDomainRank\`：\`deposit\`、\`closeDeal\`、\`withdrawDomainRewards\`。
+6. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`。
+7. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 8. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 9. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`。
 10. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
@@ -110,6 +110,7 @@ deployments/agiking-31415926.json
 - 新 DealInfoNFT 初始绑定新 Factory。
 - 新 DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
 - 新 DCDomainRank 已授权新的 Swap / Hall reporter。
+- 新 DCDomainRank 已设置自动结算入口：\`autoCloser = DealFactory\`。
 - 新 DCDomainRankReader 已指向新的 DCDomainRank。
 `;
   writeFileSync(file, md, "utf8");
@@ -287,6 +288,8 @@ async function main() {
   console.log("DCDomainRank", dcRank.address);
   const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
   console.log("DCDomainRankReader", dcRankReader.address);
+  await waitFor(publicClient, await factory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  await waitFor(publicClient, await dcRank.write.setAutoCloser([factory.address]));
 
   const dcMarket = await viem.deployContract(
     "DCDomainMarket",

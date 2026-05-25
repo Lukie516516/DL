@@ -145,8 +145,8 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 2. 留言统一调新的 \`DealMessageHub.postMessage(dealAddress, content)\`。
 3. 交易过程时间线和奖励/信用明细读 \`DealResultIndex\`。
 4. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`。
-5. 域名排行榜分页和搜索切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo\`。
-6. 域名广告充值、终局退款、域名收益领取仍调新的 \`DCDomainRank\`：\`deposit\`、\`closeDeal\`、\`withdrawDomainRewards\`。
+5. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`。
+6. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 7. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 8. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
 
@@ -184,6 +184,8 @@ async function main() {
   console.log("DCDomainRank", dcRank.address);
   const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
   console.log("DCDomainRankReader", dcRankReader.address);
+  await tx("Factory.setGlobal dcDomainRank", publicClient, factory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  await tx("Rank.setAutoCloser Factory", publicClient, dcRank.write.setAutoCloser([P.dealFactory]));
   const dcMarket = await viem.deployContract("DCDomainMarket", [dcDomain.address, P.dlToken, dep, 100n], { client });
   console.log("DCDomainMarket", dcMarket.address);
   await tx("DCDomain.setDomainMarket", publicClient, dcDomain.write.setDomainMarket([dcMarket.address]));

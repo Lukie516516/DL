@@ -96,6 +96,7 @@ function deploymentAbi() {
     DealReader: loadAbi("DealReader.sol/DealReader.json"),
     DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
     DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
+    DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
     DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
     DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
     DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
@@ -131,7 +132,8 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomainSwap | \`${addresses.dcDomainSwap}\` | 域名入口创建普通 deal |
 | DCDomainHall | \`${addresses.dcDomainHall}\` | 域名大厅/访客匹配入口 |
 | DCDomain | \`${addresses.dcDomain}\` | 域名 NFT，复用旧地址 |
-| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名有效用户、黑名单、排行、分页排行榜 |
+| DCDomainRank | \`${addresses.dcDomainRank}\` | 域名广告充值/自动结算、域名收益、黑名单 |
+| DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、精确搜索、状态数量统计 |
 | DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
 | USDT | \`${addresses.usdt}\` | 测试稳定币 |
@@ -146,8 +148,9 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 6. 创建 \`openTokenTokenFast = true\` 的 deal 时必须传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。新的 \`DCDomainSwap\` 默认也是 120 秒。
 7. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`，旧 \`timeStart/timeEnd\` 只做兼容展示。
 8. 域名下创建币币合同如果要绑定 A 的官方身份 NFT，调用 \`DCDomainSwap.createDealWithInfoNft(..., aNftId)\`；不绑定则继续调用 \`createDeal(...)\`。
-9. 域名排行榜分页调用 \`DCDomainRank.getLeaderboard(domainName, offset, limit)\`，单次 \`limit <= 50\`。
-10. 历史奖励、信用增量、交易过程时间线不要扫 logs，改读 \`DealResultIndex.rewardOfDeal/getRewards/creditOfDeal/getCreditRecords/getTimeline\`。
+9. 域名排行榜分页调用 \`DCDomainRankReader.getLeaderboard(domainName, offset, limit)\`，单次 \`limit <= 50\`；状态数量调用 \`DCDomainRankReader.getDomainStatusCounts(domainName)\`。
+10. 域名广告充值后，deal 终局会自动结算退款；\`DCDomainRank.closeDeal(domainName, deal)\` 只作为兜底。
+11. 历史奖励、信用增量、交易过程时间线不要扫 logs，改读 \`DealResultIndex.rewardOfDeal/getRewards/creditOfDeal/getCreditRecords/getTimeline\`。
 
 ## ABI
 
@@ -175,6 +178,8 @@ deployments/${DEPLOYMENT_FILE}
 - DealInfoNFT 已授权新 Factory，并切换 primary factory 到新 Factory。
 - DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
 - DCDomainRank 已授权新的 Swap / Hall reporter。
+- DCDomainRank 已设置 \`autoCloser = DealFactory\`。
+- DCDomainRankReader 已指向新的 DCDomainRank。
 - DCDomainSwap 默认 \`replaceTimeoutSeconds = 120\` 秒；如需调整，由 owner 调 \`setReplaceTimeoutSeconds(value)\`。
 `;
   writeFileSync(file, md, "utf8");
@@ -214,39 +219,14 @@ async function main() {
   const dealAssetNftLib = requiredAddress("dealAssetNftLib", EXISTING.dealAssetNftLib);
   requiredAddress("dealCreditGraph", EXISTING.dealCreditGraph);
 
-  console.log("\n--- Deploy fresh Deal implementations ---");
-  const dealImpl = await viem.deployContract("Deal", [], { client });
-  console.log("Deal:", dealImpl.address);
-  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
-    client,
-    libraries: { DealLib: EXISTING.dealLib },
-  });
-  console.log("DealNoAsset:", dealNoAssetImpl.address);
-  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
-    client,
-    libraries: { DealLib: EXISTING.dealLib, DealAssetNftLib: dealAssetNftLib },
-  });
-  console.log("DealAAssetNft:", dealAAssetNftImpl.address);
-  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
-    client,
-    libraries: { DealLib: EXISTING.dealLib, DealAssetNftLib: dealAssetNftLib },
-  });
-  console.log("DealBAssetNft:", dealBAssetNftImpl.address);
-  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
-    client,
-    libraries: { DealAssetNftLib: dealAssetNftLib },
-  });
-  console.log("DealAAssetNftOnly:", dealAAssetNftOnlyImpl.address);
-  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
-    client,
-    libraries: { DealAssetNftLib: dealAssetNftLib },
-  });
-  console.log("DealBAssetNftOnly:", dealBAssetNftOnlyImpl.address);
-  const dealOpenTokenTokenImpl = await viem.deployContract("DealOpenTokenToken", [], {
-    client,
-    libraries: { DealLib: EXISTING.dealLib },
-  });
-  console.log("DealOpenTokenToken:", dealOpenTokenTokenImpl.address);
+  console.log("\n--- Reuse existing Deal implementations ---");
+  const dealImpl = { address: EXISTING.dealImplementation } as AnyContract;
+  const dealNoAssetImpl = { address: requiredAddress("dealNoAssetImplementation", EXISTING.dealNoAssetImplementation) } as AnyContract;
+  const dealAAssetNftImpl = { address: requiredAddress("dealAAssetNftImplementation", EXISTING.dealAAssetNftImplementation) } as AnyContract;
+  const dealBAssetNftImpl = { address: requiredAddress("dealBAssetNftImplementation", EXISTING.dealBAssetNftImplementation) } as AnyContract;
+  const dealAAssetNftOnlyImpl = { address: requiredAddress("dealAAssetNftOnlyImplementation", EXISTING.dealAAssetNftOnlyImplementation) } as AnyContract;
+  const dealBAssetNftOnlyImpl = { address: requiredAddress("dealBAssetNftOnlyImplementation", EXISTING.dealBAssetNftOnlyImplementation) } as AnyContract;
+  const dealOpenTokenTokenImpl = { address: requiredAddress("dealOpenTokenTokenImplementation", EXISTING.dealOpenTokenTokenImplementation) } as AnyContract;
 
   console.log("\n--- Deploy routing/core contracts ---");
   const factory = await viem.deployContract("DealFactory", [dealImpl.address, EXISTING.pairImplementation, 3600n], {
@@ -265,8 +245,8 @@ async function main() {
   console.log("DealImplementationRegistry:", registry.address);
   const reader = await viem.deployContract("DealReader", [], { client });
   console.log("DealReader:", reader.address);
-  const creditGraph = await viem.deployContract("DealCreditGraph", [EXISTING.dealInfoNFT], { client });
-  console.log("DealCreditGraph:", creditGraph.address);
+  const creditGraph = await viem.getContractAt("DealCreditGraph", requiredAddress("dealCreditGraph", EXISTING.dealCreditGraph), { client }) as AnyContract;
+  console.log("DealCreditGraph:", creditGraph.address, "(reused)");
 
   const newFactory = await viem.getContractAt("DealFactory", factory.address, { client }) as AnyContract;
   const newRegistry = await viem.getContractAt("DealImplementationRegistry", registry.address, { client }) as AnyContract;
@@ -336,6 +316,8 @@ async function main() {
     client,
   });
   console.log("DCDomainRank:", dcRank.address);
+  const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
+  console.log("DCDomainRankReader:", dcRankReader.address);
   const dcSwap = await viem.deployContract("DCDomainSwap", [EXISTING.dcDomain, dcRank.address, factory.address], {
     client,
   });
@@ -345,6 +327,8 @@ async function main() {
   });
   console.log("DCDomainHall:", dcHall.address);
 
+  await tx("Factory.setGlobal dcDomainRank", publicClient, newFactory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  await tx("DCDomainRank.setAutoCloser(Factory)", publicClient, dcRank.write.setAutoCloser([factory.address]));
   await tx("Factory.allow DCDomainSwap", publicClient, newFactory.write.setAllowedCreateFor([dcSwap.address, true]));
   await tx("Factory.allow DCDomainHall", publicClient, newFactory.write.setAllowedCreateFor([dcHall.address, true]));
   await tx("DCDomainRank.setDealReporter(Swap)", publicClient, dcRank.write.setDealReporter([dcSwap.address, true]));
@@ -381,6 +365,7 @@ async function main() {
     dealReader: reader.address,
     dcDomain: EXISTING.dcDomain,
     dcDomainRank: dcRank.address,
+    dcDomainRankReader: dcRankReader.address,
     dcDomainMarket: EXISTING.dcDomainMarket,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
@@ -395,11 +380,15 @@ async function main() {
   const registryFromFactory = await newFactory.read.dealImplementationRegistry() as Address;
   const resultIndexFromFactory = await newFactory.read.dealResultIndex() as Address;
   const pairManagerFromFactory = await newFactory.read.dealPairManager() as Address;
+  const rankFromFactory = await newFactory.read.dcDomainRank() as Address;
+  const autoCloser = await dcRank.read.autoCloser() as Address;
   const primaryFactory = await infoNft.read.factory() as Address;
   if (hubFromFactory.toLowerCase() !== messageHub.address.toLowerCase()) throw new Error("Factory hub mismatch");
   if (registryFromFactory.toLowerCase() !== registry.address.toLowerCase()) throw new Error("Factory registry mismatch");
   if (resultIndexFromFactory.toLowerCase() !== resultIndex.address.toLowerCase()) throw new Error("Factory result index mismatch");
   if (pairManagerFromFactory.toLowerCase() !== pairManager.address.toLowerCase()) throw new Error("Factory pair manager mismatch");
+  if (rankFromFactory.toLowerCase() !== dcRank.address.toLowerCase()) throw new Error("Factory domain rank mismatch");
+  if (autoCloser.toLowerCase() !== factory.address.toLowerCase()) throw new Error("Rank auto closer mismatch");
   if (primaryFactory.toLowerCase() !== factory.address.toLowerCase()) throw new Error("InfoNFT primary factory mismatch");
   console.log("  OK factory hub/registry/result index/pair manager and InfoNFT primary factory");
 
@@ -417,15 +406,17 @@ async function main() {
     deployedAt,
     deployer: dep,
     previousDeployment: backupFile,
-    upgrade: "event-time-messagehub-opentt-replace-timeout",
+    upgrade: "domain-auto-close-and-status-counts",
     addresses,
     abi: deploymentAbi(),
     notes: [
-      "Deal template implementations are freshly deployed; old template addresses should not be used for new deals.",
+      "Deal template implementations are reused from the previous deployment; tokens, InfoNFT, Domain, pairs, router, and order book are reused.",
       "DealMessageHub is now the normal chat entry: postMessage(deal, content).",
       "Completed/Canceled events now include when.",
       "OpenTokenToken uses replaceTimeoutSeconds for B replacement; recommended/default value is 120 seconds.",
-      "DCDomain/DCDomainMarket are reused; DCDomainRank/DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
+      "DCDomain/DCDomainMarket are reused; DCDomainRank/DCDomainRankReader/DCDomainSwap/DCDomainHall are redeployed against the new Factory.",
+      "Domain ads auto-close through Factory -> DCDomainRank.closeDealFromAutoCloser; frontend can use closeDeal only as fallback.",
+      "Domain status counts are exposed through DCDomainRankReader.getDomainStatusCounts(domainName).",
     ],
   };
 

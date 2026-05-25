@@ -166,6 +166,8 @@ async function deployDomainFixture() {
   await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
   await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  await waitFor(publicClient, await factory.write.setGlobal(["dcDomainRank", dcDomainRank.address]));
+  await waitFor(publicClient, await dcDomainRank.write.setAutoCloser([factory.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(
     publicClient,
@@ -788,10 +790,16 @@ describe("Domain Flows", async function () {
     ]);
     assert.equal(statusBeforeComplete[0], depositAmount);
 
+    await assert.rejects(
+      rankAsBob.write.closeDealFromAutoCloser(["rank11", deal1]),
+      /not auto closer/,
+    );
+
     await waitFor(publicClient, await deal1AsBob.write.pay());
     await waitFor(publicClient, await deal1AsCarol.write.join([0n, false]));
     await waitFor(publicClient, await deal1AsCarol.write.pay());
     await waitFor(publicClient, await deal1AsBob.write.setMyVote([ACCEPT]));
+    const bobBalanceBeforeComplete = await dl.read.balanceOf([bob.account.address]);
     await waitFor(publicClient, await deal1AsCarol.write.setMyVote([ACCEPT]));
 
     const completedStatus = await rankAsBob.read.myDealStatusOf([
@@ -799,6 +807,13 @@ describe("Domain Flows", async function () {
       deal1,
       bob.account.address,
     ]);
+    const bobBalanceAfterComplete = await dl.read.balanceOf([bob.account.address]);
+    const refundedOnComplete = bobBalanceAfterComplete - bobBalanceBeforeComplete;
+    assert.ok(refundedOnComplete > 0n);
+    assert.ok(refundedOnComplete < statusBeforeComplete[0]);
+    assert.equal(completedStatus[0], 0n, "terminal auto-close should refund remaining deposit");
+    assert.equal(completedStatus[3], false);
+
     await testClient.setNextBlockTimestamp({ timestamp: (await publicClient.getBlock()).timestamp + 30n * 24n * 3600n });
     await testClient.mine({ blocks: 1 });
     const afterLongWait = await rankAsBob.read.myDealStatusOf([
@@ -806,12 +821,18 @@ describe("Domain Flows", async function () {
       deal1,
       bob.account.address,
     ]);
-    assert.equal(afterLongWait[0], completedStatus[0], "terminal deals should stop ad billing at endedAt");
+    assert.equal(afterLongWait[0], 0n, "terminal deals should stop ad billing at endedAt");
 
     const visibleAfterComplete = await dcDomainRankReader.read.getLeaderboard(["rank11", 10n]);
     assert.equal(visibleAfterComplete.length, 1);
     assert.equal(getAddress(visibleAfterComplete[0].deal), getAddress(deal2));
     assert.equal(await dcDomainRankReader.read.domainEntryCount(["rank11"]), 1n);
+    const countsAfterComplete = await dcDomainRankReader.read.getDomainStatusCounts(["rank11"]);
+    assert.equal(countsAfterComplete.completed, 1n);
+    assert.equal(countsAfterComplete.pending, 1n);
+    assert.equal(countsAfterComplete.inProgress, 0n);
+    assert.equal(countsAfterComplete.failed, 0n);
+    assert.equal(countsAfterComplete.total, 2n);
 
     const dealInfoAfterComplete = await dcDomainRankReader.read.getDomainDealInfo(["rank11", deal1]);
     assert.equal(dealInfoAfterComplete[0], true);
@@ -819,7 +840,7 @@ describe("Domain Flows", async function () {
     assert.equal(dealInfoAfterComplete[2], false, "terminal deal should be searchable but hidden from leaderboard");
     assert.equal(dealInfoAfterComplete[3], 3);
     assert.ok(dealInfoAfterComplete[4] > 0n);
-    assert.equal(dealInfoAfterComplete[5], completedStatus[0]);
+    assert.equal(dealInfoAfterComplete[5], 0n);
 
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, depositAmount]));
     await assert.rejects(
@@ -827,10 +848,8 @@ describe("Domain Flows", async function () {
       /deal closed/,
     );
 
-    const bobBalanceBeforeClose = await dl.read.balanceOf([bob.account.address]);
     await waitFor(publicClient, await rankAsAlicePolicy.write.closeDeal(["rank11", deal1]));
-    const bobBalanceAfterClose = await dl.read.balanceOf([bob.account.address]);
-    assert.equal(bobBalanceAfterClose - bobBalanceBeforeClose, completedStatus[0]);
+    assert.equal(await dl.read.balanceOf([bob.account.address]), bobBalanceAfterComplete);
     const dealInfoAfterClose = await dcDomainRankReader.read.getDomainDealInfo(["rank11", deal1]);
     assert.equal(dealInfoAfterClose[0], true);
     assert.equal(dealInfoAfterClose[2], false);
@@ -842,7 +861,7 @@ describe("Domain Flows", async function () {
       /nothing to withdraw/,
     );
     const pendingAfterTerminalWithdraw = await dcDomainRank.read.pendingHolderRewards(["rank11"]);
-    assert.ok(pendingAfterTerminalWithdraw > pendingBeforeWithdraw);
+    assert.ok(pendingAfterTerminalWithdraw >= pendingBeforeWithdraw);
     const balanceBeforeReward = await dl.read.balanceOf([alice.account.address]);
     await waitFor(publicClient, await rankAsAlicePolicy.write.withdraw(["rank11"]));
     const balanceAfterReward = await dl.read.balanceOf([alice.account.address]);

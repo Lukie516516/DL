@@ -45,6 +45,7 @@ contract DCDomainRank is ReentrancyGuard {
     IDCDomain public immutable dcDomain;
     address   public owner;
     address   public treasury;
+    address   public autoCloser;
 
     uint256 public minDeposit = 50 ether;
     uint256 public baseHourlyRate = 500 ether;
@@ -69,6 +70,7 @@ contract DCDomainRank is ReentrancyGuard {
     mapping(string => DealMerchantEntry[]) private _domainEntries;
     mapping(string => mapping(address => mapping(address => bool))) private _entryInList;
     mapping(string => mapping(address => address)) private _merchantOfDeal;
+    mapping(string => mapping(address => bool)) private _dealAdClosed;
 
     // domain -> deal -> merchant -> 最近 deposit 时间
     mapping(string => mapping(address => mapping(address => uint256))) private _lastDepositAt;
@@ -122,6 +124,7 @@ contract DCDomainRank is ReentrancyGuard {
     );
     event BlacklistedSet(string indexed domain, address indexed account, bool banned);
     event KickInactivitySecondsSet(uint256 seconds_);
+    event AutoCloserSet(address indexed closer);
     event DomainAdFeePolicySet(
         string domain,
         uint8 mode,
@@ -499,15 +502,15 @@ contract DCDomainRank is ReentrancyGuard {
         if (changed) emit LeaderboardUpdated(domainName);
     }
 
-    /// @notice 交易终局后，任何人都可触发广告位结算并把未消耗余额退回原充值商家。
-    function closeDeal(string calldata domainName, address deal)
-        external
-        nonReentrant
+    function _closeDeal(string memory domainName, address deal, bool checkTerminal)
+        internal
         returns (uint256 refunded, uint256 consumed)
     {
+        if (_dealAdClosed[domainName][deal]) return (0, 0);
+
         address merchantAddr = _merchantOfDeal[domainName][deal];
         require(merchantAddr != address(0), "DCDomainRank: deal not reported");
-        require(_isDealTerminal(deal), "DCDomainRank: deal not closed");
+        if (checkTerminal) require(_isDealTerminal(deal), "DCDomainRank: deal not closed");
 
         Player storage p = _dealPlayers[domainName][deal][merchantAddr];
         uint256 before_ = p.depositedDC;
@@ -518,6 +521,7 @@ contract DCDomainRank is ReentrancyGuard {
         consumed = before_ - refunded;
         p.depositedDC = 0;
         p.active = false;
+        _dealAdClosed[domainName][deal] = true;
 
         if (refunded > 0) {
             require(dcToken.transfer(merchantAddr, refunded), "DCDomainRank: refund failed");
@@ -526,6 +530,25 @@ contract DCDomainRank is ReentrancyGuard {
         emit Withdrawn(merchantAddr, domainName, deal, refunded, p.totalConsumed);
         emit DealAdClosed(domainName, deal, merchantAddr, refunded, p.totalConsumed);
         emit LeaderboardUpdated(domainName);
+    }
+
+    /// @notice 交易终局后，任何人都可触发广告位结算并把未消耗余额退回原充值商家。
+    function closeDeal(string calldata domainName, address deal)
+        external
+        nonReentrant
+        returns (uint256 refunded, uint256 consumed)
+    {
+        return _closeDeal(domainName, deal, true);
+    }
+
+    /// @notice Factory terminal callback path. Some old templates notify before writing Abandoned status.
+    function closeDealFromAutoCloser(string calldata domainName, address deal)
+        external
+        nonReentrant
+        returns (uint256 refunded, uint256 consumed)
+    {
+        require(msg.sender == autoCloser, "DCDomainRank: not auto closer");
+        return _closeDeal(domainName, deal, false);
     }
 
     // ═══════════════════════════════════════════
@@ -779,6 +802,12 @@ contract DCDomainRank is ReentrancyGuard {
     function setTreasury(address newTreasury) external onlyOwner {
         require(newTreasury != address(0), "ZERO_TREASURY");
         treasury = newTreasury;
+    }
+
+    function setAutoCloser(address closer) external onlyOwner {
+        require(closer != address(0), "DCDomainRank: zero closer");
+        autoCloser = closer;
+        emit AutoCloserSet(closer);
     }
 
     function setMinDeposit(uint256 newMin) external onlyOwner {
