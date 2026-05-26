@@ -145,6 +145,10 @@ async function deployDomainFixture() {
   const dcDomainRankReader = await viem.deployContract("DCDomainRankReader", [
     dcDomainRank.address,
   ]);
+  const dcDomainListReader = await viem.deployContract("DCDomainListReader", [
+    dcDomain.address,
+    dcDomainRank.address,
+  ]);
   const dcDomainHall = await viem.deployContract("DCDomainHall", [
     dcDomainRank.address,
     dcDomain.address,
@@ -159,14 +163,20 @@ async function deployDomainFixture() {
   const mintAmount = 10_000_000n * ONE;
   const minterRole = await dl.read.MINTER_ROLE();
 
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dcDomainRank", dcDomainRank.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    infoNft.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
+  await waitFor(publicClient, await factory.write.setServiceGlobals([
+    dealMessageHub.address,
+    zeroAddress,
+    dealActivityIndex.address,
+    zeroAddress,
+    dealImplementationRegistry.address,
+  ]));
+  await waitFor(publicClient, await factory.write.setOpsGlobals([zeroAddress, zeroAddress, dcDomainRank.address]));
   await waitFor(publicClient, await dcDomainRank.write.setAutoCloser([factory.address]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(
@@ -200,14 +210,14 @@ async function deployDomainFixture() {
   }
 
   async function createAndInitPair(tokenAddress: Address) {
-    await waitFor(publicClient, await factory.write.createPair([tokenAddress, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([tokenAddress]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([tokenAddress, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([tokenAddress]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
     const token = await viem.getContractAt("DCToken", tokenAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000_000n * ONE]));
     await waitFor(publicClient, await token.write.transfer([pairAddress, 1_000_000n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
 
     return { pairAddress, pair };
   }
@@ -261,6 +271,7 @@ async function deployDomainFixture() {
     dcDomainMarket,
     dcDomainRank,
     dcDomainRankReader,
+    dcDomainListReader,
     dcDomainHall,
     dcDomainSwap,
     registerDomain,
@@ -596,6 +607,104 @@ describe("Domain Flows", async function () {
     assert.equal(await deal.read.domainName(), "swp123");
     assert.equal(await dcDomainRank.read.domainDealCount(["swp123"]), 1n);
     assert.equal(await dcDomainRank.read.globalDomainCount(), 1n);
+  });
+
+  it("lists domains by trade volume and supports exact search plus creator pages", async function () {
+    const fixture = await deployDomainFixture();
+    const {
+      viem,
+      publicClient,
+      alice,
+      bob,
+      carol,
+      ausd,
+      usdt,
+      dcDomain,
+      dcDomainRank,
+      dcDomainListReader,
+      dcDomainSwap,
+    } = fixture;
+
+    const id1 = await fixture.registerDomain(alice, "dmn111");
+    const id2 = await fixture.registerDomain(bob, "dmn222");
+    const id3 = await fixture.registerDomain(alice, "dmn333");
+
+    const domainAsAlice = await viem.getContractAt("DCDomain", dcDomain.address, {
+      client: { wallet: alice },
+    });
+    await waitFor(publicClient, await domainAsAlice.write.setResolve(["dmn111", carol.account.address]));
+
+    const swapAsAlice = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
+      client: { wallet: alice },
+    });
+    const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
+      client: { wallet: bob },
+    });
+
+    await waitFor(
+      publicClient,
+      await swapAsAlice.write.createDeal([
+        "dmn111",
+        ausd.address,
+        10n * ONE,
+        usdt.address,
+        20n * ONE,
+        "",
+        "",
+        zeroAddress,
+      ]),
+    );
+    await waitFor(
+      publicClient,
+      await swapAsBob.write.createDeal([
+        "dmn222",
+        ausd.address,
+        40n * ONE,
+        usdt.address,
+        50n * ONE,
+        "",
+        "",
+        zeroAddress,
+      ]),
+    );
+
+    assert.equal(await dcDomain.read.creatorOf([id1]), getAddress(alice.account.address));
+    assert.equal(await dcDomain.read.creatorOf([id2]), getAddress(bob.account.address));
+    assert.equal(await dcDomain.read.creatorOf([id3]), getAddress(alice.account.address));
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["dmn111"]), 30n * ONE);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["dmn222"]), 90n * ONE);
+
+    const firstPage = await dcDomainListReader.read.getDomainsByVolume([0n, 2n]);
+    assert.equal(firstPage.length, 2);
+    assert.equal(firstPage[0].domainName, "dmn222");
+    assert.equal(firstPage[0].tokenId, id2);
+    assert.equal(firstPage[0].tradeVolume, 90n * ONE);
+    assert.equal(firstPage[1].domainName, "dmn111");
+    assert.equal(firstPage[1].tokenId, id1);
+
+    const secondPage = await dcDomainListReader.read.getDomainsByVolume([2n, 2n]);
+    assert.equal(secondPage.length, 1);
+    assert.equal(secondPage[0].domainName, "dmn333");
+    assert.equal(secondPage[0].tokenId, id3);
+    assert.equal(secondPage[0].tradeVolume, 0n);
+
+    const byName = await dcDomainListReader.read.getDomainByName(["dmn111"]);
+    assert.equal(byName[0], true);
+    assert.equal(byName[1].domainName, "dmn111");
+    assert.equal(getAddress(byName[1].resolved), getAddress(carol.account.address));
+
+    const byId = await dcDomainListReader.read.getDomainById([id2]);
+    assert.equal(byId[0], true);
+    assert.equal(byId[1].domainName, "dmn222");
+
+    const byResolve = await dcDomainListReader.read.getDomainsByResolve([carol.account.address, 0n, 10n]);
+    assert.equal(byResolve.length, 1);
+    assert.equal(byResolve[0].domainName, "dmn111");
+
+    const byCreator = await dcDomainListReader.read.getDomainsByCreator([alice.account.address, 0n, 10n]);
+    assert.equal(byCreator.length, 2);
+    assert.equal(byCreator[0].domainName, "dmn111");
+    assert.equal(byCreator[1].domainName, "dmn333");
   });
 
   it("allows DCDomainSwap to create domain deals with creator DealInfoNFT identity", async function () {

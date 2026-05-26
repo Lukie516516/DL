@@ -124,14 +124,19 @@ async function deployFixture() {
   const mintAmount = 10_000_000n * ONE;
   const minterRole = await dl.read.MINTER_ROLE();
 
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealResultIndex", dealResultIndex.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    infoNft.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
+  await waitFor(publicClient, await factory.write.setServiceGlobals([
+    dealMessageHub.address,
+    zeroAddress,
+    dealActivityIndex.address,
+    dealResultIndex.address,
+    dealImplementationRegistry.address,
+  ]));
   await waitFor(
     publicClient,
     await factory.write.setRecognizedTokens([ausd.address, usdt.address]),
@@ -149,20 +154,20 @@ async function deployFixture() {
   }
 
   async function createAndInitPair(tokenAddress: Address, tokenContractName = "DCToken") {
-    await waitFor(publicClient, await factory.write.createPair([tokenAddress, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([tokenAddress]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([tokenAddress, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([tokenAddress]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
     const token = await viem.getContractAt(tokenContractName, tokenAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000_000n * ONE]));
     await waitFor(publicClient, await token.write.transfer([pairAddress, 1_000_000n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
 
     return { pairAddress, pair };
   }
 
   async function mintInfoNft(wallet: typeof owner | typeof alice | typeof bob) {
-    let pairAddress = await factory.read.pairForToken([ausd.address]);
+    let pairAddress = await dealPairManager.read.pairForToken([ausd.address]);
     if (pairAddress === zeroAddress) {
       ({ pairAddress } = await createAndInitPair(ausd.address));
     }
@@ -238,7 +243,13 @@ async function assertCloneUsesImplementation(
 async function enableCreditGraph(fixture: Awaited<ReturnType<typeof deployFixture>>) {
   const { viem, publicClient, owner, factory, infoNft } = fixture;
   const creditGraph = await viem.deployContract("DealCreditGraph", [infoNft.address]);
-  await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", creditGraph.address]));
+  await waitFor(publicClient, await factory.write.setServiceGlobals([
+    zeroAddress,
+    creditGraph.address,
+    zeroAddress,
+    zeroAddress,
+    zeroAddress,
+  ]));
   await waitFor(publicClient, await creditGraph.write.setRecorder([factory.address, true]));
   // Test-only seeding helper; production recorders should be constrained to Factory/authorized modules.
   await waitFor(publicClient, await creditGraph.write.setRecorder([owner.account.address, true]));
@@ -709,7 +720,13 @@ describe("Deal Rules", async function () {
     await waitFor(publicClient, await replacementGraph.write.importCredit([aliceInfoId, aliceScore, alicePeers]));
     await waitFor(publicClient, await replacementGraph.write.importCredit([bobInfoId, bobScore, bobPeers]));
     await waitFor(publicClient, await replacementGraph.write.setRecorder([factory.address, true]));
-    await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", replacementGraph.address]));
+    await waitFor(publicClient, await factory.write.setServiceGlobals([
+      zeroAddress,
+      replacementGraph.address,
+      zeroAddress,
+      zeroAddress,
+      zeroAddress,
+    ]));
     await waitFor(publicClient, await replacementGraph.write.lockMigration());
 
     assert.equal(await replacementGraph.read.creditScore([aliceInfoId]), aliceScore);

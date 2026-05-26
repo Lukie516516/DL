@@ -1,6 +1,6 @@
 # 深度回归与安全审计摘要
 
-**范围**：当前分支 `contracts/` 内 Deal / OpenTT / Factory / MessageHub 相关逻辑；重点覆盖近期变更（进程事件时间戳、`DealRewardsLogged` / `logDealRewards`、`DealMessageHub.postMessage` 含 `Canceled` / `Abandoned`）。
+**范围**：当前分支 `contracts/` 内 Deal / OpenTT / Factory / MessageHub 相关逻辑；重点覆盖近期变更（进程事件时间戳、`DealRewardsLogged` / `mintAndRecordDealRewards`、`DealMessageHub.postMessage` 含 `Canceled` / `Abandoned`）。
 
 **结论（执行层）**：Hardhat 与 Foundry 全套测试通过；Slither 在既有排除规则下未暴露需立即阻断的单一「高危」条目，但存在大量信息级/风格类告警，需结合业务人工筛。
 
@@ -46,9 +46,10 @@
 - Hub 校验 `factory.isDeal(deal)`，并读取该 deal 当前 `a()` / `b()`，只允许当前 A/B 写入。
 - Hub 不额外限制 `status`，所以 `Completed` / `Canceled` / `Abandoned` 后只要仍是当前参与方也可留言。
 
-### 3.2 `DealFactory.logDealRewards`
+### 3.2 `DealFactory.mintAndRecordDealRewards`
 
-- `onlyDeal`：仅已登记 clone 可调用；事件参数顺序为 `(deal, partyA, partyB, toA, toB, cAddr, toC)`，与 `RewardsMinted` 数据对齐，供索引单点订阅。
+- `onlyDeal`：仅已登记 clone 可调用；成交时批量完成 DL 奖励 mint、`DealResultIndex.recordReward`、`DealRewardsLogged`、InfoNFT minted 累计记录。
+- `DealRewardsLogged` 事件参数顺序为 `(deal, partyA, partyB, toA, toB, cAddr, toC)`，与 `RewardsMinted` 数据对齐，供索引单点订阅。
 
 ### 3.3 进程事件与时间戳
 

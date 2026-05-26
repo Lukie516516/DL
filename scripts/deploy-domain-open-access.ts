@@ -20,6 +20,7 @@ import { defineChain, formatEther, getAddress, isAddress, type Address } from "v
 
 const AGIKING_CHAIN_ID = 31415926;
 const DEPLOYMENT_FILE = "agiking-31415926.json";
+const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 type DeploymentJson = {
   chainId: number;
@@ -198,7 +199,7 @@ async function main() {
 
   console.log("\n--- Wire permissions ---");
   const factory = await viem.getContractAt("DealFactory", oldAddresses.dealFactory, { client });
-  await tx("Factory.setGlobal dcDomainRank", publicClient, factory.write.setGlobal(["dcDomainRank", rank.address]));
+  await tx("Factory.setOpsGlobals dcDomainRank", publicClient, factory.write.setOpsGlobals([ZERO, ZERO, rank.address]));
   await tx("Rank.setAutoCloser Factory", publicClient, rank.write.setAutoCloser([oldAddresses.dealFactory]));
   if (await factory.read.isAllowedCreateFor([swap.address])) {
     console.log("  OK Factory.allow DCDomainSwap: already true");

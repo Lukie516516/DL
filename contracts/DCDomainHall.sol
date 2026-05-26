@@ -8,6 +8,7 @@ interface IDCDomainRankForHall {
     function isActive(string calldata domainName, address playerAddr) external view returns (bool);
     function isBlacklisted(string calldata domainName, address account) external view returns (bool);
     function reportDeal(string calldata domainName, address deal, address merchant) external;
+    function reportDealWithVolume(string calldata domainName, address deal, address merchant, uint256 volume) external;
 }
 
 interface IDCDomainForHall {
@@ -254,7 +255,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
-        rank.reportDeal(domainName, deal, msg.sender);
+        rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount);
         emit HallDealCreatedDeferred(domainName, msg.sender, deal, templateType);
     }
 
@@ -391,7 +392,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
-        rank.reportDeal(domainName, deal, msg.sender);
+        rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit HallDealWithPickedUser(
             domainName,
@@ -455,7 +456,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
-        rank.reportDeal(domainName, deal, msg.sender);
+        rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit HallDealCreatedDeferred(
             domainName,

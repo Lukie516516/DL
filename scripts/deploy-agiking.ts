@@ -62,6 +62,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomain | \`${addresses.dcDomain}\` | 域名 NFT |
 | DCDomainRank | \`${addresses.dcDomainRank}\` | 域名黑名单、广告充值/结算、域名收益 |
 | DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情 |
+| DCDomainListReader | \`${addresses.dcDomainListReader}\` | 域名列表分页、按成交额排序、按名称/ID/解析地址/创建者查询 |
 | DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
 | DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
@@ -79,7 +80,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 3. 点对点币币公开单使用新的 \`DealOpenTokenToken\` ABI，关注 \`replaceInactiveBAndJoin\`、\`replaceNonVotingBAndJoin\`、\`replaceTimeoutSeconds\`。
 4. 交易过程时间线读 \`DealResultIndex.getTimeline\`；历史奖励/信用增量读 \`DealResultIndex\`，不要扫历史 logs。
 5. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`。
-6. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`。
+6. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`；域名列表切到 \`DCDomainListReader.getDomainsByVolume/getDomainsByCreator\`。
 7. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 8. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 9. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`。
@@ -216,14 +217,12 @@ async function main() {
 
   const minterRole = await dl.read.MINTER_ROLE();
 
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["creditGraph", creditGraph.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealResultIndex", dealResultIndex.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    infoNft.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
   await waitFor(
     publicClient,
     await dealImplementationRegistry.write.setDealImplementations([
@@ -236,7 +235,13 @@ async function main() {
       dealOpenTokenTokenImpl.address,
     ]),
   );
-  await waitFor(publicClient, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  await waitFor(publicClient, await factory.write.setServiceGlobals([
+    dealMessageHub.address,
+    creditGraph.address,
+    dealActivityIndex.address,
+    dealResultIndex.address,
+    dealImplementationRegistry.address,
+  ]));
   await waitFor(publicClient, await creditGraph.write.setRecorder([factory.address, true]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(publicClient, await factory.write.setTreasuryByAdmin([dep]));
@@ -248,12 +253,12 @@ async function main() {
   }
 
   async function createInitPair(tokenAddr: Address) {
-    await waitFor(publicClient, await factory.write.createPair([tokenAddr, 3, 1000]));
-    const pair = await factory.read.pairForToken([tokenAddr]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([tokenAddr, 3, 1000]));
+    const pair = await dealPairManager.read.pairForToken([tokenAddr]);
     await waitFor(publicClient, await dl.write.transfer([pair, 1_000_000n * ONE]));
     const t = await viem.getContractAt("DCToken", tokenAddr, { client });
     await waitFor(publicClient, await t.write.transfer([pair, 1_000_000n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pair, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pair, 0n]));
     return pair;
   }
 
@@ -267,7 +272,7 @@ async function main() {
   const orderBook = await viem.deployContract("DealSwapOrderBook", [dep], { client });
   console.log("DealSwapOrderBook", orderBook.address);
 
-  await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", orderBook.address]));
+  await waitFor(publicClient, await factory.write.setOpsGlobals([orderBook.address, zeroAddress, zeroAddress]));
 
   const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address], {
     client,
@@ -288,7 +293,9 @@ async function main() {
   console.log("DCDomainRank", dcRank.address);
   const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
   console.log("DCDomainRankReader", dcRankReader.address);
-  await waitFor(publicClient, await factory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  const dcDomainListReader = await viem.deployContract("DCDomainListReader", [dcDomain.address, dcRank.address], { client });
+  console.log("DCDomainListReader", dcDomainListReader.address);
+  await waitFor(publicClient, await factory.write.setOpsGlobals([zeroAddress, zeroAddress, dcRank.address]));
   await waitFor(publicClient, await dcRank.write.setAutoCloser([factory.address]));
 
   const dcMarket = await viem.deployContract(
@@ -324,7 +331,7 @@ async function main() {
 
   const nftActivity = await viem.deployContract("DealNftGovernanceActivity", [infoNft.address], { client });
   console.log("DealNftGovernanceActivity", nftActivity.address);
-  await waitFor(publicClient, await factory.write.setGlobal(["dealNftGovernanceActivity", nftActivity.address]));
+  await waitFor(publicClient, await factory.write.setOpsGlobals([zeroAddress, nftActivity.address, zeroAddress]));
 
   const nftVetoRegistry = await viem.deployContract("NftVetoRegistry", [infoNft.address, nftActivity.address], { client });
   console.log("NftVetoRegistry", nftVetoRegistry.address);
@@ -380,6 +387,7 @@ async function main() {
     dcDomain: dcDomain.address,
     dcDomainRank: dcRank.address,
     dcDomainRankReader: dcRankReader.address,
+    dcDomainListReader: dcDomainListReader.address,
     dcDomainMarket: dcMarket.address,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
@@ -422,6 +430,7 @@ async function main() {
       DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
       DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
+      DCDomainListReader: loadAbi("DCDomainListReader.sol/DCDomainListReader.json"),
       DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),

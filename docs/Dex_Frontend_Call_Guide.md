@@ -12,6 +12,7 @@
 - `DealSwapTemplate`
 - `DealSwapOrderBook`
 - `DealFactory`
+- `DealSwapAssetRegistry`
 
 ---
 
@@ -29,6 +30,16 @@
 - `Router` 已经带 `minOut / maxIn`
 - `Router` 已经兼容 hybrid exact-in
 - `Router` 已经兼容 WNATIVE / ETH 路径
+
+官方三资产入口：
+
+| 资产 | Pair |
+| --- | --- |
+| AGI | `DL-AGI` |
+| USDT | `DL-USDT` |
+| AUSD | `DL-AUSD` |
+
+前端优先通过 `DealSwapAssetRegistry.getSwapPairSet()` 读取 `pairDlAgi / pairDlUsdt / pairDlAusd / router`，避免写死地址。
 
 ### 1.2 池子展示 / 报价展示
 
@@ -297,10 +308,10 @@
 
 ---
 
-## 6. Factory：运营后台要接的接口
+## 6. PairManager：运营后台要接的接口
 
 文件：
-- `contracts/DealFactory.sol`
+- `contracts/DealPairManager.sol`
 
 ### 6.1 新增 / 这次需要补上的
 
@@ -320,15 +331,13 @@
 `mintPairOtherAndSettle`
 - owner 先往 pair 补 `OTHER`
 - 调 pair 的 `mintOtherOnly()`
-- 再尝试 `settlePair(pair, 1, 8)`
-- 就算结算失败，本次补仓也不回滚
+- 再调用 `settlePair(pair, 1, 8)`
+- 如果当前配置的 order book 结算失败，本次补仓交易会回滚；运营可先修正 order book 或临时不配置 order book 后再补仓
 
 ### 6.2 其它前端可能会读的
 
-- `pairForToken(token)`
-- `getPair(token)`
-- `isTokenSupported(token)`
-- `updateAndQuoteToDL(pair, amountIn)`
+- `DealPairManager.pairForToken(token)`
+- `DealSwapAssetRegistry.getSwapPairSet()`
 
 注意：
 - `updateAndQuoteToDL` 不是普通用户前端随便调的公共报价口
@@ -378,9 +387,9 @@
 ### 7.4 运营后台页
 
 建议接：
-- `setPairVirtualReserves`
-- `setPairVirtualReservesByBps`
-- `mintPairOtherAndSettle`
+- `DealPairManager.setPairVirtualReserves`
+- `DealPairManager.setPairVirtualReservesByBps`
+- `DealPairManager.mintPairOtherAndSettle`
 
 ---
 
@@ -550,6 +559,6 @@
 - 如果超过本次用户可接受范围，交易会 `revert`
 
 运营后台：
-- 补 `setPairVirtualReserves`
-- 补 `setPairVirtualReservesByBps`
-- 补 `mintPairOtherAndSettle`
+- 补 `DealPairManager.setPairVirtualReserves`
+- 补 `DealPairManager.setPairVirtualReservesByBps`
+- 补 `DealPairManager.mintPairOtherAndSettle`

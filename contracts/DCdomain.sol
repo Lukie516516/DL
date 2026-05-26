@@ -44,6 +44,12 @@ contract DCDomain is ERC721, Ownable {
     /// tokenId → 域名字符串
     mapping(uint256 => string) private _tokenIdToDomain;
 
+    /// tokenId → 首次注册创建者
+    mapping(uint256 => address) private _creatorOfToken;
+
+    /// 创建者 → 其创建过的 tokenId 列表
+    mapping(address => uint256[]) private _createdTokensBy;
+
     /// 地址 → 主域名（可选，用户可设置）
     mapping(address => string) public primaryDomain;
 
@@ -99,6 +105,8 @@ contract DCDomain is ERC721, Ownable {
         _safeMint(msg.sender, tokenId);
         _domainToTokenId[domainName] = tokenId;
         _tokenIdToDomain[tokenId] = domainName;
+        _creatorOfToken[tokenId] = msg.sender;
+        _createdTokensBy[msg.sender].push(tokenId);
 
         resolve[domainName] = msg.sender;
 
@@ -301,6 +309,36 @@ contract DCDomain is ERC721, Ownable {
     /// @notice 已注册域名 NFT 总数（等于当前最大 tokenId，无 burn）
     function totalDomains() external view returns (uint256) {
         return _tokenIdCounter;
+    }
+
+    function creatorOf(uint256 tokenId) external view returns (address) {
+        require(bytes(_tokenIdToDomain[tokenId]).length > 0, "DCDomain: token not exist");
+        return _creatorOfToken[tokenId];
+    }
+
+    function createdDomainCount(address creator) external view returns (uint256) {
+        return _createdTokensBy[creator].length;
+    }
+
+    function createdDomainTokenAt(address creator, uint256 index) external view returns (uint256) {
+        return _createdTokensBy[creator][index];
+    }
+
+    function createdDomainTokens(address creator, uint256 offset, uint256 limit)
+        external
+        view
+        returns (uint256[] memory tokenIds)
+    {
+        require(limit <= 100, "DCDomain: limit too large");
+        uint256 total = _createdTokensBy[creator].length;
+        if (offset >= total) return new uint256[](0);
+        uint256 remaining = total - offset;
+        uint256 n = remaining < limit ? remaining : limit;
+        tokenIds = new uint256[](n);
+        for (uint256 i; i < n; ) {
+            tokenIds[i] = _createdTokensBy[creator][offset + i];
+            unchecked { ++i; }
+        }
     }
 
     // ─────────────────────────────────────────────

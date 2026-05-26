@@ -56,24 +56,24 @@ async function ensureRecognizedTokens(
 }
 
 async function ensurePair(
-  factory: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getContractAt"]>>,
+  pairManager: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getContractAt"]>>,
   publicClient: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getPublicClient"]>>,
   token: Address,
   label: string,
   feeNum: number,
   feeDen: number,
 ): Promise<Address> {
-  const existing = await factory.read.pairForToken([token]);
+  const existing = await pairManager.read.pairForToken([token]);
   if (existing !== ZERO_ADDRESS) {
     console.log(`${label} pair already exists at ${existing}`);
     return existing;
   }
 
   console.log(`Creating ${label} pair...`);
-  const hash = await factory.write.createPair([token, feeNum, feeDen]);
+  const hash = await pairManager.write.createPair([token, feeNum, feeDen]);
   await waitFor(publicClient, hash);
 
-  const created = await factory.read.pairForToken([token]);
+  const created = await pairManager.read.pairForToken([token]);
   if (created === ZERO_ADDRESS) {
     throw new Error(`Pair creation failed for ${label}`);
   }
@@ -85,6 +85,7 @@ async function ensurePair(
 async function maybeInitPair(
   viem: Awaited<ReturnType<typeof network.connect>>["viem"],
   factory: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getContractAt"]>>,
+  pairManager: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getContractAt"]>>,
   publicClient: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getPublicClient"]>>,
   pair: Address,
   token: Address,
@@ -122,7 +123,7 @@ async function maybeInitPair(
   await waitFor(publicClient, hash);
 
   console.log(`Initializing ${label} pair...`);
-  hash = await factory.write.initPair([pair, 0n]);
+  hash = await pairManager.write.initPair([pair, 0n]);
   await waitFor(publicClient, hash);
   console.log(`${label} pair initialized.`);
 }
@@ -143,18 +144,21 @@ async function main() {
   const { viem } = await network.connect();
   const publicClient = await viem.getPublicClient();
   const factory = await viem.getContractAt("DealFactory", factoryAddress);
+  const pairManagerAddress = await factory.read.dealPairManager();
+  if (pairManagerAddress === ZERO_ADDRESS) throw new Error("Factory dealPairManager is not configured");
+  const pairManager = await viem.getContractAt("DealPairManager", pairManagerAddress);
 
   console.log(`Factory: ${factoryAddress}`);
   console.log(`Default recognized tokens: AUSD=${ausd}, USDT=${usdt}`);
 
   await ensureRecognizedTokens(factory, publicClient, ausd, usdt);
 
-  const ausdPair = await ensurePair(factory, publicClient, ausd, "AUSD", pairFeeNum, pairFeeDen);
-  const usdtPair = await ensurePair(factory, publicClient, usdt, "USDT", pairFeeNum, pairFeeDen);
+  const ausdPair = await ensurePair(pairManager, publicClient, ausd, "AUSD", pairFeeNum, pairFeeDen);
+  const usdtPair = await ensurePair(pairManager, publicClient, usdt, "USDT", pairFeeNum, pairFeeDen);
 
   if (!skipInit) {
-    await maybeInitPair(viem, factory, publicClient, ausdPair, ausd, "AUSD", ausdInitDl, ausdInitToken);
-    await maybeInitPair(viem, factory, publicClient, usdtPair, usdt, "USDT", usdtInitDl, usdtInitToken);
+    await maybeInitPair(viem, factory, pairManager, publicClient, ausdPair, ausd, "AUSD", ausdInitDl, ausdInitToken);
+    await maybeInitPair(viem, factory, pairManager, publicClient, usdtPair, usdt, "USDT", usdtInitDl, usdtInitToken);
   } else {
     console.log("Skipping pair initialization because SKIP_INIT is enabled.");
   }

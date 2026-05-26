@@ -60,19 +60,22 @@ async function deployDexFixture() {
     await waitFor(publicClient, await token.write.mint([bob.account.address, mintAmount]));
   }
 
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    owner.account.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
   await waitFor(publicClient, await orderBook.write.setRouter([router.address]));
 
   async function createPairWithReserves(dlAmount: bigint, otherAmount: bigint) {
-    await waitFor(publicClient, await factory.write.createPair([other.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([other.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([other.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([other.address]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, dlAmount]));
     await waitFor(publicClient, await other.write.transfer([pairAddress, otherAmount]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
 
     return { pairAddress, pair };
   }
@@ -82,17 +85,17 @@ async function deployDexFixture() {
     otherReal: bigint,
     virtualOther: bigint,
   ) {
-    await waitFor(publicClient, await factory.write.createPair([other.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([other.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([other.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([other.address]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, dlAmount]));
     await waitFor(publicClient, await other.write.transfer([pairAddress, otherReal]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     if (virtualOther > 0n) {
       await waitFor(
         publicClient,
-        await factory.write.setPairVirtualReserves([pairAddress, 0n, false, virtualOther, true]),
+        await dealPairManager.write.setPairVirtualReserves([pairAddress, 0n, false, virtualOther, true]),
       );
     }
 
@@ -111,6 +114,7 @@ async function deployDexFixture() {
     other,
     wrappedNative,
     factory,
+    dealPairManager,
     orderBook,
     router,
     createPairWithReserves,
@@ -273,17 +277,17 @@ describe("DealSwapOrderBook", async function () {
 
   it("router default exact-in ETH buys of DL auto-queue the remainder", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, dl, orderBook, router, factory, wrappedNative } = fixture;
+    const { viem, publicClient, alice, dl, orderBook, router, dealPairManager, wrappedNative } = fixture;
 
-    await waitFor(publicClient, await factory.write.createPair([wrappedNative.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([wrappedNative.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([wrappedNative.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([wrappedNative.address]);
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000n * ONE]));
     await waitFor(publicClient, await wrappedNative.write.deposit({ value: 10n * ONE }));
     await waitFor(publicClient, await wrappedNative.write.transfer([pairAddress, 10n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     await waitFor(
       publicClient,
-      await factory.write.setPairVirtualReserves([pairAddress, 900n * ONE, true, 0n, false]),
+      await dealPairManager.write.setPairVirtualReserves([pairAddress, 900n * ONE, true, 0n, false]),
     );
 
     const routerAlice = await viem.getContractAt("DealRouter", router.address, {
@@ -306,17 +310,17 @@ describe("DealSwapOrderBook", async function () {
 
   it("cancels ETH-origin queued buy orders back to native and charges 0.1% to treasury", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, treasury, dl, orderBook, router, factory, wrappedNative } = fixture;
+    const { viem, publicClient, alice, treasury, dl, orderBook, router, factory, dealPairManager, wrappedNative } = fixture;
 
-    await waitFor(publicClient, await factory.write.createPair([wrappedNative.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([wrappedNative.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([wrappedNative.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([wrappedNative.address]);
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000n * ONE]));
     await waitFor(publicClient, await wrappedNative.write.deposit({ value: 10n * ONE }));
     await waitFor(publicClient, await wrappedNative.write.transfer([pairAddress, 10n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     await waitFor(
       publicClient,
-      await factory.write.setPairVirtualReserves([pairAddress, 900n * ONE, true, 0n, false]),
+      await dealPairManager.write.setPairVirtualReserves([pairAddress, 900n * ONE, true, 0n, false]),
     );
 
     const routerAlice = await viem.getContractAt("DealRouter", router.address, {
@@ -355,19 +359,19 @@ describe("DealSwapOrderBook", async function () {
 
   it("router default exact-in DL sells to ETH auto-queue the remainder and unwrap on settlement", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, dl, orderBook, router, factory, wrappedNative } = fixture;
+    const { viem, publicClient, alice, dl, orderBook, router, dealPairManager, wrappedNative } = fixture;
 
-    await waitFor(publicClient, await factory.write.createPair([wrappedNative.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([wrappedNative.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([wrappedNative.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([wrappedNative.address]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000n * ONE]));
     await waitFor(publicClient, await wrappedNative.write.deposit({ value: 10n * ONE }));
     await waitFor(publicClient, await wrappedNative.write.transfer([pairAddress, 10n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     await waitFor(
       publicClient,
-      await factory.write.setPairVirtualReserves([pairAddress, 0n, false, 90n * ONE, true]),
+      await dealPairManager.write.setPairVirtualReserves([pairAddress, 0n, false, 90n * ONE, true]),
     );
 
     const routerAlice = await viem.getContractAt("DealRouter", router.address, {
@@ -486,8 +490,6 @@ describe("DealSwapOrderBook", async function () {
     const { publicClient, owner, factory, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 100n * ONE, 900n * ONE);
 
-    await waitFor(publicClient, await factory.write.setGlobal(["infoNft", owner.account.address]));
-
     const simulated = await publicClient.simulateContract({
       address: factory.address,
       abi: factory.abi,
@@ -501,14 +503,14 @@ describe("DealSwapOrderBook", async function () {
 
   it("rolls TWAP cumulatives before virtual reserve changes", async function () {
     const fixture = await deployDexFixture();
-    const { publicClient, testClient, factory, createPairWithReserves } = fixture;
+    const { publicClient, testClient, dealPairManager, createPairWithReserves } = fixture;
     const { pairAddress, pair } = await createPairWithReserves(1_000n * ONE, 100n * ONE);
 
     const [, , tsBefore] = await pair.read.getReserves();
     await testClient.setNextBlockTimestamp({ timestamp: BigInt(tsBefore) + 3600n });
     await testClient.mine({ blocks: 1 });
 
-    const setHash = await factory.write.setPairVirtualReserves([pairAddress, 0n, false, 900n * ONE, true]);
+    const setHash = await dealPairManager.write.setPairVirtualReserves([pairAddress, 0n, false, 900n * ONE, true]);
     const setReceipt = await waitFor(publicClient, setHash);
     const setBlock = await publicClient.getBlock({ blockHash: setReceipt.blockHash });
 
@@ -520,7 +522,7 @@ describe("DealSwapOrderBook", async function () {
 
   it("handles fee-on-transfer OTHER buy orders without overstating queued balances", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, owner, dl, orderBook, factory } = fixture;
+    const { viem, publicClient, alice, owner, dl, orderBook, factory, dealPairManager } = fixture;
 
     const taxed = await viem.deployContract("TestFeeOnTransferToken", [
       "Taxed Other",
@@ -531,12 +533,12 @@ describe("DealSwapOrderBook", async function () {
     await waitFor(publicClient, await taxed.write.mint([owner.account.address, 1_000_000n * ONE]));
     await waitFor(publicClient, await taxed.write.mint([alice.account.address, 1_000_000n * ONE]));
 
-    await waitFor(publicClient, await factory.write.createPair([taxed.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([taxed.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([taxed.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([taxed.address]);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 10n * ONE]));
     await waitFor(publicClient, await taxed.write.transfer([pairAddress, 1_000n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
 
     const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
       client: { wallet: alice },
@@ -596,11 +598,11 @@ describe("DealSwapOrderBook", async function () {
 
   it("factory initPair auto-settles queued orders when swapOrderBook is configured", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, dl, other, factory, orderBook } = fixture;
+    const { viem, publicClient, alice, dl, other, factory, dealPairManager, orderBook } = fixture;
 
-    await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", orderBook.address]));
-    await waitFor(publicClient, await factory.write.createPair([other.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([other.address]);
+    await waitFor(publicClient, await factory.write.setOpsGlobals([orderBook.address, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"]));
+    await waitFor(publicClient, await dealPairManager.write.createPair([other.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([other.address]);
 
     const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
       client: { wallet: alice },
@@ -613,7 +615,7 @@ describe("DealSwapOrderBook", async function () {
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, 1_000n * ONE]));
     await waitFor(publicClient, await other.write.transfer([pairAddress, 20n * ONE]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
 
     const order = await orderBook.read.orders([orderId]);
     assert.equal(order[3], false);
@@ -622,10 +624,10 @@ describe("DealSwapOrderBook", async function () {
 
   it("factory mintPairOtherAndSettle adds OTHER liquidity and settles queued sell orders", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, dl, other, factory, orderBook, createPairWithReserves } = fixture;
+    const { viem, publicClient, alice, dl, other, factory, dealPairManager, orderBook, createPairWithReserves } = fixture;
     const { pairAddress } = await createPairWithReserves(1_000n * ONE, 1n);
 
-    await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", orderBook.address]));
+    await waitFor(publicClient, await factory.write.setOpsGlobals([orderBook.address, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"]));
 
     const orderBookAlice = await viem.getContractAt("DealSwapOrderBook", orderBook.address, {
       client: { wallet: alice },
@@ -637,7 +639,7 @@ describe("DealSwapOrderBook", async function () {
     await waitFor(publicClient, await orderBookAlice.write.placeSellDL([pairAddress, 100n * ONE]));
 
     await waitFor(publicClient, await other.write.transfer([pairAddress, 1_000n * ONE]));
-    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+    await waitFor(publicClient, await dealPairManager.write.mintPairOtherAndSettle([pairAddress]));
 
     const order = await orderBook.read.orders([orderId]);
     assert.equal(order[3], false);
@@ -646,28 +648,28 @@ describe("DealSwapOrderBook", async function () {
 
   it("factory mintPairOtherAndSettle still updates reserves when no queued orders exist", async function () {
     const fixture = await deployDexFixture();
-    const { publicClient, other, factory, createPairWithReserves } = fixture;
+    const { publicClient, other, dealPairManager, createPairWithReserves } = fixture;
     const { pairAddress, pair } = await createPairWithReserves(1_000n * ONE, 10n * ONE);
 
     await waitFor(publicClient, await other.write.transfer([pairAddress, 5n * ONE]));
     const [, reserveBefore] = await pair.read.getReserves();
-    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+    await waitFor(publicClient, await dealPairManager.write.mintPairOtherAndSettle([pairAddress]));
     const [, reserveAfter] = await pair.read.getReserves();
     assert.equal(reserveAfter, reserveBefore + 5n * ONE);
   });
 
-  it("factory mintPairOtherAndSettle does not revert liquidity update when settlePair fails", async function () {
+  it("pair manager mintPairOtherAndSettle reverts when configured settlement fails", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, other, factory, createPairWithReserves } = fixture;
+    const { viem, publicClient, other, factory, dealPairManager, createPairWithReserves } = fixture;
     const { pairAddress, pair } = await createPairWithReserves(1_000n * ONE, 10n * ONE);
 
     const revertingOrderBook = await viem.deployContract("TestRevertingOrderBook");
-    await waitFor(publicClient, await factory.write.setGlobal(["swapOrderBook", revertingOrderBook.address]));
+    await waitFor(publicClient, await factory.write.setOpsGlobals([revertingOrderBook.address, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000"]));
 
     await waitFor(publicClient, await other.write.transfer([pairAddress, 7n * ONE]));
     const [, reserveBefore] = await pair.read.getReserves();
-    await waitFor(publicClient, await factory.write.mintPairOtherAndSettle([pairAddress]));
+    await assert.rejects(dealPairManager.write.mintPairOtherAndSettle([pairAddress]));
     const [, reserveAfter] = await pair.read.getReserves();
-    assert.equal(reserveAfter, reserveBefore + 7n * ONE);
+    assert.equal(reserveAfter, reserveBefore);
   });
 });

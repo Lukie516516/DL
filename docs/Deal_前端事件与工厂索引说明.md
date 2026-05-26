@@ -126,13 +126,13 @@ DealResultIndex.getTimeline(deal, 0, 50, true)
 
 推荐前端单次 `limit` 用 20-50；合约层超过 100 会按 100 截断。
 
-## 3. 工厂：`DealRewardsLogged` + `logDealRewards`（事件兜底）
+## 3. 工厂：`DealRewardsLogged` + `mintAndRecordDealRewards`（事件兜底）
 
 ### 3.1 方法（由 **Deal clone 在成交时内部调用**，前端一般不直接调）
 
-- **`DealFactory.logDealRewards(partyA, toA, partyB, toB, cAddr, toC)`**  
-  - **权限**：仅工厂登记的 Deal / OpenTT 实例（`onlyDeal`）可调用。  
-  - **作用**：在工厂上打一笔汇总日志，内容与各 Deal 上的 `RewardsMinted` 一致，便于**只订阅工厂地址**做奖励展示/扫链。
+- **`DealFactory.mintAndRecordDealRewards(batch)`**
+  - **权限**：仅工厂登记的 Deal / OpenTT 实例（`onlyDeal`）可调用。
+  - **作用**：成交时批量完成 DL 奖励 mint、奖励索引写入、InfoNFT minted 统计，并在工厂上打一笔汇总日志。日志内容与各 Deal 上的 `RewardsMinted` 一致，便于**只订阅工厂地址**做奖励展示/扫链。
 
 ### 3.2 事件
 
@@ -278,8 +278,8 @@ event DealRewardsLogged(
 ## 7. 相关源码（便于对 ABI）
 
 - `contracts/DealResultIndex.sol`：奖励明细、信用增量明细 view 索引
-- `contracts/DealFactory.sol`：`DealRewardsLogged`、`logDealRewards`、`DLMinted`  
-- `contracts/Deal.sol` / 各 Deal implementation：进程事件  
+- `contracts/DealFactory.sol`：`DealRewardsLogged`、`mintAndRecordDealRewards`、`DLMinted`
+- `contracts/Deal.sol` / 各 Deal implementation：进程事件
 - `contracts/DealMessageHub.sol`：链上留言写入与读取
 - `contracts/DealOpenTokenToken.sol`：同上 + `APreAccepted`、`BExpelledOnReject`、`replaceInactiveBAndJoin`、`replaceNonVotingBAndJoin`
 - 部署与库拆分：`docs/Deal库拆分部署接线说明.md`

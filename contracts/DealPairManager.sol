@@ -45,6 +45,7 @@ contract DealPairManager {
     using Clones for address;
 
     address public immutable factory;
+    address public owner;
 
     mapping(address => address) public pairForToken;
 
@@ -64,21 +65,34 @@ contract DealPairManager {
     error CloneNoCode();
     error RatioInvalid();
     error InvalidDlPair();
+    error NotOwner();
 
-    event PairOtherLiquiditySettleFailed(address indexed pair, bytes reason);
+    event OwnerTransferred(address indexed oldOwner, address indexed newOwner);
     event TwapRolled(address indexed pair, uint256 avgQ112, uint32 ts, uint32 elapsed);
 
     modifier onlyFactory() {
         if (msg.sender != factory) revert NotFactory();
         _;
     }
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
 
     constructor(address factory_) {
         if (factory_ == address(0)) revert ZeroAddress();
         factory = factory_;
+        owner = msg.sender;
+        emit OwnerTransferred(address(0), msg.sender);
     }
 
-    function createPair(address tokenOther, uint32 feeNum, uint32 feeDen) external onlyFactory returns (address pair) {
+    function transferOwner(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        emit OwnerTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+    function createPair(address tokenOther, uint32 feeNum, uint32 feeDen) external onlyOwner returns (address pair) {
         if (pairForToken[tokenOther] != address(0)) revert PairExists();
         address dl = IDealFactoryPairConfig(factory).dlToken();
         address impl = IDealFactoryPairConfig(factory).pairImplementation();
@@ -94,18 +108,18 @@ contract DealPairManager {
         pairForToken[tokenOther] = pair;
     }
 
-    function mapExistingPair(address tokenOther, address pair) external onlyFactory {
+    function mapExistingPair(address tokenOther, address pair) external onlyOwner {
         if (tokenOther == address(0) || pair == address(0)) revert ZeroAddress();
         if (pairForToken[tokenOther] != address(0)) revert PairExists();
         _assertDlPair(pair, IDealFactoryPairConfig(factory).dlToken());
         pairForToken[tokenOther] = pair;
     }
 
-    function setPairFactory(address pair, address f) external onlyFactory {
+    function setPairFactory(address pair, address f) external onlyOwner {
         IManagedDealPairInit(pair).setFactory(f);
     }
 
-    function initPair(address pair, uint256 b1) external onlyFactory returns (uint256 amountDL, uint256 amountOther) {
+    function initPair(address pair, uint256 b1) external onlyOwner returns (uint256 amountDL, uint256 amountOther) {
         (amountDL, amountOther) = IManagedDealPairInit(pair).mintInitial(b1);
         address orderBook = IDealFactoryPairConfig(factory).swapOrderBook();
         if (orderBook != address(0)) {
@@ -115,16 +129,20 @@ contract DealPairManager {
 
     function mintPairOtherAndSettle(address pair)
         external
-        onlyFactory
+        onlyOwner
         returns (uint256 amountOther, bool settleAttempted, bool settleSucceeded)
     {
         _assertDlPair(pair, IDealFactoryPairConfig(factory).dlToken());
         amountOther = IManagedDealPairOtherLiquidity(pair).mintOtherOnly();
-        settleAttempted;
-        settleSucceeded;
+        address orderBook = IDealFactoryPairConfig(factory).swapOrderBook();
+        if (orderBook != address(0)) {
+            settleAttempted = true;
+            IManagedOrderBookSettle(orderBook).settlePair(pair, 1, 8);
+            settleSucceeded = true;
+        }
     }
 
-    function setPairFee(address pair, uint32 newNum, uint32 newDen) external onlyFactory {
+    function setPairFee(address pair, uint32 newNum, uint32 newDen) external onlyOwner {
         IManagedDealPairInit(pair).setFee(newNum, newDen);
     }
 
@@ -134,14 +152,14 @@ contract DealPairManager {
         bool enable0,
         uint256 virtualReserve1,
         bool enable1
-    ) external onlyFactory {
+    ) external onlyOwner {
         _assertDlPair(pair, IDealFactoryPairConfig(factory).dlToken());
         IManagedDealPairInit(pair).setVirtualReserves(virtualReserve0, virtualReserve1, enable0, enable1);
     }
 
     function setPairVirtualReservesByBps(address pair, uint32 bps0, bool enable0, uint32 bps1, bool enable1)
         external
-        onlyFactory
+        onlyOwner
         returns (uint256 v0, uint256 v1)
     {
         if (bps0 > 10_000 || bps1 > 10_000) revert RatioInvalid();

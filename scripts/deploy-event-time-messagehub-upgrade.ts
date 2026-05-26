@@ -252,15 +252,24 @@ async function main() {
   const newRegistry = await viem.getContractAt("DealImplementationRegistry", registry.address, { client }) as AnyContract;
 
   console.log("\n--- Configure new Factory ---");
-  await tx("setGlobal dlToken", publicClient, newFactory.write.setGlobal(["dlToken", EXISTING.dlToken]));
-  await tx("setGlobal infoNft", publicClient, newFactory.write.setGlobal(["infoNft", EXISTING.dealInfoNFT]));
-  await tx("setGlobal wrappedNative", publicClient, newFactory.write.setGlobal(["wrappedNative", EXISTING.wrappedNative]));
-  await tx("setGlobal dealMessageHub", publicClient, newFactory.write.setGlobal(["dealMessageHub", messageHub.address]));
-  await tx("setGlobal creditGraph", publicClient, newFactory.write.setGlobal(["creditGraph", creditGraph.address]));
-  await tx("setGlobal dealActivityIndex", publicClient, newFactory.write.setGlobal(["dealActivityIndex", activityIndex.address]));
-  await tx("setGlobal dealResultIndex", publicClient, newFactory.write.setGlobal(["dealResultIndex", resultIndex.address]));
-  await tx("setGlobal dealPairManager", publicClient, newFactory.write.setGlobal(["dealPairManager", pairManager.address]));
-  await tx("setGlobal swapOrderBook", publicClient, newFactory.write.setGlobal(["swapOrderBook", EXISTING.dealSwapOrderBook]));
+  await tx("setCoreGlobals", publicClient, newFactory.write.setCoreGlobals([
+    EXISTING.dlToken,
+    EXISTING.dealInfoNFT,
+    EXISTING.wrappedNative,
+    pairManager.address,
+  ]));
+  await tx("setServiceGlobals", publicClient, newFactory.write.setServiceGlobals([
+    messageHub.address,
+    creditGraph.address,
+    activityIndex.address,
+    resultIndex.address,
+    zeroAddress,
+  ]));
+  await tx("setOpsGlobals orderBook", publicClient, newFactory.write.setOpsGlobals([
+    EXISTING.dealSwapOrderBook,
+    zeroAddress,
+    zeroAddress,
+  ]));
   await tx(
     "setDealImplementations",
     publicClient,
@@ -274,7 +283,13 @@ async function main() {
       dealOpenTokenTokenImpl.address,
     ]),
   );
-  await tx("setGlobal dealImplementationRegistry", publicClient, newFactory.write.setGlobal(["dealImplementationRegistry", registry.address]));
+  await tx("setServiceGlobals registry", publicClient, newFactory.write.setServiceGlobals([
+    zeroAddress,
+    zeroAddress,
+    zeroAddress,
+    zeroAddress,
+    registry.address,
+  ]));
   await tx("setRecognizedTokens", publicClient, newFactory.write.setRecognizedTokens([EXISTING.ausd, EXISTING.usdt]));
   await tx("setFeesAndMintOnFees", publicClient, newFactory.write.setFeesAndMintOnFees([
     oldFeeNonDL[0],
@@ -299,8 +314,8 @@ async function main() {
     oldCreateBurnAmount,
   ]));
   await tx("setMinWindowSec", publicClient, newFactory.write.setMinWindowSec([oldMinWindowSec]));
-  await tx("mapExistingPair AUSD", publicClient, newFactory.write.mapExistingPair([EXISTING.ausd, EXISTING.pairDlAusd]));
-  await tx("mapExistingPair USDT", publicClient, newFactory.write.mapExistingPair([EXISTING.usdt, EXISTING.pairDlUsdt]));
+  await tx("PairManager.mapExistingPair AUSD", publicClient, pairManager.write.mapExistingPair([EXISTING.ausd, EXISTING.pairDlAusd]));
+  await tx("PairManager.mapExistingPair USDT", publicClient, pairManager.write.mapExistingPair([EXISTING.usdt, EXISTING.pairDlUsdt]));
 
   console.log("\n--- Permission wiring ---");
   await tx("DealCreditGraph.setRecorder", publicClient, creditGraph.write.setRecorder([factory.address, true]));
@@ -327,7 +342,11 @@ async function main() {
   });
   console.log("DCDomainHall:", dcHall.address);
 
-  await tx("Factory.setGlobal dcDomainRank", publicClient, newFactory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  await tx("Factory.setOpsGlobals dcDomainRank", publicClient, newFactory.write.setOpsGlobals([
+    zeroAddress,
+    zeroAddress,
+    dcRank.address,
+  ]));
   await tx("DCDomainRank.setAutoCloser(Factory)", publicClient, dcRank.write.setAutoCloser([factory.address]));
   await tx("Factory.allow DCDomainSwap", publicClient, newFactory.write.setAllowedCreateFor([dcSwap.address, true]));
   await tx("Factory.allow DCDomainHall", publicClient, newFactory.write.setAllowedCreateFor([dcHall.address, true]));
