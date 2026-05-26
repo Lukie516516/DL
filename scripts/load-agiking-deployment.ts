@@ -9,6 +9,7 @@ export type AgikingDeploymentAddresses = {
   dlToken: Address;
   ausd: Address;
   usdt: Address;
+  agi?: Address;
   wrappedNative: Address;
   dealLib: Address;
   dealAssetNftLib?: Address;
@@ -30,12 +31,15 @@ export type AgikingDeploymentAddresses = {
   dealInfoNFT: Address;
   pairDlAusd: Address;
   pairDlUsdt: Address;
+  pairDlAgi?: Address;
+  dealSwapAssetRegistry?: Address;
   dealSwapOrderBook: Address;
   dealRouter: Address;
   dealReader: Address;
   dcDomain: Address;
   dcDomainRank: Address;
   dcDomainRankReader?: Address;
+  dcDomainListReader?: Address;
   dcDomainMarket: Address;
   dcDomainSwap: Address;
   dcDomainHall: Address;

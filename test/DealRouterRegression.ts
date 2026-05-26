@@ -65,9 +65,12 @@ async function deployRouterFixture() {
     await waitFor(publicClient, await token.write.mint([alice.account.address, mintAmount]));
   }
 
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    owner.account.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
   await waitFor(publicClient, await orderBook.write.setRouter([router.address]));
 
   async function createTokenPair(
@@ -75,26 +78,26 @@ async function deployRouterFixture() {
     dlAmount: bigint,
     tokenAmount: bigint,
   ) {
-    await waitFor(publicClient, await factory.write.createPair([token, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([token]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([token, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([token]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
     const tokenContract = await viem.getContractAt("DCToken", token);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, dlAmount]));
     await waitFor(publicClient, await tokenContract.write.transfer([pairAddress, tokenAmount]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     return { pairAddress, pair };
   }
 
   async function createWNativePair(dlAmount: bigint, nativeAmount: bigint) {
-    await waitFor(publicClient, await factory.write.createPair([wrappedNative.address, 3, 1000]));
-    const pairAddress = await factory.read.pairForToken([wrappedNative.address]);
+    await waitFor(publicClient, await dealPairManager.write.createPair([wrappedNative.address, 3, 1000]));
+    const pairAddress = await dealPairManager.read.pairForToken([wrappedNative.address]);
     const pair = await viem.getContractAt("DealSwapTemplate", pairAddress);
 
     await waitFor(publicClient, await dl.write.transfer([pairAddress, dlAmount]));
     await waitFor(publicClient, await wrappedNative.write.deposit({ value: nativeAmount }));
     await waitFor(publicClient, await wrappedNative.write.transfer([pairAddress, nativeAmount]));
-    await waitFor(publicClient, await factory.write.initPair([pairAddress, 0n]));
+    await waitFor(publicClient, await dealPairManager.write.initPair([pairAddress, 0n]));
     return { pairAddress, pair };
   }
 

@@ -9,6 +9,7 @@ import { defineChain } from "viem";
 import { loadAgikingDeploymentAddresses } from "./load-agiking-deployment.js";
 
 const AGIKING_CHAIN_ID = 31415926;
+const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 const base = loadAgikingDeploymentAddresses();
 const E = {
@@ -35,6 +36,8 @@ const E = {
   dealReader: base.dealReader,
   dcDomain: base.dcDomain,
   dcDomainRank: base.dcDomainRank,
+  dcDomainRankReader: base.dcDomainRankReader,
+  dcDomainListReader: base.dcDomainListReader,
   dcDomainMarket: base.dcDomainMarket,
   dToken: base.dToken,
   dealNftGovernanceActivity: base.dealNftGovernanceActivity,
@@ -126,12 +129,7 @@ async function main() {
   console.log(E.dealCreditGraph ? "DealCreditGraph existing:" : "DealCreditGraph:", creditGraph.address);
 
   // Configure globals
-  await w(pc, await factory.write.setGlobal(["dlToken", E.dlToken]));
-  await w(pc, await factory.write.setGlobal(["infoNft", E.dealInfoNFT]));
-  await w(pc, await factory.write.setGlobal(["wrappedNative", E.wrappedNative]));
-  await w(pc, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
-  await w(pc, await factory.write.setGlobal(["dealMessageHub", dealMessageHub.address]));
-  await w(pc, await factory.write.setGlobal(["dealActivityIndex", dealActivityIndex.address]));
+  await w(pc, await factory.write.setCoreGlobals([E.dlToken, E.dealInfoNFT, E.wrappedNative, dealPairManager.address]));
   await w(pc, await dealImplementationRegistry.write.setDealImplementations([
     E.dealImpl,
     dealNoAssetImpl.address,
@@ -141,16 +139,22 @@ async function main() {
     dealBAssetNftOnlyImpl.address,
     dealOpenTokenTokenImpl.address,
   ]));
-  await w(pc, await factory.write.setGlobal(["dealImplementationRegistry", dealImplementationRegistry.address]));
+  await w(pc, await factory.write.setServiceGlobals([
+    dealMessageHub.address,
+    creditGraph.address,
+    dealActivityIndex.address,
+    ZERO,
+    dealImplementationRegistry.address,
+  ]));
   await w(pc, await creditGraph.write.setRecorder([factory.address, true]));
-  await w(pc, await factory.write.setGlobal(["swapOrderBook", E.orderBook]));
+  await w(pc, await factory.write.setOpsGlobals([E.orderBook, ZERO, ZERO]));
   await w(pc, await factory.write.setRecognizedTokens([E.ausd, E.usdt]));
   await w(pc, await factory.write.setTreasuryByAdmin([dep]));
   console.log("  globals OK");
 
   // Map existing pairs
-  await w(pc, await factory.write.mapExistingPair([E.ausd, E.pairDlAusd]));
-  await w(pc, await factory.write.mapExistingPair([E.usdt, E.pairDlUsdt]));
+  await w(pc, await dealPairManager.write.mapExistingPair([E.ausd, E.pairDlAusd]));
+  await w(pc, await dealPairManager.write.mapExistingPair([E.usdt, E.pairDlUsdt]));
   console.log("  pairForToken AUSD →", E.pairDlAusd);
   console.log("  pairForToken USDT →", E.pairDlUsdt);
 
@@ -169,6 +173,8 @@ async function main() {
   console.log("\n--- DCDomainHall ---");
   const dcHall = await viem.deployContract("DCDomainHall", [E.dcDomainRank, E.dcDomain, factory.address], { client: cl });
   console.log("DCDomainHall:", dcHall.address);
+  const dcDomainListReader = await viem.deployContract("DCDomainListReader", [E.dcDomain, E.dcDomainRank], { client: cl });
+  console.log("DCDomainListReader:", dcDomainListReader.address);
 
   // ═══ 4. Permissions ═══
   console.log("\n--- Permissions ---");
@@ -177,7 +183,7 @@ async function main() {
   console.log("  allowedCreateFor: Swap + Hall OK");
 
   const rank = await viem.getContractAt("DCDomainRank", E.dcDomainRank, { client: cl });
-  await w(pc, await factory.write.setGlobal(["dcDomainRank", E.dcDomainRank]));
+  await w(pc, await factory.write.setOpsGlobals([ZERO, ZERO, E.dcDomainRank]));
   await w(pc, await rank.write.setAutoCloser([factory.address]));
   await w(pc, await rank.write.setDealReporter([dcSwap.address, true]));
   await w(pc, await rank.write.setDealReporter([dcHall.address, true]));
@@ -212,6 +218,8 @@ async function main() {
     dealReader: E.dealReader,
     dcDomain: E.dcDomain,
     dcDomainRank: E.dcDomainRank,
+    dcDomainRankReader: E.dcDomainRankReader,
+    dcDomainListReader: dcDomainListReader.address,
     dcDomainMarket: E.dcDomainMarket,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,
@@ -254,6 +262,7 @@ async function main() {
       DealReader: loadAbi("DealReader.sol/DealReader.json"),
       DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
+      DCDomainListReader: loadAbi("DCDomainListReader.sol/DCDomainListReader.json"),
       DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
       DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
       DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),

@@ -13,32 +13,20 @@ interface IFactoryAuthNoAsset {
     function isAllowedCreateFor(address) external view returns (bool);
 }
 
-interface IFactoryMinterNoAsset {
-    function mintDL(address to, uint256 amount) external;
-}
-
 interface IFactoryDealRewardsLogNoAsset {
-    function logDealRewards(
-        address partyA,
-        uint256 toA,
-        address partyB,
-        uint256 toB,
-        address cAddr,
-        uint256 toC
-    ) external;
+    struct DealRewardBatch {
+        address partyA; uint256 toA; address partyB; uint256 toB; address cAddr; uint256 toC;
+        uint256 aTokenId; uint256 aMinted; uint256 bTokenId; uint256 bMinted; uint256 cTokenId; uint256 cMinted;
+    }
+    function mintAndRecordDealRewards(DealRewardBatch calldata r) external;
 }
 
 interface IFactoryIndexNoAsset {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
     function onParticipantRemoved(address prevParticipant) external;
-    function onAbandoned(address creator, address prevParticipant) external;
-    function onClosedFor(address user) external;
-    function onCompletedFor(address user) external;
-}
-
-interface IFactoryInfoNoAsset {
-    function infoAddMinted(uint256 tokenId, uint256 amount) external;
+    function onAbandoned(address creator, address prevParticipant, bool domainDeal) external;
+    function onFinishedFor(address partyA, address partyB, bool trackA, bool trackB, bool completed, bool domainDeal) external;
 }
 
 interface IFactoryLockNoAsset {
@@ -338,8 +326,8 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         _unlockNftIfLocked(false);
         bNftId = 0;
 
-        if (_trackA && _trackBActive) IFactoryIndexNoAsset(factory).onAbandoned(a, prevB);
-        else if (_trackA) IFactoryIndexNoAsset(factory).onAbandoned(a, address(0));
+        if (_trackA && _trackBActive) IFactoryIndexNoAsset(factory).onAbandoned(a, prevB, isDomainDeal);
+        else if (_trackA) IFactoryIndexNoAsset(factory).onAbandoned(a, address(0), isDomainDeal);
         else if (_trackBActive) IFactoryIndexNoAsset(factory).onParticipantRemoved(prevB);
         _trackA = false;
         _trackBActive = false;
@@ -553,19 +541,9 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         _sendOut(bMarginToken, b, bMarginAmount);
         emit Claimed(b, aSwapToken, aSwapNetForB, bMarginToken, bMarginAmount);
 
-        if (_trackA) IFactoryIndexNoAsset(factory).onCompletedFor(a);
-        if (_trackBActive) IFactoryIndexNoAsset(factory).onCompletedFor(b);
-
         _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
-        if (_trackA) {
-            IFactoryIndexNoAsset(factory).onClosedFor(a);
-            _trackA = false;
-        }
-        if (_trackBActive) {
-            IFactoryIndexNoAsset(factory).onClosedFor(b);
-            _trackBActive = false;
-        }
+        _finishIndex(true);
 
         emit Completed(reason, ts);
         _recordTimeline(6, address(0), false, uint8(reason));
@@ -594,14 +572,7 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
 
         _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
-        if (_trackA) {
-            IFactoryIndexNoAsset(factory).onClosedFor(a);
-            _trackA = false;
-        }
-        if (_trackBActive) {
-            IFactoryIndexNoAsset(factory).onClosedFor(b);
-            _trackBActive = false;
-        }
+        _finishIndex(false);
 
         emit Canceled(ts);
         _recordTimeline(7, address(0), false, 0);
@@ -680,17 +651,23 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
     }
 
     function _mintAndRecord(Rewards memory r) internal {
-        if (r.toA > 0) IFactoryMinterNoAsset(factory).mintDL(a, r.toA);
-        if (r.toB > 0) IFactoryMinterNoAsset(factory).mintDL(b, r.toB);
-        if (r.toC > 0 && r.cAddr != address(0)) IFactoryMinterNoAsset(factory).mintDL(r.cAddr, r.toC);
         emit RewardsMinted(a, r.toA, b, r.toB, r.cAddr, r.toC);
-        IFactoryDealRewardsLogNoAsset(factory).logDealRewards(a, r.toA, b, r.toB, r.cAddr, r.toC);
-
-        if (infoNft != address(0)) {
-            if (aNftLocked && aNftId != 0 && r.toA > 0) IFactoryInfoNoAsset(factory).infoAddMinted(aNftId, r.toA);
-            if (bNftLocked && bNftId != 0 && r.toB > 0) IFactoryInfoNoAsset(factory).infoAddMinted(bNftId, r.toB);
-            if (r.cToken != 0 && r.toC > 0) IFactoryInfoNoAsset(factory).infoAddMinted(r.cToken, r.toC);
-        }
+        IFactoryDealRewardsLogNoAsset(factory).mintAndRecordDealRewards(
+            IFactoryDealRewardsLogNoAsset.DealRewardBatch({
+                partyA: a,
+                toA: r.toA,
+                partyB: b,
+                toB: r.toB,
+                cAddr: r.cAddr,
+                toC: r.toC,
+                aTokenId: aNftLocked ? aNftId : 0,
+                aMinted: r.toA,
+                bTokenId: bNftLocked ? bNftId : 0,
+                bMinted: r.toB,
+                cTokenId: r.cToken,
+                cMinted: r.toC
+            })
+        );
     }
 
     function _recordDealCredit(Fees memory f) internal {
@@ -699,6 +676,15 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
             + DealLib.feeCreditU(bTokenNorm, f.bFee, recognizedToken0, recognizedToken1);
         if (baseCredit == 0) return;
         IFactoryCreditNoAsset(factory).recordDealCredit(a, b, aNftId, aNftLocked, bNftId, bNftLocked, baseCredit);
+    }
+
+    function _finishIndex(bool completed) internal {
+        bool trackA = _trackA;
+        bool trackB = _trackBActive;
+        if (!trackA && !trackB) return;
+        IFactoryIndexNoAsset(factory).onFinishedFor(a, b, trackA, trackB, completed, isDomainDeal);
+        _trackA = false;
+        _trackBActive = false;
     }
 
     function _tryLock() internal {

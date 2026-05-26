@@ -132,6 +132,15 @@ npm run deploy:agiking:domain-open-access
 - 按 deal 地址精确查询历史/终局 deal 详情
 - 不持有资金，不改状态；用于避免 `DCDomainRank` 本体继续变重
 
+### 3.3.2 `DCDomainListReader`
+
+作用：
+- 域名列表分页查询
+- 默认按域名累计成交额 `tradeVolume` 从高到低排序
+- 按域名名称、域名 ID、解析地址精确查询
+- 按创建者钱包地址查询“我创建的域名”
+- 不持有资金，不改状态；只读辅助合约
+
 ### 3.4 `DCDomainHall`
 
 作用：
@@ -245,9 +254,47 @@ await dcDomain.register("abc123");
 - `tokenIdOf(domainName)`
 - `totalDomains()`
 - `resolve(domainName)`
+- `creatorOf(tokenId)`
+- `createdDomainCount(creator)`
+- `createdDomainTokenAt(creator, index)`
+- `createdDomainTokens(creator, offset, limit)`
 - `domainDescription(tokenId)`
 - `domainBackgroundUri(tokenId)`
 - `tokenURI(tokenId)`
+
+### 4.8 域名列表 / 搜索：`DCDomainListReader`
+
+前端域名列表不要再自己从 `tokenId = 1..totalDomains` 全量拉取后排序。使用新的只读合约：
+
+| 需求 | 方法 |
+| --- | --- |
+| 默认域名列表，按累计成交额排序 | `getDomainsByVolume(offset, limit)` |
+| 按域名名称精确搜索 | `getDomainByName(domainName)` |
+| 按域名 ID 精确搜索 | `getDomainById(tokenId)` |
+| 按解析地址查询 | `getDomainsByResolve(resolved, offset, limit)` |
+| 我的创建域名列表 | `getDomainsByCreator(creator, offset, limit)` |
+
+单次 `limit` 范围是 `1..50`。
+
+返回结构：
+
+```solidity
+struct DomainEntry {
+    string domainName;      // 不含 @DC，例如 "abc123"
+    uint256 tokenId;        // 域名 NFT ID
+    address owner;          // 当前 NFT 持有人
+    address creator;        // 首次注册创建者
+    address resolved;       // 当前解析地址
+    uint256 tradeVolume;    // 域名累计成交额，按创建 deal 时传入金额累计
+    uint256 dealCount;      // 域名下创建过的 deal 数量
+}
+```
+
+说明：
+- `tradeVolume` 当前由 `DCDomainSwap` / `DCDomainHall` 在创建域名 deal 时上报。
+- 普通币币域名 deal 记为 `aSwapAmount + bSwapAmount`。
+- 大厅模板 2/3 记为 `aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount`。
+- 这里是链上名义数量累计，默认按 18 位 token 金额处理；如果未来接入不同精度/不同价值币种，需要再接价格换算层。
 
 ---
 

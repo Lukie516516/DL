@@ -9,6 +9,7 @@ import { defineChain, formatEther, type Address } from "viem";
 
 const AGIKING_CHAIN_ID = 31415926;
 const ONE = 10n ** 18n;
+const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 const P: Record<string, Address> = {
   dlToken: "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
@@ -90,6 +91,7 @@ function deploymentAbi() {
     DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
     DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
     DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
+    DCDomainListReader: loadAbi("DCDomainListReader.sol/DCDomainListReader.json"),
     DCDomainMarket: loadAbi("DCDomainMarket.sol/DCDomainMarket.json"),
     DCDomainSwap: loadAbi("DCdomainswap.sol/DCDomainSwap.json"),
     DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
@@ -129,6 +131,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomain | \`${addresses.dcDomain}\` | 域名 NFT |
 | DCDomainRank | \`${addresses.dcDomainRank}\` | 域名黑名单、广告充值/结算、域名收益 |
 | DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情 |
+| DCDomainListReader | \`${addresses.dcDomainListReader}\` | 域名列表分页、按成交额排序、按名称/ID/解析地址/创建者查询 |
 | DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
 | DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
@@ -145,7 +148,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 2. 留言统一调新的 \`DealMessageHub.postMessage(dealAddress, content)\`。
 3. 交易过程时间线和奖励/信用明细读 \`DealResultIndex\`。
 4. 域名入口切到新的 \`DCDomainSwap\` / \`DCDomainHall\`。
-5. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`。
+5. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`；域名列表切到 \`DCDomainListReader.getDomainsByVolume/getDomainsByCreator\`。
 6. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 7. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 8. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
@@ -184,7 +187,9 @@ async function main() {
   console.log("DCDomainRank", dcRank.address);
   const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
   console.log("DCDomainRankReader", dcRankReader.address);
-  await tx("Factory.setGlobal dcDomainRank", publicClient, factory.write.setGlobal(["dcDomainRank", dcRank.address]));
+  const dcDomainListReader = await viem.deployContract("DCDomainListReader", [dcDomain.address, dcRank.address], { client });
+  console.log("DCDomainListReader", dcDomainListReader.address);
+  await tx("Factory.setOpsGlobals dcDomainRank", publicClient, factory.write.setOpsGlobals([ZERO, ZERO, dcRank.address]));
   await tx("Rank.setAutoCloser Factory", publicClient, dcRank.write.setAutoCloser([P.dealFactory]));
   const dcMarket = await viem.deployContract("DCDomainMarket", [dcDomain.address, P.dlToken, dep, 100n], { client });
   console.log("DCDomainMarket", dcMarket.address);
@@ -205,7 +210,7 @@ async function main() {
   console.log("D", dToken.address);
   const nftActivity = await viem.deployContract("DealNftGovernanceActivity", [P.dealInfoNFT], { client });
   console.log("DealNftGovernanceActivity", nftActivity.address);
-  await tx("Factory.setGlobal dealNftGovernanceActivity", publicClient, factory.write.setGlobal(["dealNftGovernanceActivity", nftActivity.address]));
+  await tx("Factory.setOpsGlobals dealNftGovernanceActivity", publicClient, factory.write.setOpsGlobals([ZERO, nftActivity.address, ZERO]));
   const nftVetoRegistry = await viem.deployContract("NftVetoRegistry", [P.dealInfoNFT, nftActivity.address], { client });
   console.log("NftVetoRegistry", nftVetoRegistry.address);
   const seatVetoGovernor = await viem.deployContract("DealSeatVetoGovernor", [dToken.address, nftVetoRegistry.address], { client });
@@ -232,6 +237,7 @@ async function main() {
     dcDomain: dcDomain.address,
     dcDomainRank: dcRank.address,
     dcDomainRankReader: dcRankReader.address,
+    dcDomainListReader: dcDomainListReader.address,
     dcDomainMarket: dcMarket.address,
     dcDomainSwap: dcSwap.address,
     dcDomainHall: dcHall.address,

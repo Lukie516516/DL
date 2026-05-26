@@ -91,6 +91,7 @@ contract DCDomainRank is ReentrancyGuard {
     // ── 全局域名总榜 ──
     mapping(address => bool) public isDealReporter;
     mapping(string  => uint256) public domainDealCount;
+    mapping(string  => uint256) public domainTradeVolume;
     string[] private _globalDomains;
     mapping(string  => bool) private _globalDomainExists;
 
@@ -105,6 +106,7 @@ contract DCDomainRank is ReentrancyGuard {
     // ── 事件 ──
     event DealReporterSet(address indexed reporter, bool allowed);
     event DomainDealReported(string domain, address indexed deal, address indexed merchant, uint256 newCount);
+    event DomainTradeVolumeAdded(string domain, address indexed deal, uint256 volume, uint256 totalVolume);
     event Deposited(address indexed player, string domain, address indexed deal, uint256 amount);
     event Withdrawn(address indexed player, string domain, address indexed deal, uint256 remaining, uint256 consumed);
     event Consumed(address indexed player, string domain, address indexed deal, uint256 consumed, uint256 remaining);
@@ -731,8 +733,20 @@ contract DCDomainRank is ReentrancyGuard {
         emit DealReporterSet(reporter, allowed);
     }
 
-    /// @notice 创建交易时由 DCDomainSwap / DCDomainHall 调用，自动在排行榜注册条目
-    function reportDeal(string calldata domainName, address deal, address merchant_) external {
+    function _ensureGlobalDomain(string memory domainName) internal {
+        if (!_globalDomainExists[domainName]) {
+            _globalDomains.push(domainName);
+            _globalDomainExists[domainName] = true;
+        }
+    }
+
+    function _addDomainTradeVolume(string memory domainName, address deal, uint256 volume) internal {
+        if (volume == 0) return;
+        domainTradeVolume[domainName] += volume;
+        emit DomainTradeVolumeAdded(domainName, deal, volume, domainTradeVolume[domainName]);
+    }
+
+    function _reportDeal(string memory domainName, address deal, address merchant_, uint256 volume) internal {
         require(isDealReporter[msg.sender], "DCDomainRank: not reporter");
         require(deal != address(0) && merchant_ != address(0), "DCDomainRank: zero addr");
 
@@ -746,15 +760,28 @@ contract DCDomainRank is ReentrancyGuard {
             }
         }
 
-        if (!_globalDomainExists[domainName]) {
-            _globalDomains.push(domainName);
-            _globalDomainExists[domainName] = true;
-        }
+        _ensureGlobalDomain(domainName);
+        _addDomainTradeVolume(domainName, deal, volume);
         emit DomainDealReported(domainName, deal, merchant_, domainDealCount[domainName]);
+    }
+
+    /// @notice 创建交易时由 DCDomainSwap / DCDomainHall 调用，自动在排行榜注册条目。
+    /// @dev 兼容旧 reporter，不累计成交额。
+    function reportDeal(string calldata domainName, address deal, address merchant_) external {
+        _reportDeal(domainName, deal, merchant_, 0);
+    }
+
+    /// @notice 新 reporter：同时上报本单名义成交额，供域名列表默认排序。
+    function reportDealWithVolume(string calldata domainName, address deal, address merchant_, uint256 volume) external {
+        _reportDeal(domainName, deal, merchant_, volume);
     }
 
     function globalDomainCount() external view returns (uint256) {
         return _globalDomains.length;
+    }
+
+    function globalDomainAt(uint256 index) external view returns (string memory) {
+        return _globalDomains[index];
     }
 
     function getGlobalLeaderboard(uint256 limit)

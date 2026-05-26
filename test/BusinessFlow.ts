@@ -74,10 +74,12 @@ async function deployBusinessFixture() {
   ]);
 
   const minterRole = await dl.read.MINTER_ROLE();
-  await waitFor(publicClient, await factory.write.setGlobal(["dlToken", dl.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["infoNft", infoNft.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["wrappedNative", wrappedNative.address]));
-  await waitFor(publicClient, await factory.write.setGlobal(["dealPairManager", dealPairManager.address]));
+  await waitFor(publicClient, await factory.write.setCoreGlobals([
+    dl.address,
+    infoNft.address,
+    wrappedNative.address,
+    dealPairManager.address,
+  ]));
   await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
   await waitFor(publicClient, await factory.write.setTreasuryByAdmin([treasury.account.address]));
   await waitFor(publicClient, await dl.write.grantRole([minterRole, factory.address]));
@@ -91,11 +93,11 @@ async function deployBusinessFixture() {
     await waitFor(publicClient, await token.write.mint([bob.account.address, mintAmount]));
   }
 
-  await waitFor(publicClient, await factory.write.createPair([ausd.address, 3, 1000]));
-  const ausdPairAddress = await factory.read.pairForToken([ausd.address]);
+  await waitFor(publicClient, await dealPairManager.write.createPair([ausd.address, 3, 1000]));
+  const ausdPairAddress = await dealPairManager.read.pairForToken([ausd.address]);
   await waitFor(publicClient, await dl.write.transfer([ausdPairAddress, 1_000_000n * ONE]));
   await waitFor(publicClient, await ausd.write.transfer([ausdPairAddress, 1_000_000n * ONE]));
-  await waitFor(publicClient, await factory.write.initPair([ausdPairAddress, 0n]));
+  await waitFor(publicClient, await dealPairManager.write.initPair([ausdPairAddress, 0n]));
 
   await waitFor(publicClient, await infoNft.write.setMintPriceU([ausdPairAddress, ONE]));
 

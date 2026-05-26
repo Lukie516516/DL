@@ -20,6 +20,7 @@ interface IDCDomainRank {
     function isActive(string calldata domainName, address playerAddr) external view returns (bool);
     function isBlacklisted(string calldata domainName, address account) external view returns (bool);
     function reportDeal(string calldata domainName, address deal, address merchant) external;
+    function reportDealWithVolume(string calldata domainName, address deal, address merchant, uint256 volume) external;
 }
 
 interface IDealFactory {
@@ -243,7 +244,7 @@ contract DCDomainSwap {
             IDealFactory.CreateParams({ init: init, trackCreator: true })
         );
 
-        dcRank.reportDeal(domainName, deal, msg.sender);
+        dcRank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit DealCreated(
             msg.sender,

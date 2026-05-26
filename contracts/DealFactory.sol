@@ -154,24 +154,6 @@ interface IDealResultIndex {
 
 interface IDealPairManager {
     function pairForToken(address token) external view returns (address);
-    function createPair(address tokenOther, uint32 feeNum, uint32 feeDen) external returns (address pair);
-    function mapExistingPair(address tokenOther, address pair) external;
-    function setPairFactory(address pair, address f) external;
-    function initPair(address pair, uint256 b1) external returns (uint256 amountDL, uint256 amountOther);
-    function mintPairOtherAndSettle(address pair)
-        external
-        returns (uint256 amountOther, bool settleAttempted, bool settleSucceeded);
-    function setPairFee(address pair, uint32 newNum, uint32 newDen) external;
-    function setPairVirtualReserves(
-        address pair,
-        uint256 virtualReserve0,
-        bool enable0,
-        uint256 virtualReserve1,
-        bool enable1
-    ) external;
-    function setPairVirtualReservesByBps(address pair, uint32 bps0, bool enable0, uint32 bps1, bool enable1)
-        external
-        returns (uint256 v0, uint256 v1);
     function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
 }
 
@@ -184,9 +166,6 @@ interface IDealImplementationRegistry {
     ) external view returns (address);
 }
 
-interface IOrderBookSettle {
-    function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
-}
 interface IDealDomainView {
     function isDomainDeal() external view returns (bool);
     function domainName() external view returns (string memory);
@@ -302,29 +281,7 @@ contract DealFactory is Ownable {
     event PairImplUpdated(address indexed impl);
     event MinTimeoutUpdated(uint64 seconds_);
     event MinWindowSet(uint32 sec);
-    event GlobalSet(string indexed key, address value);
-    event PairCreated(
-        address indexed pair,
-        address indexed otherToken,
-        uint32 feeNum,
-        uint32 feeDen
-    );
-    event PairFeeUpdated(address indexed pair, uint32 newNum, uint32 newDen);
-    event PairVirtualReservesUpdated(
-        address indexed pair,
-        uint256 virtualReserve0,
-        bool virtualReserve0Enabled,
-        uint256 virtualReserve1,
-        bool virtualReserve1Enabled
-    );
-    event PairMapped(address indexed otherToken, address indexed pair);
-    event PairOtherLiquidityAddedAndSettled(
-        address indexed pair,
-        uint256 amountOther,
-        bool settleAttempted,
-        bool settleSucceeded
-    );
-    event PairOtherLiquiditySettleFailed(address indexed pair, bytes reason);
+    event GlobalAddressSet(bytes32 indexed key, address value);
     event FeesAndMintOnFeesUpdated(
         uint32 feeNonDLNum,
         uint32 feeNonDLDen,
@@ -350,16 +307,6 @@ contract DealFactory is Ownable {
         uint256 dlBurned
     );
     event DealCreated(address indexed deal, address indexed initiator);
-    event DealCreatedV2(
-        address indexed initiator,
-        address indexed deal,
-        uint256 indexed aNftId
-    );
-    event DealTemplateTagged(
-        address indexed deal,
-        uint8 indexed templateType
-    );
-    event DealOpenTokenTokenCreated(address indexed deal);
     event DLMinted(address indexed to, uint256 amount, address indexed deal);
     /// @notice 仅索引便利：每笔 Deal 成交奖励汇总（与 Deal 上 `RewardsMinted` 同数据；`deal` 为 msg.sender）
     event DealRewardsLogged(
@@ -383,6 +330,21 @@ contract DealFactory is Ownable {
 
     event CompletedAdded(address indexed user, address indexed deal);
     event DomainAdAutoClosed(address indexed deal, string domainName, bool success);
+
+    struct DealRewardBatch {
+        address partyA;
+        uint256 toA;
+        address partyB;
+        uint256 toB;
+        address cAddr;
+        uint256 toC;
+        uint256 aTokenId;
+        uint256 aMinted;
+        uint256 bTokenId;
+        uint256 bMinted;
+        uint256 cTokenId;
+        uint256 cMinted;
+    }
 
     /* ---------------- Modifiers ---------------- */
     modifier onlyAdmin() {
@@ -444,28 +406,54 @@ contract DealFactory is Ownable {
         emit MinTimeoutUpdated(s);
     }
 
-    /// key ∈ {"dlToken","infoNft","wrappedNative","swapOrderBook","dealMessageHub","creditGraph","dealActivityIndex","dealResultIndex","dealPairManager","dealNftGovernanceActivity","dealImplementationRegistry","dcDomainRank"}
-    function setGlobal(string calldata key, address value) external onlyOwner {
-        if (value == address(0)) revert ZeroAddress();
-        bytes32 k = keccak256(bytes(key));
-        if (k == keccak256("dlToken")) dlToken = value;
-        else if (k == keccak256("infoNft")) infoNft = value;
-        else if (k == keccak256("wrappedNative")) wrappedNative = value;
-        else if (k == keccak256("swapOrderBook")) swapOrderBook = value;
-        else if (k == keccak256("dealMessageHub")) dealMessageHub = value;
-        else if (k == keccak256("creditGraph")) creditGraph = value;
-        else if (k == keccak256("dealActivityIndex")) dealActivityIndex = value;
-        else if (k == keccak256("dealResultIndex")) dealResultIndex = value;
-        else if (k == keccak256("dealPairManager")) dealPairManager = value;
-        else if (k == keccak256("dealNftGovernanceActivity")) dealNftGovernanceActivity = value;
-        else if (k == keccak256("dealImplementationRegistry")) dealImplementationRegistry = value;
-        else if (k == keccak256("dcDomainRank")) dcDomainRank = value;
-        else revert();
-        if ((k == keccak256("dlToken") || k == keccak256("wrappedNative")) && value != address(0)) {
-            allowedMarginToken[value] = true;
-            emit MarginTokenAllowedUpdated(value, true);
-        }
-        emit GlobalSet(key, value);
+    function setCoreGlobals(
+        address _dlToken,
+        address _infoNft,
+        address _wrappedNative,
+        address _dealPairManager
+    ) external onlyOwner {
+        if (
+            _dlToken == address(0) ||
+            _infoNft == address(0) ||
+            _wrappedNative == address(0) ||
+            _dealPairManager == address(0)
+        ) revert ZeroAddress();
+        dlToken = _dlToken;
+        infoNft = _infoNft;
+        wrappedNative = _wrappedNative;
+        dealPairManager = _dealPairManager;
+        allowedMarginToken[_dlToken] = true;
+        allowedMarginToken[_wrappedNative] = true;
+        emit MarginTokenAllowedUpdated(_dlToken, true);
+        emit MarginTokenAllowedUpdated(_wrappedNative, true);
+        emit GlobalAddressSet("dlToken", _dlToken);
+        emit GlobalAddressSet("infoNft", _infoNft);
+        emit GlobalAddressSet("wrappedNative", _wrappedNative);
+        emit GlobalAddressSet("dealPairManager", _dealPairManager);
+    }
+
+    function setServiceGlobals(
+        address _dealMessageHub,
+        address _creditGraph,
+        address _dealActivityIndex,
+        address _dealResultIndex,
+        address _dealImplementationRegistry
+    ) external onlyOwner {
+        _setOptionalGlobal("dealMessageHub", _dealMessageHub);
+        _setOptionalGlobal("creditGraph", _creditGraph);
+        _setOptionalGlobal("dealActivityIndex", _dealActivityIndex);
+        _setOptionalGlobal("dealResultIndex", _dealResultIndex);
+        _setOptionalGlobal("dealImplementationRegistry", _dealImplementationRegistry);
+    }
+
+    function setOpsGlobals(
+        address _swapOrderBook,
+        address _dealNftGovernanceActivity,
+        address _dcDomainRank
+    ) external onlyOwner {
+        _setOptionalGlobal("swapOrderBook", _swapOrderBook);
+        _setOptionalGlobal("dealNftGovernanceActivity", _dealNftGovernanceActivity);
+        _setOptionalGlobal("dcDomainRank", _dcDomainRank);
     }
 
     function setMinWindowSec(uint32 sec_) external onlyOwner {
@@ -601,112 +589,6 @@ contract DealFactory is Ownable {
         );
     }
 
-    /* ========== Pair：创建 / 初始化 / 改费率 ========== */
-    function createPair(
-        address tokenOther,
-        uint32 feeNum,
-        uint32 feeDen
-    ) external onlyOwner returns (address pair) {
-        pair = _pairManager().createPair(tokenOther, feeNum, feeDen);
-        emit PairCreated(pair, tokenOther, feeNum, feeDen);
-        emit PairMapped(tokenOther, pair);
-    }
-
-    function setPairFactory(address pair, address f) external onlyOwner {
-        _pairManager().setPairFactory(pair, f);
-    }
-    function initPair(
-        address pair,
-        uint256 _b1
-    ) external onlyOwner returns (uint amountDL, uint amountOther) {
-        (amountDL, amountOther) = _pairManager().initPair(pair, _b1);
-    }
-    function mintPairOtherAndSettle(
-        address pair
-    ) external onlyOwner returns (uint256 amountOther) {
-        bool settleAttempted;
-        bool settleSucceeded;
-        (amountOther,,) = _pairManager().mintPairOtherAndSettle(pair);
-        if (swapOrderBook != address(0)) {
-            settleAttempted = true;
-            try IOrderBookSettle(swapOrderBook).settlePair(pair, 1, 8) {
-                settleSucceeded = true;
-            } catch (bytes memory reason) {
-                emit PairOtherLiquiditySettleFailed(pair, reason);
-            }
-        }
-        emit PairOtherLiquidityAddedAndSettled(
-            pair,
-            amountOther,
-            settleAttempted,
-            settleSucceeded
-        );
-    }
-    function setPairFee(
-        address pair,
-        uint32 newNum,
-        uint32 newDen
-    ) external onlyOwner {
-        _pairManager().setPairFee(pair, newNum, newDen);
-        emit PairFeeUpdated(pair, newNum, newDen);
-    }
-    function setPairFeeByAdmin(address pair, uint32 newNum) external onlyAdmin {
-        require(1 <= newNum && 200 >= newNum);
-        _pairManager().setPairFee(pair, newNum, 10000);
-        emit PairFeeUpdated(pair, newNum, 10000);
-    }
-    function setPairVirtualReserves(
-        address pair,
-        uint256 virtualReserve0,
-        bool enable0,
-        uint256 virtualReserve1,
-        bool enable1
-    ) external onlyOwner {
-        _pairManager().setPairVirtualReserves(pair, virtualReserve0, enable0, virtualReserve1, enable1);
-        emit PairVirtualReservesUpdated(
-            pair,
-            virtualReserve0,
-            enable0 && virtualReserve0 > 0,
-            virtualReserve1,
-            enable1 && virtualReserve1 > 0
-        );
-    }
-    function setPairVirtualReservesByBps(
-        address pair,
-        uint32 bps0,
-        bool enable0,
-        uint32 bps1,
-        bool enable1
-    ) external onlyOwner {
-        (uint256 v0, uint256 v1) = _pairManager().setPairVirtualReservesByBps(pair, bps0, enable0, bps1, enable1);
-        emit PairVirtualReservesUpdated(
-            pair,
-            v0,
-            enable0 && v0 > 0,
-            v1,
-            enable1 && v1 > 0
-        );
-    }
-    function mapExistingPair(address tokenOther, address pair) external onlyOwner {
-        _pairManager().mapExistingPair(tokenOther, pair);
-        emit PairMapped(tokenOther, pair);
-    }
-
-    function pairForToken(address token) public view returns (address) {
-        address manager = dealPairManager;
-        if (manager == address(0)) return address(0);
-        return IDealPairManager(manager).pairForToken(token);
-    }
-
-    function getPair(address token) external view returns (address) {
-        address t = (token == address(0)) ? wrappedNative : token;
-        return pairForToken(t);
-    }
-    function isTokenSupported(address token) external view returns (bool) {
-        address t = (token == address(0)) ? wrappedNative : token;
-        return pairForToken(t) != address(0);
-    }
-
     /* ========== TWAP：供 Deal 调用报价 ========== */
     function updateAndQuoteToDL(
         address pair,
@@ -746,7 +628,7 @@ contract DealFactory is Ownable {
         if (msgNorm == dlToken) {
             dlNeed = msgPriceAmountInToken;
         } else {
-            address msgPair = pairForToken(msgNorm);
+            address msgPair = _pairForToken(msgNorm);
             if (msgPair == address(0)) return;
             dlNeed = _updateAndQuoteInternal(msgPair, msgPriceAmountInToken);
         }
@@ -826,28 +708,30 @@ contract DealFactory is Ownable {
         ) revert MarginTokenNotAllowed();
     }
 
-    /* ========== 代理：增发 DL（仅 Deal） ========== */
-    function mintDL(address to, uint256 amount) external onlyDeal {
-        require(to != address(0) && amount > 0);
-        IDLMint(dlToken).mint(to, amount);
-        emit DLMinted(to, amount, msg.sender);
-    }
-
-    /// @dev Deal 成交后调用；前端/索引只订工厂时可筛 `DealRewardsLogged`，不必扫每个 clone。
-    function logDealRewards(
-        address partyA,
-        uint256 toA,
-        address partyB,
-        uint256 toB,
-        address cAddr,
-        uint256 toC
-    ) external onlyDeal {
+    function mintAndRecordDealRewards(DealRewardBatch calldata r) external onlyDeal {
         address deal = msg.sender;
+        if (r.toA > 0) _mintDealReward(r.partyA, r.toA, deal);
+        if (r.toB > 0) _mintDealReward(r.partyB, r.toB, deal);
+        if (r.toC > 0 && r.cAddr != address(0)) _mintDealReward(r.cAddr, r.toC, deal);
+
         address resultIndex = dealResultIndex;
         if (resultIndex != address(0)) {
-            try IDealResultIndex(resultIndex).recordReward(deal, partyA, toA, partyB, toB, cAddr, toC) {} catch {}
+            try IDealResultIndex(resultIndex).recordReward(deal, r.partyA, r.toA, r.partyB, r.toB, r.cAddr, r.toC) {} catch {}
         }
-        emit DealRewardsLogged(msg.sender, partyA, partyB, toA, toB, cAddr, toC);
+        emit DealRewardsLogged(deal, r.partyA, r.partyB, r.toA, r.toB, r.cAddr, r.toC);
+
+        address nft = infoNft;
+        if (nft != address(0)) {
+            if (r.aTokenId != 0 && r.aMinted > 0) IDealInfoNFT(nft).addMinted(r.aTokenId, r.aMinted);
+            if (r.bTokenId != 0 && r.bMinted > 0) IDealInfoNFT(nft).addMinted(r.bTokenId, r.bMinted);
+            if (r.cTokenId != 0 && r.cMinted > 0) IDealInfoNFT(nft).addMinted(r.cTokenId, r.cMinted);
+        }
+    }
+
+    function _mintDealReward(address to, uint256 amount, address deal) internal {
+        require(to != address(0) && amount > 0);
+        IDLMint(dlToken).mint(to, amount);
+        emit DLMinted(to, amount, deal);
     }
 
     function recordDealTimeline(uint8 action, address actor, bool isPartyA, uint256 value) external onlyDeal {
@@ -858,10 +742,6 @@ contract DealFactory is Ownable {
     }
 
     /* ========== 代理：写 InfoNFT（仅 Deal） ========== */
-    function infoAddMinted(uint256 tokenId, uint256 amount) external onlyDeal {
-        if (infoNft == address(0) || amount == 0) revert InfoNftAmountInvalid();
-        IDealInfoNFT(infoNft).addMinted(tokenId, amount);
-    }
     function infoSetMaxPartnerOf(
         uint256 tokenId,
         uint256 partnerTokenId
@@ -964,25 +844,21 @@ contract DealFactory is Ownable {
         if (prevParticipant != address(0))
             _removeTracked(prevParticipant, msg.sender);
     }
-    function onAbandoned(
-        address creator,
-        address prevParticipant
-    ) external onlyDeal {
+    function onAbandoned(address creator, address prevParticipant, bool domainDeal) external onlyDeal {
         if (creator != address(0)) _removeTracked(creator, msg.sender);
         if (prevParticipant != address(0))
             _removeTracked(prevParticipant, msg.sender);
-        _tryCloseDomainAd(msg.sender);
+        if (domainDeal) _tryCloseDomainAd(msg.sender);
     }
-    function onClosedFor(address user) external onlyDeal {
-        if (user != address(0)) _removeTracked(user, msg.sender);
-        _tryCloseDomainAd(msg.sender);
-    }
-
-    // 完成回调（仅完成态 & 仅 Deal 可调）
-    function onCompletedFor(address user) external onlyDeal {
-        if (user == address(0)) return;
-        _addCompleted(user, msg.sender);
-        _tryCloseDomainAd(msg.sender);
+    function onFinishedFor(address partyA, address partyB, bool trackA, bool trackB, bool completed, bool domainDeal) external onlyDeal {
+        address deal = msg.sender;
+        if (completed) {
+            if (trackA && partyA != address(0)) _addCompleted(partyA, deal);
+            if (trackB && partyB != address(0)) _addCompleted(partyB, deal);
+        }
+        if (trackA && partyA != address(0)) _removeTracked(partyA, deal);
+        if (trackB && partyB != address(0)) _removeTracked(partyB, deal);
+        if (domainDeal) _tryCloseDomainAd(deal);
     }
 
     /* ========== 热索引只读（活跃） ========== */
@@ -1049,10 +925,30 @@ contract DealFactory is Ownable {
             emit CompletedAdded(user, deal);
     }
 
+    function _setOptionalGlobal(bytes32 key, address value) internal {
+        if (value == address(0)) return;
+        if (key == "dealMessageHub") dealMessageHub = value;
+        else if (key == "creditGraph") creditGraph = value;
+        else if (key == "dealActivityIndex") dealActivityIndex = value;
+        else if (key == "dealResultIndex") dealResultIndex = value;
+        else if (key == "dealImplementationRegistry") dealImplementationRegistry = value;
+        else if (key == "swapOrderBook") swapOrderBook = value;
+        else if (key == "dealNftGovernanceActivity") dealNftGovernanceActivity = value;
+        else if (key == "dcDomainRank") dcDomainRank = value;
+        else revert();
+        emit GlobalAddressSet(key, value);
+    }
+
     function _pairManager() internal view returns (IDealPairManager manager) {
         address addr = dealPairManager;
         if (addr == address(0)) revert ZeroAddress();
         manager = IDealPairManager(addr);
+    }
+
+    function _pairForToken(address token) internal view returns (address) {
+        address manager = dealPairManager;
+        if (manager == address(0)) return address(0);
+        return IDealPairManager(manager).pairForToken(token);
     }
 
     function _updateAndQuoteInternal(address pair, uint256 amountIn) internal returns (uint256) {
@@ -1069,7 +965,7 @@ contract DealFactory is Ownable {
             tokenNorm == recognizedToken0 ||
             tokenNorm == recognizedToken1
         ) {
-            if (pairForToken(tokenNorm) == address(0)) revert RewardPairMissing();
+            if (_pairForToken(tokenNorm) == address(0)) revert RewardPairMissing();
         }
     }
 
@@ -1105,7 +1001,7 @@ contract DealFactory is Ownable {
 
     function _applyCreateBurn(address payer) internal {
         address pricingNorm = _normalizeToken(createBurnPricingToken);
-        address pair = pairForToken(pricingNorm);
+        address pair = _pairForToken(pricingNorm);
         if (pair == address(0)) revert CreateBurnNoPair();
         uint256 dlNeed = _updateAndQuoteInternal(pair, createBurnAmountInToken);
         if (dlNeed == 0) revert CreateBurnQuantityZero();
@@ -1128,7 +1024,7 @@ contract DealFactory is Ownable {
         _assertRewardPairConfigured(bNorm, p.init.bSwapAmount);
 
         address msgNorm = _normalizeToken(msgPriceToken);
-        address msgPair = msgNorm == dlToken ? address(0) : pairForToken(msgNorm);
+        address msgPair = msgNorm == dlToken ? address(0) : _pairForToken(msgNorm);
 
         cfg = IDeal.ConfigParams({
             dl: dlToken,
@@ -1139,8 +1035,8 @@ contract DealFactory is Ownable {
             recognizedToken1: recognizedToken1,
             aTokenNorm: aNorm,
             bTokenNorm: bNorm,
-            aPair: pairForToken(aNorm),
-            bPair: pairForToken(bNorm),
+            aPair: _pairForToken(aNorm),
+            bPair: _pairForToken(bNorm),
             feeNonDLNum: defaultFeeNonDL.num,
             feeNonDLDen: defaultFeeNonDL.den,
             mintOnFeesNum: defaultMintOnFees.num,
@@ -1183,9 +1079,6 @@ contract DealFactory is Ownable {
         _markNftGovernanceActivity(p.init.aNftId);
 
         emit DealCreated(deal, initiator);
-        emit DealCreatedV2(initiator, deal, p.init.aNftId);
-        emit DealTemplateTagged(deal, p.init.templateType);
-        if (p.init.openTokenTokenFast) emit DealOpenTokenTokenCreated(deal);
     }
 
     function _markNftGovernanceActivity(uint256 tokenId) internal {

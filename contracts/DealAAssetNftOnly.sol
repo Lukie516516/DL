@@ -16,11 +16,8 @@ interface IFactoryIndex {
     function onCreated(address creator, bool trackCreator) external;
     function onJoined(address participant, bool trackParticipant) external;
     function onParticipantRemoved(address prevParticipant) external;
-    function onAbandoned(address creator, address prevParticipant) external;
-    function onClosedFor(address user) external;
-
-    // 仅在 Completed 时写入 “完成热索引 ring”
-    function onCompletedFor(address user) external;
+    function onAbandoned(address creator, address prevParticipant, bool domainDeal) external;
+    function onFinishedFor(address partyA, address partyB, bool trackA, bool trackB, bool completed, bool domainDeal) external;
 }
 /* 通过 Factory 锁/解锁 InfoNFT（仅 Deal 可调） */
 interface IFactoryLock {
@@ -278,8 +275,8 @@ contract DealAAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         _unlockNftIfLocked(false);
         bNftId = 0;
 
-        if (_trackA && _trackBActive) IFactoryIndex(factory).onAbandoned(a, prevB);
-        else if (_trackA)             IFactoryIndex(factory).onAbandoned(a, address(0));
+        if (_trackA && _trackBActive) IFactoryIndex(factory).onAbandoned(a, prevB, isDomainDeal);
+        else if (_trackA)             IFactoryIndex(factory).onAbandoned(a, address(0), isDomainDeal);
         else if (_trackBActive)       IFactoryIndex(factory).onParticipantRemoved(prevB);
         _trackA=false; _trackBActive=false;
 
@@ -466,15 +463,10 @@ contract DealAAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
 
         emit Claimed(b, NATIVE, 0, bMarginToken, bMarginAmount);
 
-        // 仅当该侧开启过热索引追踪，才写入“完成热索引 ring”
-        if (_trackA)       { IFactoryIndex(factory).onCompletedFor(a); }
-        if (_trackBActive) { IFactoryIndex(factory).onCompletedFor(b); }
-
         // 解锁 NFT + 清理“活跃热索引”
         _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
-        if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
-        if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
+        _finishIndex(true);
 
         emit Completed(reason, ts);
         _recordTimeline(6, address(0), false, uint8(reason));
@@ -504,8 +496,7 @@ contract DealAAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
         _unlockNftIfLocked(true);
         _unlockNftIfLocked(false);
 
-        if (_trackA)       { IFactoryIndex(factory).onClosedFor(a); _trackA = false; }
-        if (_trackBActive) { IFactoryIndex(factory).onClosedFor(b); _trackBActive = false; }
+        _finishIndex(false);
 
         emit Canceled(ts);
         _recordTimeline(7, address(0), false, 0);
@@ -522,6 +513,16 @@ contract DealAAssetNftOnly is Initializable, ReentrancyGuard, IERC721Receiver {
             _recordTimeline(12, address(0), false, 0);
         }
     }
+
+    function _finishIndex(bool completed) internal {
+        bool trackA = _trackA;
+        bool trackB = _trackBActive;
+        if (!trackA && !trackB) return;
+        IFactoryIndex(factory).onFinishedFor(a, b, trackA, trackB, completed, isDomainDeal);
+        _trackA = false;
+        _trackBActive = false;
+    }
+
     function _isSideReadyA() internal view returns (bool) {
         bool tokensReady = !_sideNeedsPayA() || aPaid;
         bool nftReady    = (aNftId == 0) || aNftLocked;
