@@ -88,11 +88,11 @@
 
 | 参数/方法 | 当前含义 | 建议治理方式 |
 | --- | --- | --- |
-| `D.constructor(initialHolder)` | D 初始 1000 枚一次性接收地址 | 部署前确认，建议多签/分配钱包 |
+| `D.constructor(initialHolder)` | D 初始 100 枚一次性接收地址 | 部署前确认，建议多签/分配钱包 |
 | `DCToken.grantRole(MINTER_ROLE, ...)` | 授权增发 DealCoin（DC） | 重大变更 |
 | `DCToken.revokeRole(MINTER_ROLE, ...)` | 移除 DealCoin（DC）增发权限 | 重大变更 |
 | `DCToken.grantRole(PAUSER_ROLE, ...)` | 授权暂停 DealCoin（DC） | 重大变更 |
-| `D` 总量、精度、席位门槛 | 1000 枚、8 位、2.5 D | 不建议上线后改；需要新合约或重大变更 |
+| `D` 总量、精度、席位门槛 | 100 枚、8 位、2.5 D | 不建议上线后改；需要新合约或重大变更 |
 
 ## 3. 重大变更候选
 

@@ -5,7 +5,7 @@ import { network } from "hardhat";
 import { encodeFunctionData, zeroAddress } from "viem";
 
 const D_UNIT = 10n ** 8n;
-const MAX_SUPPLY = 1000n * D_UNIT;
+const MAX_SUPPLY = 100n * D_UNIT;
 const SEAT_THRESHOLD = 25n * D_UNIT / 10n;
 
 async function waitFor(
@@ -20,7 +20,7 @@ async function waitFor(
 }
 
 describe("DAO Rules", async function () {
-  it("configures D as a 1000 supply, 8-decimal, transferable seat token", async function () {
+  it("configures D as a 100 supply, 8-decimal, transferable seat token", async function () {
     const { viem } = await network.connect({ network: "hardhatMainnet" });
     const publicClient = await viem.getPublicClient();
     const testClient = await viem.getTestClient();
@@ -116,7 +116,7 @@ describe("DAO Rules", async function () {
     const previewAlice = await claimer.read.previewClaim([0n, alice.account.address]);
     const previewBob = await claimer.read.previewClaim([0n, bob.account.address]);
     assert.equal(previewAlice[0], tenD);
-    assert.equal(previewAlice[1], 10n * 10n ** 18n);
+    assert.equal(previewAlice[1], 100n * 10n ** 18n);
     assert.equal(previewBob[0], 0n);
     assert.equal(previewBob[1], 0n);
 
@@ -124,7 +124,7 @@ describe("DAO Rules", async function () {
       client: { wallet: alice },
     });
     await waitFor(publicClient, await claimerAsAlice.write.claim([0n]));
-    assert.equal(await dl.read.balanceOf([alice.account.address]), 10n * 10n ** 18n);
+    assert.equal(await dl.read.balanceOf([alice.account.address]), 100n * 10n ** 18n);
   });
 
   it("only allows the dividend executor to create official treasury rounds", async function () {

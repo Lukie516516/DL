@@ -385,7 +385,7 @@
           </div>
           <div class="summary-box">
             <strong>一句话：</strong>
-            <p>D 是固定 1000 枚的协议权益代币；持有 D 可以按比例领取协议分红；2.5 D 以上成为 DAO 席位；重大升级还要接受官方 DealInfoNFT 用户否决。</p>
+            <p>D 是固定 100 枚的协议权益代币；持有 D 可以按比例领取协议分红；2.5 D 以上成为 DAO 席位；重大升级还要接受官方 DealInfoNFT 用户否决。</p>
           </div>
         </header>
 
@@ -420,7 +420,7 @@ DealInfoNFT 负责真实用户身份和治理用户侧保护。</code></pre>
               </tr>
             </thead>
             <tbody>
-              <tr><td>总量</td><td>固定 1000 D</td></tr>
+              <tr><td>总量</td><td>固定 100 D</td></tr>
               <tr><td>精度</td><td>8 位小数，类似 Bitcoin</td></tr>
               <tr><td>是否可转让</td><td>可以</td></tr>
               <tr><td>是否可增发</td><td>不可增发</td></tr>
@@ -429,7 +429,7 @@ DealInfoNFT 负责真实用户身份和治理用户侧保护。</code></pre>
             </tbody>
           </table>
           <div class="note">
-            持有 1 D = 拥有协议 0.1% 的分红权。持有 2.5 D 或以上 = 拥有 DAO 席位资格。D 可以转让，但转让只影响未来分红和未来提案。
+            持有 1 D = 拥有协议 1% 的分红权。持有 2.5 D 或以上 = 拥有 DAO 席位资格。D 可以转让，但转让只影响未来分红和未来提案。
           </div>
         </section>
 
@@ -461,11 +461,11 @@ DealInfoNFT 负责真实用户身份和治理用户侧保护。</code></pre>
             D 席位可以发起分红提案，但不能绕过 DAO 直接创建分红轮。分红资金来自 treasury / dividendSource，不来自提案人的个人钱包。
           </div>
           <h3>快照机制</h3>
-          <pre><code>D 总量 = 1000
+          <pre><code>D 总量 = 100
 本轮分红池 = 10,000 DC
 A 在快照时持有 1 D
 
-A 可领取 = 1 / 1000 * 10,000 = 10 DC</code></pre>
+A 可领取 = 1 / 100 * 10,000 = 100 DC</code></pre>
         </section>
 
         <section id="governance">
@@ -583,7 +583,7 @@ A 可领取 = 1 / 1000 * 10,000 = 10 DC</code></pre>
               </tr>
             </thead>
             <tbody>
-              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>固定总量 1000 D，8 位精度，2.5 D 席位判断</td></tr>
+              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>固定总量 100 D，8 位精度，2.5 D 席位判断</td></tr>
               <tr><td>分红领取</td><td><code>contracts/VoteDividendClaimer.sol</code></td><td>按 D 历史持仓快照领取 DealCoin（DC）分红</td></tr>
               <tr><td>席位否决</td><td><code>contracts/DealSeatVetoGovernor.sol</code></td><td>常规提案、重大提案、席位否决窗口</td></tr>
               <tr><td>NFT 活跃</td><td><code>contracts/DealNftGovernanceActivity.sol</code></td><td>记录官方 NFT 治理活跃时间</td></tr>
@@ -622,7 +622,7 @@ D + DealSeatVetoGovernor + NftVetoRegistry + DealNftGovernanceActivity + VoteDiv
               </tr>
             </thead>
             <tbody>
-              <tr><td>D 总量</td><td>1000</td></tr>
+              <tr><td>D 总量</td><td>100</td></tr>
               <tr><td>D 精度</td><td>8 位</td></tr>
               <tr><td>席位门槛</td><td>2.5 D</td></tr>
               <tr><td>分红资产</td><td>DealCoin（DC）</td></tr>
@@ -641,7 +641,7 @@ D + DealSeatVetoGovernor + NftVetoRegistry + DealNftGovernanceActivity + VoteDiv
 
         <section>
           <h2>对外总结</h2>
-          <pre><code>D 是固定 1000 枚的协议权益代币。
+          <pre><code>D 是固定 100 枚的协议权益代币。
 持有 D 可以按比例领取协议分红。
 2.5 D 以上成为治理席位。
 常规参数采用席位否决制，无人反对即可执行。
