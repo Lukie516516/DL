@@ -167,12 +167,7 @@ async function deployFixture() {
   }
 
   async function mintInfoNft(wallet: typeof owner | typeof alice | typeof bob) {
-    let pairAddress = await dealPairManager.read.pairForToken([ausd.address]);
-    if (pairAddress === zeroAddress) {
-      ({ pairAddress } = await createAndInitPair(ausd.address));
-    }
-
-    await waitFor(publicClient, await infoNft.write.setMintPriceU([pairAddress, ONE]));
+    await waitFor(publicClient, await infoNft.write.setMintPriceU([zeroAddress, ONE]));
 
     const dlAsUser = await viem.getContractAt("DCToken", dl.address, {
       client: { wallet },
@@ -183,7 +178,9 @@ async function deployFixture() {
 
     await waitFor(publicClient, await dlAsUser.write.approve([infoNft.address, 1_000_000n * ONE]));
     const nextIdBefore = await infoNft.read.nextId();
+    const supplyBefore = await dl.read.totalSupply();
     await waitFor(publicClient, await infoNftAsUser.write.mintByBurn());
+    assert.equal(await dl.read.totalSupply(), supplyBefore - ONE);
     return nextIdBefore;
   }
 

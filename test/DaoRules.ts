@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { network } from "hardhat";
 import { encodeFunctionData, zeroAddress } from "viem";
 
-const D_UNIT = 10n ** 8n;
+const D_UNIT = 10n ** 18n;
 const MAX_SUPPLY = 100n * D_UNIT;
 const SEAT_THRESHOLD = 25n * D_UNIT / 10n;
 
@@ -20,7 +20,7 @@ async function waitFor(
 }
 
 describe("DAO Rules", async function () {
-  it("configures D as a 100 supply, 8-decimal, transferable seat token", async function () {
+  it("configures D as a 100 supply, 18-decimal, transferable seat token", async function () {
     const { viem } = await network.connect({ network: "hardhatMainnet" });
     const publicClient = await viem.getPublicClient();
     const testClient = await viem.getTestClient();
@@ -28,7 +28,7 @@ describe("DAO Rules", async function () {
 
     const d = await viem.deployContract("D", [owner.account.address]);
 
-    assert.equal(await d.read.decimals(), 8);
+    assert.equal(await d.read.decimals(), 18);
     assert.equal(await d.read.UNIT(), D_UNIT);
     assert.equal(await d.read.MAX_SUPPLY(), MAX_SUPPLY);
     assert.equal(await d.read.SEAT_THRESHOLD(), SEAT_THRESHOLD);

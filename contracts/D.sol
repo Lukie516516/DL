@@ -16,7 +16,7 @@ contract D is ERC20, ERC20Permit, ERC20Votes {
     error CapExceeded();
     error ZeroInitialHolder();
 
-    uint8 public constant D_DECIMALS = 8;
+    uint8 public constant D_DECIMALS = 18;
     uint256 public constant UNIT = 10 ** D_DECIMALS;
     uint256 public constant MAX_SUPPLY = 100 * UNIT;
     uint256 public constant SEAT_THRESHOLD = 25 * UNIT / 10; // 2.5 D

@@ -10,8 +10,6 @@ import {ERC721Votes} from "@openzeppelin/contracts/token/ERC721/extensions/ERC72
 
 interface IFactoryLite {
     function dlToken() external view returns (address);
-    /// @notice 基于 TWAP 的 U->DL 报价；输入为 U 的最小单位（例如 USDT 6 位），输出为 DL 的最小单位（通常 18 位）
-    function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
 }
 interface IDLBurnable is IERC20 { function burnFrom(address from, uint256 value) external; }
 
@@ -26,7 +24,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     mapping(uint16 => mapping(uint32 => uint32)) public mintedCountBySeasonAndDate;
 
     address public admin;
-    // 主 Factory（仅用于 mintByBurn 时查询 TWAP 报价）；可由 Owner 切换
+    // 主 Factory（mintByBurn 时读取 DealCoin/DC 地址）；可由 Owner 切换
     address public factory;
 
     // 允许写入/锁的 Factory 白名单
@@ -40,8 +38,8 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     address public pair;
     uint256 public mintPriceDL;
 
-    /// @notice 铸造事件（记录换算与燃烧结果）
-    event MintByBurn(address indexed minter, uint256 indexed tokenId, uint256 uAmount, uint256 dlBurned);
+    /// @notice 铸造事件（记录 DC/DL 本位标价与燃烧结果）
+    event MintByBurn(address indexed minter, uint256 indexed tokenId, uint256 dlAmount, uint256 dlBurned);
     event CurrentSeasonUpdated(uint16 season);
     event DisplayNoAssigned(
         uint256 indexed tokenId,
@@ -126,7 +124,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         Ownable(msg.sender)
     {
         require(f != address(0), "ZERO_FACTORY");
-        factory = f;                  // 作为主 Factory（供 mintByBurn 查询 TWAP）
+        factory = f;                  // 作为主 Factory（供 mintByBurn 查询 DealCoin/DC 地址）
         isFactory[f] = true;          // 主 Factory 默认授权
         emit FactoryAdded(f);
         admin = msg.sender;
@@ -160,8 +158,10 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         admin = _admin;
     }
 
+    /// @dev Legacy name kept for ABI compatibility. `u` is now the direct DealCoin/DC burn amount.
     function setMintPriceU(address p, uint256 u) external onlyOwner { pair = p; mintPriceDL = u; }
 
+    /// @dev Legacy name kept for ABI compatibility. `u` is now the direct DealCoin/DC burn amount.
     function setMintPriceUByAdmin(uint256 u) external onlyAdmin {
         require(u >= 1 * 10**16 && u <= 100 * 10**18);
         mintPriceDL = u;
@@ -288,10 +288,10 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     }
     function isLocked(uint256 tokenId) external view returns (bool) { return lockCount[tokenId] > 0; }
 
-    /* ========== 铸造：通过 DL 燃烧（U 计价->TWAP 折算 DL） ========== */
+    /* ========== 铸造：按 DealCoin/DC 本位直接燃烧 ========== */
     function mintByBurn() external returns (uint256 tokenId) {
-        require(factory != address(0) && pair != address(0) && mintPriceDL > 0, "MINT_NOT_CONFIGURED");
-        uint256 dlNeed = IFactoryLite(factory).updateAndQuoteToDL(pair, mintPriceDL);
+        require(factory != address(0) && mintPriceDL > 0, "MINT_NOT_CONFIGURED");
+        uint256 dlNeed = mintPriceDL;
         IDLBurnable(IFactoryLite(factory).dlToken()).burnFrom(msg.sender, dlNeed);
 
         tokenId = nextId++;

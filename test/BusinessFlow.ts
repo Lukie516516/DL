@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { getAddress } from "viem";
+import { getAddress, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const DEADLINE = 2n ** 63n;
@@ -99,7 +99,7 @@ async function deployBusinessFixture() {
   await waitFor(publicClient, await ausd.write.transfer([ausdPairAddress, 1_000_000n * ONE]));
   await waitFor(publicClient, await dealPairManager.write.initPair([ausdPairAddress, 0n]));
 
-  await waitFor(publicClient, await infoNft.write.setMintPriceU([ausdPairAddress, ONE]));
+  await waitFor(publicClient, await infoNft.write.setMintPriceU([zeroAddress, ONE]));
 
   return {
     viem,
@@ -184,7 +184,9 @@ describe("Business Flow", async function () {
 
     const infoNftId = await infoNft.read.nextId();
     await waitFor(publicClient, await dlAsAlice.write.approve([infoNft.address, 1_000_000n * ONE]));
+    const supplyBeforeInfoMint = await dl.read.totalSupply();
     await waitFor(publicClient, await infoNftAsAlice.write.mintByBurn());
+    assert.equal(await dl.read.totalSupply(), supplyBeforeInfoMint - ONE);
     assert.equal(await infoNft.read.ownerOf([infoNftId]), getAddress(alice.account.address));
 
     const domainPrice = await dcDomain.read.getPrice(["sale01"]);
