@@ -134,7 +134,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomain | \`${addresses.dcDomain}\` | 域名 NFT，复用旧地址 |
 | DCDomainRank | \`${addresses.dcDomainRank}\` | 域名广告充值/自动结算、域名收益、黑名单 |
 | DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、精确搜索、状态数量统计 |
-| DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
+| DealCoin/DCToken | \`${addresses.dlToken}\` | DealCoin（DC）主代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
 | USDT | \`${addresses.usdt}\` | 测试稳定币 |
 
@@ -174,7 +174,7 @@ deployments/${DEPLOYMENT_FILE}
 
 - 新 Factory 已配置新 Hub、CreditGraph、ActivityIndex、ImplementationRegistry。
 - 新 Factory 已配置 DealResultIndex，前端可用 view 读取奖励/信用/交易过程时间线索引。
-- 新 Factory 已获得 DL \`MINTER_ROLE\`。
+- 新 Factory 已获得 DealCoin（DC）\`MINTER_ROLE\`。
 - DealInfoNFT 已授权新 Factory，并切换 primary factory 到新 Factory。
 - DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
 - DCDomainRank 已授权新的 Swap / Hall reporter。

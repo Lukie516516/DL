@@ -111,7 +111,7 @@ async function main() {
     },
     notes: [
       "Deal chat storage is externalized through DealMessageHub; Deal.postMessage remains available, and readers should use the hub for message pagination.",
-      "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
+      "DCDomain registration / DCDomainMarket / DCDomainRank use DealCoin (DC) as payment and ranking token; treasury = deployer.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are not deployed.",
     ],
   };

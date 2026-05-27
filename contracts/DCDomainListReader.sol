@@ -156,6 +156,35 @@ contract DCDomainListReader {
         }
     }
 
+    /// @notice My current domains: filters by the current ERC721 owner, sorted by trade volume.
+    function getDomainsByOwner(address owner, uint256 offset, uint256 limit)
+        external
+        view
+        returns (DomainEntry[] memory page)
+    {
+        _checkLimit(limit);
+        DomainEntry[] memory all = _sortedAllByVolume();
+        uint256 matched;
+        for (uint256 i; i < all.length; ) {
+            if (all[i].owner == owner) matched++;
+            unchecked { ++i; }
+        }
+        if (offset >= matched) return new DomainEntry[](0);
+
+        uint256 remaining = matched - offset;
+        uint256 n = remaining < limit ? remaining : limit;
+        page = new DomainEntry[](n);
+        uint256 seen;
+        uint256 k;
+        for (uint256 i; i < all.length && k < n; ) {
+            if (all[i].owner == owner) {
+                if (seen >= offset) page[k++] = all[i];
+                seen++;
+            }
+            unchecked { ++i; }
+        }
+    }
+
     /// @notice My created domains: uses the creator index written when registering the domain.
     function getDomainsByCreator(address creator, uint256 offset, uint256 limit)
         external

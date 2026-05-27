@@ -2,7 +2,7 @@
  * Agiking 链上：探测「虚拟 OTHER 深度」(token1BalanceInit) 与挂单砸穿行为。
  *
  * 用法：
- *   1) 只读（无需私钥）——看已部署 DL↔AUSD / DL↔USDT 池是否带虚拟垫高
+ *   1) 只读（无需私钥）——看已部署 DC↔AUSD / DC↔USDT 池是否带虚拟垫高
  *      npx tsx scripts/agiking-virtual-smash-probe.ts
  *
  *   2) 完整沙盒（需 DealFactory owner 私钥，会发链上交易：部署测试币、建池、init 虚拟深度、试 placeSellDL）
@@ -129,8 +129,8 @@ async function readOnlyMain() {
   });
   console.log(`Factory owner: ${fo}`);
 
-  await probePair(publicClient, "DL↔AUSD", pairDlAusd);
-  await probePair(publicClient, "DL↔USDT", pairDlUsdt);
+  await probePair(publicClient, "DC↔AUSD", pairDlAusd);
+  await probePair(publicClient, "DC↔USDT", pairDlUsdt);
 
   const ob = dep.addresses.dealSwapOrderBook;
   const maxA = await publicClient.readContract({

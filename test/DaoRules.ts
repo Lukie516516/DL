@@ -81,8 +81,8 @@ describe("DAO Rules", async function () {
 
     const d = await viem.deployContract("D", [owner.account.address]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -134,8 +134,8 @@ describe("DAO Rules", async function () {
 
     const d = await viem.deployContract("D", [owner.account.address]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -188,8 +188,8 @@ describe("DAO Rules", async function () {
 
     const d = await viem.deployContract("D", [owner.account.address]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -238,8 +238,8 @@ describe("DAO Rules", async function () {
     const d = await viem.deployContract("D", [owner.account.address]);
     const governor = await viem.deployContract("DealSeatVetoGovernor", [d.address, zeroAddress]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -266,7 +266,7 @@ describe("DAO Rules", async function () {
       [dl.address],
       [0n],
       [mintCalldata],
-      "mint test DL",
+      "mint test DC",
       0,
     ]));
     assert.equal(await governor.read.state([1n]), 1);
@@ -285,8 +285,8 @@ describe("DAO Rules", async function () {
     const d = await viem.deployContract("D", [owner.account.address]);
     const governor = await viem.deployContract("DealSeatVetoGovernor", [d.address, zeroAddress]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -336,8 +336,8 @@ describe("DAO Rules", async function () {
     const nftVeto = await viem.deployContract("NftVetoRegistry", [nft.address, activity.address]);
     const governor = await viem.deployContract("DealSeatVetoGovernor", [d.address, nftVeto.address]);
     const dl = await viem.deployContract("DCToken", [
-      "Deal DL",
-      "DL",
+      "DealCoin",
+      "DC",
       0n,
       owner.account.address,
       owner.account.address,
@@ -370,7 +370,7 @@ describe("DAO Rules", async function () {
       [dl.address],
       [0n],
       [mintCalldata],
-      "mint test DL",
+      "mint test DC",
       1,
     ]));
 

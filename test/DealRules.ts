@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { getAddress, zeroAddress } from "viem";
+import { getAddress, toHex, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const ACCEPT = 1;
@@ -23,8 +23,8 @@ async function deployFixture() {
   const [owner, alice, bob, treasury] = await viem.getWalletClients();
 
   const dl = await viem.deployContract("DCToken", [
-    "Deal DL",
-    "DL",
+    "DealCoin",
+      "DC",
     0n,
     owner.account.address,
     owner.account.address,
@@ -1495,6 +1495,9 @@ describe("Deal Rules", async function () {
     const infoNftAsAlice = await fixture.viem.getContractAt("DealInfoNFT", infoNft.address, {
       client: { wallet: alice },
     });
+    const imageBytes = toHex(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    await waitFor(publicClient, await infoNftAsAlice.write.setTokenImageData([firstId, "image/png", imageBytes]));
+    assert.match(await infoNft.read.imageOf([firstId]), /^data:image\/png;base64,/);
     await waitFor(publicClient, await infoNftAsAlice.write.setTokenImageURI([firstId, "ipfs://avatar"]));
     await waitFor(publicClient, await infoNftAsAlice.write.setTokenUserName([firstId, "alice"]));
     await waitFor(publicClient, await infoNftAsAlice.write.setTokenUserDetail([firstId, "maker profile"]));

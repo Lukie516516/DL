@@ -2,7 +2,7 @@
  * Add the official AGI swap lane without redeploying Deal templates:
  * - deploy a real WETH-style WrappedAGI unless AGI_TOKEN_ADDRESS is provided
  * - set DealFactory.wrappedNative to AGI/WAGI
- * - create/init DL-AGI pair
+ * - create/init DC-AGI pair
  * - redeploy DealRouter with the new wrapped native token
  * - deploy DealSwapAssetRegistry for frontend pair discovery
  * - merge addresses + ABIs into deployments/agiking-31415926.json
@@ -142,12 +142,12 @@ async function main() {
   const pairFeeDen = Number(process.env.PAIR_FEE_DEN ?? "1000");
   let pairDlAgi = await pairManager.read.pairForToken([agi]);
   if (pairDlAgi === ZERO) {
-    console.log("Creating DL-AGI pair...");
+    console.log("Creating DC-AGI pair...");
     await waitFor(publicClient, await pairManager.write.createPair([agi, pairFeeNum, pairFeeDen]));
     pairDlAgi = await pairManager.read.pairForToken([agi]);
   }
-  if (pairDlAgi === ZERO) throw new Error("DL-AGI pair creation failed");
-  console.log("DL-AGI pair:", pairDlAgi);
+  if (pairDlAgi === ZERO) throw new Error("DC-AGI pair creation failed");
+  console.log("DC-AGI pair:", pairDlAgi);
 
   const pair = await viem.getContractAt("DealSwapTemplate", pairDlAgi, { client });
   const inited = await pair.read.liquidityInited();
@@ -155,7 +155,7 @@ async function main() {
   const initAgi = envBigInt("PAIR_INIT_AGI");
   if (!inited && initDl !== undefined && initAgi !== undefined) {
     if (initDl <= 0n || initAgi <= 0n) throw new Error("PAIR_INIT_DL and PAIR_INIT_AGI must be > 0");
-    console.log("Funding DL-AGI pair...");
+    console.log("Funding DC-AGI pair...");
     await waitFor(publicClient, await dl.write.transfer([pairDlAgi, initDl]));
 
     if (agiWasDeployed) {
@@ -167,12 +167,12 @@ async function main() {
       await waitFor(publicClient, await agiToken.write.transfer([pairDlAgi, initAgi]));
     }
 
-    console.log("Initializing DL-AGI pair...");
+    console.log("Initializing DC-AGI pair...");
     await waitFor(publicClient, await pairManager.write.initPair([pairDlAgi, 0n]));
   } else if (!inited) {
-    console.log("DL-AGI pair is created but not initialized. Set PAIR_INIT_DL and PAIR_INIT_AGI to fund it.");
+    console.log("DC-AGI pair is created but not initialized. Set PAIR_INIT_DL and PAIR_INIT_AGI to fund it.");
   } else {
-    console.log("DL-AGI pair already initialized.");
+    console.log("DC-AGI pair already initialized.");
   }
 
   let routerAddress = getAddress(a.dealRouter) as Address;
@@ -232,15 +232,15 @@ async function main() {
 
 | Name | Address | Note |
 | --- | --- | --- |
-| DL | \`${mergedAddresses.dlToken}\` | 统一中间资产 |
+| DealCoin/DC | \`${mergedAddresses.dlToken}\` | 统一中间资产 |
 | AGI / WAGI | \`${mergedAddresses.agi}\` | 原生 AGI 的包装合约；前端原生币路径用 address(0)，ERC20 路径用本地址 |
 | USDT | \`${mergedAddresses.usdt}\` | 官方 USDT 测试/映射币 |
 | AUSD | \`${mergedAddresses.ausd}\` | 官方 AUSD 测试/映射币 |
 | DealRouter | \`${mergedAddresses.dealRouter}\` | 普通 swap 主入口 |
 | DealSwapAssetRegistry | \`${mergedAddresses.dealSwapAssetRegistry}\` | 查询三个官方 pair |
-| DL-AGI Pair | \`${mergedAddresses.pairDlAgi}\` | DL <-> AGI |
-| DL-USDT Pair | \`${mergedAddresses.pairDlUsdt}\` | DL <-> USDT |
-| DL-AUSD Pair | \`${mergedAddresses.pairDlAusd}\` | DL <-> AUSD |
+| DC-AGI Pair | \`${mergedAddresses.pairDlAgi}\` | DC <-> AGI |
+| DC-USDT Pair | \`${mergedAddresses.pairDlUsdt}\` | DC <-> USDT |
+| DC-AUSD Pair | \`${mergedAddresses.pairDlAusd}\` | DC <-> AUSD |
 
 ## Frontend Read
 
@@ -260,11 +260,11 @@ router
 ## Swap Rules
 
 - 三个官方资产：AGI、USDT、AUSD。
-- 三个官方 pair：DL-AGI、DL-USDT、DL-AUSD。
+- 三个官方 pair：DC-AGI、DC-USDT、DC-AUSD。
 - AGI 是原生币时，前端用 Router 的 ETH/native 系列方法，并传 \`pairDlAgi\`。
 - AGI 作为 ERC20 展示/授权时，用 \`agi\` 地址，也就是 WAGI。
 - USDT/AUSD 走 ERC20 swap 方法。
-- 双跳兑换继续用 \`ViaDL\` 路径，例如 AGI -> DL -> USDT。
+- 双跳兑换继续用 \`ViaDL\` 路径名（历史函数命名），业务路径是 AGI -> DC -> USDT。
 
 ## Deployment Notes
 

@@ -29,12 +29,12 @@
 | `setRecognizedTokens` | 官方认可交易币种 | 常规参数，但新增币种需谨慎 |
 | `setAllowedMarginToken` | 保证金币种白名单 | 常规参数 |
 | `setAllowedCreateFor` | 允许第三方代创建 deal | 常规参数/权限开关 |
-| `setFeesAndMintOnFees` / `setFeesAndMintOnFeesByAdmin` | 协议手续费、DL 奖励相关参数 | 常规参数，必须有上限 |
+| `setFeesAndMintOnFees` / `setFeesAndMintOnFeesByAdmin` | 协议手续费、DealCoin（DC）奖励相关参数 | 常规参数，必须有上限 |
 | `setSpecialNoFeeTokenByAdmin` | 特殊免手续费 token | 常规参数，但需要记录原因 |
 | `setTreasuryByAdmin` | 国库地址 | 建议按重大变更处理，至少多签确认 |
 | `setMessagePriceRule` / `setMessagePriceRuleByAdmin` | 留言 burn/付费规则 | 常规参数，默认可关闭 |
 | `setCreateBurnRule` / `setCreateBurnRuleByAdmin` | 创建 deal burn 规则 | 常规参数，默认可关闭 |
-| `createPair` | 新建 DL 交易对 | 常规参数偏高风险 |
+| `createPair` | 新建 DealCoin（DC）交易对 | 常规参数偏高风险 |
 | `initPair` | 初始化交易对流动性 | 常规参数偏高风险 |
 | `setPairFee` / `setPairFeeByAdmin` | 交易对手续费 | 常规参数，必须有上限 |
 | `setPairVirtualReserves` / `setPairVirtualReservesByBps` | 虚拟流动性参数 | 常规参数偏高风险 |
@@ -84,14 +84,14 @@
 | `DealSwapTemplate.setFee` | Pair 手续费 | 常规参数 |
 | `DealSwapTemplate.setVirtualReserves` | 虚拟储备 | 常规参数偏高风险 |
 
-### 2.7 DL / D 权限
+### 2.7 DealCoin（DC）/ D 权限
 
 | 参数/方法 | 当前含义 | 建议治理方式 |
 | --- | --- | --- |
 | `D.constructor(initialHolder)` | D 初始 100 枚一次性接收地址 | 部署前确认，建议多签/分配钱包 |
-| `DL.grantRole(MINTER_ROLE, ...)` | 授权增发 DL | 重大变更 |
-| `DL.revokeRole(MINTER_ROLE, ...)` | 移除增发权限 | 重大变更 |
-| `DL.grantRole(PAUSER_ROLE, ...)` | 授权暂停 | 重大变更 |
+| `DCToken.grantRole(MINTER_ROLE, ...)` | 授权增发 DealCoin（DC） | 重大变更 |
+| `DCToken.revokeRole(MINTER_ROLE, ...)` | 移除 DealCoin（DC）增发权限 | 重大变更 |
+| `DCToken.grantRole(PAUSER_ROLE, ...)` | 授权暂停 DealCoin（DC） | 重大变更 |
 | `D` 总量、精度、席位门槛 | 100 枚、8 位、2.5 D | 不建议上线后改；需要新合约或重大变更 |
 
 ## 3. 重大变更候选
@@ -114,7 +114,7 @@
 ```text
 treasury 收资产
 多签/DAO 挑选可兑换资产
-换成 DL
+换成 DealCoin（DC）
 treasury / dividendSource approve VoteDividendClaimer
 D 席位发起分红提案
 无人否决后 executor / DAO 执行 createRound
@@ -127,15 +127,15 @@ D 持有人自行领取
 
 | 参数 | 建议默认 |
 | --- | --- |
-| 分红资产 | DL |
+| 分红资产 | DealCoin（DC） |
 | 分红来源 | treasury 中可分红收入 |
 | 可兑换资产 | treasury 可接收全部资产；只有有安全兑换路径的资产进入分红 |
 | 无交易对资产 | 先不换，留在 treasury |
-| 换 DL 方式 | 先多签/DAO 手动，后续再做路由合约 |
+| 换 DealCoin（DC）方式 | 先多签/DAO 手动，后续再做路由合约 |
 | 滑点保护 | 必须有 `minOut` |
 | 开轮执行权限 | 多签 / DAO Executor；D 席位只能发起分红提案，不能直接开轮 |
 | 分红频率 | 先手动，后续可每周或每月 |
-| 未领取 DL | 留在合约，后续单独定回收规则 |
+| 未领取 DealCoin（DC） | 留在合约，后续单独定回收规则 |
 | 用户领取方式 | 前端展示可领取额度，用户自己 `claim` |
 
 ## 5. 还需要你们定的点

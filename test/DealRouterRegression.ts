@@ -24,8 +24,8 @@ async function deployRouterFixture() {
   const [owner, alice, treasury] = await viem.getWalletClients();
 
   const dl = await viem.deployContract("DCToken", [
-    "Deal DL",
-    "DL",
+    "DealCoin",
+      "DC",
     0n,
     owner.account.address,
     owner.account.address,

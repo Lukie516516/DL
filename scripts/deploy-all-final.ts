@@ -158,7 +158,7 @@ async function main() {
   console.log("  pairForToken AUSD →", E.pairDlAusd);
   console.log("  pairForToken USDT →", E.pairDlUsdt);
 
-  // Grant DL MINTER_ROLE
+  // Grant DealCoin/DC MINTER_ROLE
   const dl = await viem.getContractAt("DCToken", E.dlToken, { client: cl });
   const minterRole = await dl.read.MINTER_ROLE();
   await w(pc, await dl.write.grantRole([minterRole, factory.address]));

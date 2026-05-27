@@ -172,7 +172,7 @@ async function main() {
   const dl = await viem.getContractAt("DCToken", EXISTING.dlToken, { client });
   const minterRole = await dl.read.MINTER_ROLE();
   await waitFor(publicClient, await dl.write.grantRole([minterRole, factory.address]));
-  console.log("  DL MINTER_ROLE granted");
+  console.log("  DealCoin/DC MINTER_ROLE granted");
 
   const infoNft = await viem.getContractAt("DealInfoNFT", EXISTING.dealInfoNFT, { client });
   await waitFor(publicClient, await infoNft.write.addFactory([factory.address]));
