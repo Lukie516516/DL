@@ -138,7 +138,8 @@ npm run deploy:agiking:domain-open-access
 - 域名列表分页查询
 - 默认按域名累计成交额 `tradeVolume` 从高到低排序
 - 按域名名称、域名 ID、解析地址精确查询
-- 按创建者钱包地址查询“我创建的域名”
+- 按当前持有人钱包地址查询“我的域名”
+- 按首次注册者钱包地址查询“我创建的域名”
 - 不持有资金，不改状态；只读辅助合约
 
 ### 3.4 `DCDomainHall`
@@ -272,7 +273,8 @@ await dcDomain.register("abc123");
 | 按域名名称精确搜索 | `getDomainByName(domainName)` |
 | 按域名 ID 精确搜索 | `getDomainById(tokenId)` |
 | 按解析地址查询 | `getDomainsByResolve(resolved, offset, limit)` |
-| 我的创建域名列表 | `getDomainsByCreator(creator, offset, limit)` |
+| 我的域名列表，按当前持有人 | `getDomainsByOwner(owner, offset, limit)` |
+| 我创建过的域名列表，按首次注册者 | `getDomainsByCreator(creator, offset, limit)` |
 
 单次 `limit` 范围是 `1..50`。
 
@@ -295,6 +297,8 @@ struct DomainEntry {
 - 普通币币域名 deal 记为 `aSwapAmount + bSwapAmount`。
 - 大厅模板 2/3 记为 `aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount`。
 - 这里是链上名义数量累计，默认按 18 位 token 金额处理；如果未来接入不同精度/不同价值币种，需要再接价格换算层。
+- “我的域名”请用 `getDomainsByOwner`。域名 NFT 转让后，会出现在新持有人的列表里。
+- `getDomainsByCreator` 只表示首次注册创建者，不会因为域名转让而变化，适合做历史创建记录或后台管理。
 
 ---
 

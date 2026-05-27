@@ -705,6 +705,28 @@ describe("Domain Flows", async function () {
     assert.equal(byCreator.length, 2);
     assert.equal(byCreator[0].domainName, "dmn111");
     assert.equal(byCreator[1].domainName, "dmn333");
+
+    const dcDomainAsAlice = await viem.getContractAt("DCDomain", dcDomain.address, {
+      client: { wallet: alice },
+    });
+    await waitFor(
+      publicClient,
+      await dcDomainAsAlice.write.transferFrom([alice.account.address, bob.account.address, id3]),
+    );
+
+    const byAliceOwner = await dcDomainListReader.read.getDomainsByOwner([alice.account.address, 0n, 10n]);
+    assert.equal(byAliceOwner.length, 1);
+    assert.equal(byAliceOwner[0].domainName, "dmn111");
+
+    const byBobOwner = await dcDomainListReader.read.getDomainsByOwner([bob.account.address, 0n, 10n]);
+    assert.equal(byBobOwner.length, 2);
+    assert.equal(byBobOwner[0].domainName, "dmn222");
+    assert.equal(byBobOwner[1].domainName, "dmn333");
+
+    const stillByCreator = await dcDomainListReader.read.getDomainsByCreator([alice.account.address, 0n, 10n]);
+    assert.equal(stillByCreator.length, 2);
+    assert.equal(stillByCreator[0].domainName, "dmn111");
+    assert.equal(stillByCreator[1].domainName, "dmn333");
   });
 
   it("allows DCDomainSwap to create domain deals with creator DealInfoNFT identity", async function () {
