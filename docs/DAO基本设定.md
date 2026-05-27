@@ -40,7 +40,7 @@ DealInfoNFT 负责真实用户身份和治理用户侧保护。
 | 项目 | V1 规则 |
 | --- | --- |
 | 总量 | 固定 100 D |
-| 精度 | 8 位小数，类似 Bitcoin |
+| 精度 | 18 位小数，和 DealCoin（DC）常用精度一致 |
 | 是否可转让 | 可以 |
 | 是否可增发 | 不可增发 |
 | 是否可销毁 | 当前不开放 burn |
@@ -446,7 +446,7 @@ D 席位可以发起分红提案。
 
 | 模块 | 合约 | 当前作用 |
 | --- | --- | --- |
-| D 代币 | `contracts/D.sol` | 固定总量 100 D，8 位精度，2.5 D 席位判断 |
+| D 代币 | `contracts/D.sol` | 固定总量 100 D，18 位精度，2.5 D 席位判断 |
 | 分红领取 | `contracts/VoteDividendClaimer.sol` | 按 D 历史持仓快照领取 DealCoin（DC）分红 |
 | 席位否决 | `contracts/DealSeatVetoGovernor.sol` | 常规提案、重大提案、席位否决窗口 |
 | NFT 活跃 | `contracts/DealNftGovernanceActivity.sol` | 记录官方 NFT 治理活跃时间 |
@@ -503,7 +503,7 @@ D + DealSeatVetoGovernor + NftVetoRegistry + DealNftGovernanceActivity + VoteDiv
 | 项目 | 默认 |
 | --- | --- |
 | D 总量 | 100 |
-| D 精度 | 8 位 |
+| D 精度 | 18 位 |
 | 席位门槛 | 2.5 D |
 | 分红资产 | DealCoin（DC） |
 | 分红依据 | D 持仓快照 |

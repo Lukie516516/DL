@@ -421,7 +421,7 @@ DealInfoNFT 负责真实用户身份和治理用户侧保护。</code></pre>
             </thead>
             <tbody>
               <tr><td>总量</td><td>固定 100 D</td></tr>
-              <tr><td>精度</td><td>8 位小数，类似 Bitcoin</td></tr>
+              <tr><td>精度</td><td>18 位小数，和 DealCoin（DC）常用精度一致</td></tr>
               <tr><td>是否可转让</td><td>可以</td></tr>
               <tr><td>是否可增发</td><td>不可增发</td></tr>
               <tr><td>分红权</td><td>按持有比例领取协议分红</td></tr>
@@ -583,7 +583,7 @@ A 可领取 = 1 / 100 * 10,000 = 100 DC</code></pre>
               </tr>
             </thead>
             <tbody>
-              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>固定总量 100 D，8 位精度，2.5 D 席位判断</td></tr>
+              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>固定总量 100 D，18 位精度，2.5 D 席位判断</td></tr>
               <tr><td>分红领取</td><td><code>contracts/VoteDividendClaimer.sol</code></td><td>按 D 历史持仓快照领取 DealCoin（DC）分红</td></tr>
               <tr><td>席位否决</td><td><code>contracts/DealSeatVetoGovernor.sol</code></td><td>常规提案、重大提案、席位否决窗口</td></tr>
               <tr><td>NFT 活跃</td><td><code>contracts/DealNftGovernanceActivity.sol</code></td><td>记录官方 NFT 治理活跃时间</td></tr>
@@ -623,7 +623,7 @@ D + DealSeatVetoGovernor + NftVetoRegistry + DealNftGovernanceActivity + VoteDiv
             </thead>
             <tbody>
               <tr><td>D 总量</td><td>100</td></tr>
-              <tr><td>D 精度</td><td>8 位</td></tr>
+              <tr><td>D 精度</td><td>18 位</td></tr>
               <tr><td>席位门槛</td><td>2.5 D</td></tr>
               <tr><td>分红资产</td><td>DealCoin（DC）</td></tr>
               <tr><td>分红依据</td><td>D 持仓快照</td></tr>
