@@ -158,7 +158,7 @@ async function main() {
   console.log("Wrote snapshot", snap);
 
   console.log("\n--- Update docs/Domain_Frontend_Call_Guide.md §1 with: ---");
-  console.log("- `DL / DC`: `" + mergedAddresses.dlToken + "`");
+  console.log("- `DealCoin / DC`: `" + mergedAddresses.dlToken + "`");
   console.log("- `DCDomain`: `" + mergedAddresses.dcDomain + "`");
   console.log("- `DCDomainRank`: `" + mergedAddresses.dcDomainRank + "`");
   console.log("- `DCDomainMarket`: `" + mergedAddresses.dcDomainMarket + "`");

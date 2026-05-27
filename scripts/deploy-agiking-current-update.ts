@@ -5,7 +5,7 @@
  * - new AGI/WAGI swap lane + Router + SwapAssetRegistry
  * - new DCDomain/DCDomainRank/DCDomainSwap/DCDomainHall/DCDomainListReader stack
  *
- * Reuses: DL, AUSD, USDT, DealInfoNFT, DealCreditGraph, DealSwapTemplate impl,
+ * Reuses: DealCoin/DC, AUSD, USDT, DealInfoNFT, DealCreditGraph, DealSwapTemplate impl,
  * DealLib, DealAssetNftLib, old AUSD/USDT pairs, old OrderBook.
  */
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -254,20 +254,20 @@ async function main() {
 
   console.log("\n--- Permissions ---");
   const minterRole = await dl.read.MINTER_ROLE();
-  await maybeTx("DL.grantRole(MINTER_ROLE, newFactory)", publicClient, () => dl.write.grantRole([minterRole, factory.address]));
+  await maybeTx("DealCoin.grantRole(MINTER_ROLE, newFactory)", publicClient, () => dl.write.grantRole([minterRole, factory.address]));
   await maybeTx("DealInfoNFT.addFactory(newFactory)", publicClient, () => infoNft.write.addFactory([factory.address]));
   await maybeTx("DealInfoNFT.setFactory(newFactory)", publicClient, () => infoNft.write.setFactory([factory.address]));
   await maybeTx("DealCreditGraph.setRecorder(newFactory)", publicClient, () => creditGraph.write.setRecorder([factory.address, true]));
   await maybeTx("OrderBook.setRouter(newRouter)", publicClient, () => orderBook.write.setRouter([router.address]));
 
-  console.log("\n--- Create DL-AGI pair ---");
+  console.log("\n--- Create DC-AGI pair ---");
   await tx("PairManager.createPair AGI", publicClient, pairManager.write.createPair([wrappedAGI.address, 3, 1000]));
   const pairDlAgi = await pairManager.read.pairForToken([wrappedAGI.address]) as Address;
-  console.log("DL-AGI Pair", pairDlAgi);
+  console.log("DC-AGI Pair", pairDlAgi);
   const initDl = envBigInt("PAIR_INIT_DL", 100_000n * ONE);
   const initAgi = envBigInt("PAIR_INIT_AGI", parseEther("100000"));
   if (initDl > 0n && initAgi > 0n) {
-    await tx("DL.transfer pairDlAgi", publicClient, dl.write.transfer([pairDlAgi, initDl]));
+    await tx("DealCoin.transfer pairDlAgi", publicClient, dl.write.transfer([pairDlAgi, initDl]));
     await tx("WrappedAGI.deposit", publicClient, wrappedAGI.write.deposit({ value: initAgi }));
     await tx("WrappedAGI.transfer pairDlAgi", publicClient, wrappedAGI.write.transfer([pairDlAgi, initAgi]));
     await tx("PairManager.initPair AGI", publicClient, pairManager.write.initPair([pairDlAgi, 0n]));
@@ -360,9 +360,9 @@ async function main() {
 | DealRouter | \`${mergedAddresses.dealRouter}\` |
 | DealSwapAssetRegistry | \`${mergedAddresses.dealSwapAssetRegistry}\` |
 | WrappedAGI/WAGI | \`${mergedAddresses.wrappedNative}\` |
-| DL-AGI Pair | \`${mergedAddresses.pairDlAgi}\` |
-| DL-USDT Pair | \`${mergedAddresses.pairDlUsdt}\` |
-| DL-AUSD Pair | \`${mergedAddresses.pairDlAusd}\` |
+| DC-AGI Pair | \`${mergedAddresses.pairDlAgi}\` |
+| DC-USDT Pair | \`${mergedAddresses.pairDlUsdt}\` |
+| DC-AUSD Pair | \`${mergedAddresses.pairDlAusd}\` |
 | DCDomain | \`${mergedAddresses.dcDomain}\` |
 | DCDomainRank | \`${mergedAddresses.dcDomainRank}\` |
 | DCDomainRankReader | \`${mergedAddresses.dcDomainRankReader}\` |
@@ -381,7 +381,7 @@ deployments/${DEPLOYMENT_FILE}
 - Factory 已换新版：pair 运维入口迁到 DealPairManager。
 - 前端查官方 swap pair 优先读 DealSwapAssetRegistry.getSwapPairSet()。
 - 域名栈已换新版：新域名数据从新 DCDomain 开始。
-- DL/AUSD/USDT/DealInfoNFT/DealCreditGraph/OrderBook 复用旧合约。
+- DealCoin(DC)/AUSD/USDT/DealInfoNFT/DealCreditGraph/OrderBook 复用旧合约。
 `;
   writeFileSync(join("deployments", handoffName), handoff);
   console.log("\nWrote deployments/" + DEPLOYMENT_FILE);

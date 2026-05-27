@@ -38,7 +38,7 @@ npm run deploy:agiking:domain-open-access
 
 当前域名相关地址：
 
-- `DL / DC`: `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3`
+- `DealCoin / DC`: `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3`
 - `DCDomain`: `0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3`
 - `DCDomainRank`: `0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee`
 - `DCDomainMarket`: `0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd`
@@ -80,17 +80,17 @@ npm run deploy:agiking:domain-open-access
 ### 2.3 金额格式
 
 所有代币金额都按 `uint256` 最小单位传：
-- `1 DL = 1e18`
-- `500 DL = 500000000000000000000`
+- `1 DC = 1e18`
+- `500 DC = 500000000000000000000`
 
 前端一般按：
 - `parseUnits(value, 18)`
 
 ### 2.4 当前域名相关支付币种
 
-- 一级注册域名：`DL`
-- 二级市场购买域名 NFT：`DL`
-- 域名排行榜充值：`DL`
+- 一级注册域名：`DealCoin（DC）`
+- 二级市场购买域名 NFT：`DealCoin（DC）`
+- 域名排行榜充值：`DealCoin（DC）`
 
 ---
 
@@ -122,7 +122,7 @@ npm run deploy:agiking:domain-open-access
 - 黑名单（含 `blacklistedAddresses` 列表查询，见 §6.11）
 - 域名内交易排行榜
 - 域名总榜
-- 对某笔交易做 DL 充值并按小时消耗
+- 对某笔交易做 DC 充值并按小时消耗
 
 ### 3.3.1 `DCDomainRankReader`
 
@@ -169,7 +169,7 @@ npm run deploy:agiking:domain-open-access
 - `domainName: string`
 
 当前规则：
-- 所有域名统一 `500 DL`
+- 所有域名统一 `500 DC`
 
 返回：
 - `uint256`
@@ -186,7 +186,7 @@ const price = await dcDomain.getPrice("abc123");
 - 购买一级域名
 
 前置条件：
-- 先对 `DCDomain` 合约 `approve(500 DL)`
+- 先对 `DCDomain` 合约 `approve(500 DC)`
 
 参数：
 - `domainName: string`
@@ -313,7 +313,7 @@ struct DomainEntry {
 - `price: uint256`
 
 当前支付币种：
-- `DL`
+- `DealCoin（DC）`
 
 ### 5.2 `listP2P(tokenId, price, buyer)`
 
@@ -348,7 +348,7 @@ struct DomainEntry {
 - 买断域名 NFT
 
 前置条件：
-- 买家先对 `DCDomainMarket` `approve(price)` 的 `DL`
+- 买家先对 `DCDomainMarket` `approve(price)` 的 `DealCoin（DC）`
 
 参数：
 - `tokenId: uint256`
@@ -431,7 +431,7 @@ struct DomainEntry {
 `mode`（`uint8`）：
 - `0` = **None（默认）**：不收取广告费，**禁止** `deposit`（会 `DCDomainRank: ad fees disabled`），前端可不展示充值入口
 - `1` = **等比（Proportional）**：按「计费整点小时」对**当前余额**复利扣 `proportionalBpsPerHour`（万分比 / 小时），须 `1..9999`，余额理论上可无限趋近 0 但单小时不会 100% 扣光
-- `2` = **等差（Fixed）**：按固定 `fixedHourlyRateWei`（DL，wei）× 经过时间折算扣费（与旧版线性逻辑一致），余额可被扣至 0
+- `2` = **等差（Fixed）**：按固定 `fixedHourlyRateWei`（DC，wei）× 经过时间折算扣费（与旧版线性逻辑一致），余额可被扣至 0
 
 注意：
 - 新注册域名默认 `mode = 0`，持有人必须先设策略，创建者才能 `deposit`
@@ -447,7 +447,7 @@ struct DomainEntry {
 - `amount: uint256`
 
 当前充值币种：
-- `DL`
+- `DealCoin（DC）`
 
 注意：
 - 这不是合同保证金
@@ -571,7 +571,7 @@ struct DomainEntry {
 
 说明：
 - `depositPercent`：当前余额相对最近一次充值基准的百分比
-- `lastDepositAmount`：上一次充值了多少 `DL`
+- `lastDepositAmount`：上一次充值了多少 `DealCoin（DC）`
 - deal 终局后，扣费时间会停在 deal 的 `endedAt`，不会因为没人结算而一直扣下去
 
 ### 6.11 黑名单（列表查询与地址展示）
@@ -886,7 +886,7 @@ const rows = await Promise.all(
 ### 10.4 金额都用 18 位
 
 当前域名相关的支付币：
-- `DL`
+- `DealCoin（DC）`
 
 前端统一按 `18 decimals` 处理。
 
@@ -915,4 +915,4 @@ const rows = await Promise.all(
 
 - 域名调用只认真实 `domainName`
 - 大厅模板先聊天选人，再允许加入
-- 域名一级注册 / 二级市场 / 排行榜充值都用 `DL`
+- 域名一级注册 / 二级市场 / 排行榜充值都用 `DealCoin（DC）`

@@ -73,7 +73,7 @@ A / B setMyVote(Accept)
 ↓
 Completed
 ↓
-资产结算、DL 奖励、信用分记录
+资产结算、DealCoin（DC）奖励、信用分记录
 ```
 
 `optId` 是 B 的官方 `DealInfoNFT tokenId`。没有就传 `0`。
@@ -250,7 +250,7 @@ DealCreditRecorded(deal, aTokenId, bTokenId, baseCredit, aDelta, bDelta)
 | --- | --- |
 | 累计信用分 | `DealCreditGraph.creditScore(tokenId)` |
 | 本笔增加信用 | 索引 `DealCreditRecorded` 的 `aDelta / bDelta` |
-| DL 奖励 | 索引 `DealFactory.DealRewardsLogged` |
+| DealCoin（DC）奖励 | 索引 `DealFactory.DealRewardsLogged` |
 
 ## 8. 前端常用读取
 
@@ -280,7 +280,7 @@ DealCreditRecorded(deal, aTokenId, bTokenId, baseCredit, aDelta, bDelta)
 | `Active` 且当前用户不是 A/B，且已超过 `bJoinedAt + replaceTimeoutSeconds` | 显示“顶替接单” |
 | `Locked` 且 A 已 Accept、B 未投票、当前用户不是 A/B，且已超过 `max(lockedAt, aAt) + replaceTimeoutSeconds` | 显示“顶替 B” |
 | `Locked` 且当前用户是 A/B | 显示“确认 / 拒绝” |
-| `Completed` | 显示成交结果、DL 奖励、信用增加 |
+| `Completed` | 显示成交结果、DealCoin（DC）奖励、信用增加 |
 | `Canceled` / `Abandoned` | 显示终局状态 |
 
 ## 10. 留言接入

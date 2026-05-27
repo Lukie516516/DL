@@ -152,11 +152,11 @@ async function main() {
   await waitFor(publicClient, await infoNft.write.setFactory([newFactory.address]));
   console.log("  DealInfoNFT.setFactory(newFactory) OK");
 
-  // Grant DL MINTER_ROLE to new factory
+  // Grant DealCoin/DC MINTER_ROLE to new factory
   const dlContract = await viem.getContractAt("DCToken", EXISTING.dlToken, { client });
   const minterRole = await dlContract.read.MINTER_ROLE();
   await waitFor(publicClient, await dlContract.write.grantRole([minterRole, newFactory.address]));
-  console.log("  DL MINTER_ROLE granted");
+  console.log("  DealCoin/DC MINTER_ROLE granted");
 
   // ═══════════════ 2. Deploy DCDomainSwap (fixed struct) ═══════════════
   console.log("\n--- Deploying DCDomainSwap (fixed InitParams) ---");

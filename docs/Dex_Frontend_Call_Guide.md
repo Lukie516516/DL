@@ -35,9 +35,9 @@
 
 | 资产 | Pair |
 | --- | --- |
-| AGI | `DL-AGI` |
-| USDT | `DL-USDT` |
-| AUSD | `DL-AUSD` |
+| AGI | `DC-AGI` |
+| USDT | `DC-USDT` |
+| AUSD | `DC-AUSD` |
 
 前端优先通过 `DealSwapAssetRegistry.getSwapPairSet()` 读取 `pairDlAgi / pairDlUsdt / pairDlAusd / router`，避免写死地址。
 
@@ -91,13 +91,13 @@
 这几组是普通兑换页最常用的：
 
 - `swapExact0For1(pair, amount0In, minOut1, deadline)`
-  - `DL -> OTHER`
+  - `DC -> OTHER`
 - `swapExact1For0(pair, amount1In, minOut0Net, deadline)`
-  - `OTHER -> DL`
+  - `OTHER -> DC`
 - `swapExact0ForETH(pair, amount0In, minOutETH, deadline)`
-  - `DL -> ETH`
+  - `DC -> ETH`
 - `swapExactETHFor0(pair, minOut0Net, deadline)`
-  - `ETH -> DL`
+  - `ETH -> DC`
 
 当前语义：
 - 这 4 个已经不是旧版“做不完就失败”
@@ -112,13 +112,13 @@
 ### 2.2 exact-out 交易入口
 
 - `swap0ForExact1(pair, out1Target, maxAmount0In, deadline)`
-  - `DL -> OTHER`
+  - `DC -> OTHER`
 - `swap1ForExact0Net(pair, out0NetTarget, maxAmount1In, deadline)`
-  - `OTHER -> DL`
+  - `OTHER -> DC`
 - `swap0ForExactETH(pair, outETHTarget, maxAmount0In, deadline)`
-  - `DL -> ETH`
+  - `DC -> ETH`
 - `swapETHForExact0Net(pair, out0NetTarget, deadline)`
-  - `ETH -> DL`
+  - `ETH -> DC`
   - 用 `msg.value` 作为本次最大可接受输入
 
 当前语义：
@@ -275,8 +275,8 @@
 - `maxImmediateBuyIn(pair)`
 
 说明：
-- `maxImmediateSellIn(pair)` 表示当前 `DL -> OTHER` 最多还能即时吃掉多少输入
-- `maxImmediateBuyIn(pair)` 表示当前 `OTHER -> DL` 最多还能即时吃掉多少输入
+- `maxImmediateSellIn(pair)` 表示当前 `DC -> OTHER` 最多还能即时吃掉多少输入
+- `maxImmediateBuyIn(pair)` 表示当前 `OTHER -> DC` 最多还能即时吃掉多少输入
 
 ### 5.2 用户操作接口
 

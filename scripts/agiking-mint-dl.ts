@@ -1,5 +1,5 @@
 /**
- * 向指定地址增发 DL（链上符号一般为 Deal DL / DC 测试币）——仅 `MINTER_ROLE` 可调 `mint`。
+ * 向指定地址增发 DealCoin（DC）——仅 `MINTER_ROLE` 可调 `mint`。
  *
  * 用法（需配置具有铸币权的钱包私钥，通常为部署时 initialAdmin/minter）：
  *   set AGIKING_PRIVATE_KEY=0x...
@@ -24,7 +24,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 const ONE = 10n ** 18n;
-/** 默认：10 亿枚 DL（18 位），足以相对当前 Agiking 池储备做极大卖压测试；可按需改 MINT_DL_AMOUNT_WEI */
+/** 默认：10 亿枚 DealCoin（DC）（18 位），足以相对当前 Agiking 池储备做极大卖压测试；可按需改 MINT_DL_AMOUNT_WEI */
 const DEFAULT_MINT = 1_000_000_000n * ONE;
 
 const DEFAULT_TO = "0x624881c7e868Dbb87372147F5F86C8e903BFeF0a" as Address;
@@ -82,7 +82,7 @@ async function main() {
   });
 
   console.log("RPC:", rpcUrl);
-  console.log("DL token:", dl);
+  console.log("DealCoin/DC token:", dl);
   console.log("Minter:", account.address);
   console.log("Mint to:", to);
   console.log("Amount (wei):", amount.toString());

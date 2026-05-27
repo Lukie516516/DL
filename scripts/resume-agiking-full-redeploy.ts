@@ -133,7 +133,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情 |
 | DCDomainListReader | \`${addresses.dcDomainListReader}\` | 域名列表分页、按成交额排序、按名称/ID/解析地址/创建者查询 |
 | DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
-| DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
+| DealCoin/DCToken | \`${addresses.dlToken}\` | DealCoin（DC）主代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
 | USDT | \`${addresses.usdt}\` | 测试稳定币 |
 | WNATIVE | \`${addresses.wrappedNative}\` | 包装原生币 |
@@ -151,7 +151,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 5. 域名排行榜分页、搜索和统计切到新的 \`DCDomainRankReader.getLeaderboard/domainEntryCount/getDomainDealInfo/getDomainStatusCounts\`；域名列表切到 \`DCDomainListReader.getDomainsByVolume/getDomainsByCreator\`。
 6. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 7. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
-8. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
+8. 本次重新部署了测试 \`DealCoin(DC)/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
 
 完整 ABI 在 \`deployments/agiking-31415926.json\`。
 `;

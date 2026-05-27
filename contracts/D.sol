@@ -18,7 +18,7 @@ contract D is ERC20, ERC20Permit, ERC20Votes {
 
     uint8 public constant D_DECIMALS = 8;
     uint256 public constant UNIT = 10 ** D_DECIMALS;
-    uint256 public constant MAX_SUPPLY = 100 * UNIT;
+    uint256 public constant MAX_SUPPLY = 1000 * UNIT;
     uint256 public constant SEAT_THRESHOLD = 25 * UNIT / 10; // 2.5 D
 
     mapping(address account => Checkpoints.Trace208) private _balanceCheckpoints;

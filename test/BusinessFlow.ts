@@ -26,8 +26,8 @@ async function deployBusinessFixture() {
   const [owner, alice, bob, treasury] = await viem.getWalletClients();
 
   const dl = await viem.deployContract("DCToken", [
-    "Deal DL",
-    "DL",
+    "DealCoin",
+      "DC",
     0n,
     owner.account.address,
     owner.account.address,

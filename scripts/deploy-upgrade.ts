@@ -170,7 +170,7 @@ async function main() {
   const dlContract = await viem.getContractAt("DCToken", EXISTING.dlToken, { client });
   const minterRole = await dlContract.read.MINTER_ROLE();
   await waitFor(publicClient, await dlContract.write.grantRole([minterRole, newFactory.address]));
-  console.log("  DL MINTER_ROLE granted to new factory");
+  console.log("  DealCoin/DC MINTER_ROLE granted to new factory");
 
   // ═══════════════ 5. Update OLD DealFactory's dealImplementation ═══════════════
   console.log("\n--- Updating old DealFactory's dealImplementation ---");

@@ -64,7 +64,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomainRankReader | \`${addresses.dcDomainRankReader}\` | 域名排行榜分页、deal 精确搜索/终局详情 |
 | DCDomainListReader | \`${addresses.dcDomainListReader}\` | 域名列表分页、按成交额排序、按名称/ID/解析地址/创建者查询 |
 | DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
-| DL/DCToken | \`${addresses.dlToken}\` | DL 代币 |
+| DealCoin/DCToken | \`${addresses.dlToken}\` | DealCoin（DC）主代币 |
 | AUSD | \`${addresses.ausd}\` | 测试稳定币 |
 | USDT | \`${addresses.usdt}\` | 测试稳定币 |
 | WNATIVE | \`${addresses.wrappedNative}\` | 包装原生币 |
@@ -84,7 +84,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 7. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 8. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 9. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`。
-10. 本次重新部署了测试 \`DL/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
+10. 本次重新部署了测试 \`DealCoin(DC)/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
 
 ## ABI
 
@@ -107,7 +107,7 @@ deployments/agiking-31415926.json
 ## 验证结果
 
 - 新 Factory 已配置 Hub、CreditGraph、ActivityIndex、ResultIndex、PairManager、ImplementationRegistry。
-- 新 Factory 已获得新 DL 的 \`MINTER_ROLE\`。
+- 新 Factory 已获得新 DealCoin（DC）的 \`MINTER_ROLE\`。
 - 新 DealInfoNFT 初始绑定新 Factory。
 - 新 DCDomainSwap / DCDomainHall 已获得新 Factory 创建权限。
 - 新 DCDomainRank 已授权新的 Swap / Hall reporter。
@@ -185,7 +185,7 @@ async function main() {
   const pairImpl = await viem.deployContract("DealSwapTemplate", [], { client });
   console.log("DealSwapTemplate impl", pairImpl.address);
 
-  const dl = await viem.deployContract("DCToken", ["Deal DL", "DL", 0n, dep, dep], { client });
+  const dl = await viem.deployContract("DCToken", ["DealCoin", "DC", 0n, dep, dep], { client });
   const ausd = await viem.deployContract("DCToken", ["AUSD", "AUSD", 0n, dep, dep], { client });
   const usdt = await viem.deployContract("DCToken", ["USDT", "USDT", 0n, dep, dep], { client });
   const wrappedNative = await viem.deployContract(
@@ -193,7 +193,7 @@ async function main() {
     ["Wrapped Native", "WNATIVE", 0n, dep, dep],
     { client },
   );
-  console.log("DL / AUSD / USDT / WNATIVE", dl.address, ausd.address, usdt.address, wrappedNative.address);
+  console.log("DealCoin/DC / AUSD / USDT / WNATIVE", dl.address, ausd.address, usdt.address, wrappedNative.address);
 
   const factory = await viem.deployContract("DealFactory", [dealImpl.address, pairImpl.address, 3600], {
     client,
@@ -264,9 +264,9 @@ async function main() {
 
   const pairAusd = await createInitPair(ausd.address);
   const pairUsdt = await createInitPair(usdt.address);
-  console.log("pair DL↔AUSD", pairAusd, "pair DL↔USDT", pairUsdt);
+  console.log("pair DC↔AUSD", pairAusd, "pair DC↔USDT", pairUsdt);
   await waitFor(publicClient, await infoNft.write.setMintPriceU([pairAusd, 88n * ONE]));
-  console.log("DealInfoNFT mint price set to 88 U via DL↔AUSD pair");
+  console.log("DealInfoNFT mint price set to 88 U via DC↔AUSD pair");
 
   // —— Order book + router ——
   const orderBook = await viem.deployContract("DealSwapOrderBook", [dep], { client });
@@ -285,7 +285,7 @@ async function main() {
   const dealReader = await viem.deployContract("DealReader", [], { client });
   console.log("DealReader", dealReader.address);
 
-  // —— DC domain stack (registration = DL/DC, rank stake = AUSD) ——
+  // —— DC domain stack (registration = DealCoin/DC, rank stake = AUSD) ——
   const dcDomain = await viem.deployContract("DCDomain", [dl.address, dep], { client });
   console.log("DCDomain", dcDomain.address);
 
@@ -342,7 +342,7 @@ async function main() {
   await waitFor(publicClient, await nftActivity.write.setRecorder([factory.address, true]));
   await waitFor(publicClient, await nftActivity.write.setRecorder([nftVetoRegistry.address, true]));
 
-  // —— Vote dividend (DL as payout token) ——
+  // —— Vote dividend (DealCoin/DC as payout token) ——
   const dividendExecutor = (process.env.DIVIDEND_EXECUTOR?.trim() || dep) as Address;
   const dividendSource = (process.env.DIVIDEND_SOURCE?.trim() || dep) as Address;
   const voteClaimer = await viem.deployContract(
@@ -443,7 +443,7 @@ async function main() {
     notes: [
       "Deal chat storage is externalized through DealMessageHub; Deal.postMessage remains available, and readers should use the hub for message pagination.",
       "Deal process timelines and final reward/credit records are indexed through DealResultIndex; readers should use it instead of scanning historical deal logs.",
-      "DCDomain registration / DCDomainMarket / DCDomainRank use DL as payment and ranking token; treasury = deployer.",
+      "DCDomain registration / DCDomainMarket / DCDomainRank use DealCoin (DC) as payment and ranking token; treasury = deployer.",
       "DCDomainSwap and DCDomainHall are allowlisted on DealFactory and can create domain-scoped deals through the current Factory ABI.",
       "Test-only contracts (TestWNative, ExampleAdminTarget, GovHelper, duplicate test governors) are intentionally not deployed.",
     ],

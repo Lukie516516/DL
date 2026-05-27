@@ -35,7 +35,7 @@ getRewards(address user, uint256 offset, uint256 limit, bool newestFirst) -> Rew
 | `deal` | deal 地址 |
 | `partyA` / `partyB` | 双方地址 |
 | `cAddr` | C 位奖励接收地址 |
-| `toA` / `toB` / `toC` | 本笔增发 DL 奖励 |
+| `toA` / `toB` / `toC` | 本笔增发 DealCoin（DC） 奖励 |
 | `timestamp` | 写入奖励记录的链上时间 |
 
 ### 2.2 信用增量 view
@@ -132,7 +132,7 @@ DealResultIndex.getTimeline(deal, 0, 50, true)
 
 - **`DealFactory.mintAndRecordDealRewards(batch)`**
   - **权限**：仅工厂登记的 Deal / OpenTT 实例（`onlyDeal`）可调用。
-  - **作用**：成交时批量完成 DL 奖励 mint、奖励索引写入、InfoNFT minted 统计，并在工厂上打一笔汇总日志。日志内容与各 Deal 上的 `RewardsMinted` 一致，便于**只订阅工厂地址**做奖励展示/扫链。
+  - **作用**：成交时批量完成 DealCoin（DC）奖励 mint、奖励索引写入、InfoNFT minted 统计，并在工厂上打一笔汇总日志。日志内容与各 Deal 上的 `RewardsMinted` 一致，便于**只订阅工厂地址**做奖励展示/扫链。
 
 ### 3.2 事件
 
@@ -149,7 +149,7 @@ event DealRewardsLogged(
 ```
 
 - **`deal`**：发起调用的 **Deal / OpenTT clone 地址**（`msg.sender`）。  
-- 与 **`DLMinted(to, amount, deal)`** 的关系：`mintDL` 每转一笔 DL 仍会发 `DLMinted`（最多 3 条）；`DealRewardsLogged` 是**同一笔成交的奖励汇总（1 条）**。
+- 与 **`DLMinted(to, amount, deal)`** 的关系：`DLMinted` / `mintDL` 是历史命名，业务含义是 DealCoin（DC）奖励；每转一笔 DC 仍会发 `DLMinted`（最多 3 条），`DealRewardsLogged` 是**同一笔成交的奖励汇总（1 条）**。
 
 ### 3.3 事件用法
 

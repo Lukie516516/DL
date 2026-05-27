@@ -2,20 +2,20 @@
 
 ## 1. 目标
 
-当前 AISO / Agiking 链上，官方 swap 资产按三条 DL pair 处理：
+当前 AISO / Agiking 链上，官方 swap 资产按三条 DC pair 处理：
 
 | 资产 | Pair | 说明 |
 | --- | --- | --- |
-| AGI | `DL-AGI` | AGI 是链原生币，合约里用 `WAGI` 包装合约表示 |
-| USDT | `DL-USDT` | 官方 USDT |
-| AUSD | `DL-AUSD` | 官方 AUSD |
+| AGI | `DC-AGI` | AGI 是链原生币，合约里用 `WAGI` 包装合约表示 |
+| USDT | `DC-USDT` | 官方 USDT |
+| AUSD | `DC-AUSD` | 官方 AUSD |
 
-所有跨币种兑换仍然走 `DL` 作为中间资产：
+所有跨币种兑换仍然走 `DealCoin（DC）` 作为中间资产：
 
 ```text
-AGI <-> DL <-> USDT
-AGI <-> DL <-> AUSD
-USDT <-> DL <-> AUSD
+AGI <-> DC <-> USDT
+AGI <-> DC <-> AUSD
+USDT <-> DC <-> AUSD
 ```
 
 ## 2. 本次新增内容
@@ -23,7 +23,7 @@ USDT <-> DL <-> AUSD
 | 模块 | 作用 |
 | --- | --- |
 | `WrappedAGI` | 原生 AGI 的 WETH-style 包装合约，支持 `deposit()` / `withdraw()` |
-| `DL-AGI Pair` | 新增 `DL <-> AGI` 交易对 |
+| `DC-AGI Pair` | 新增 `DC <-> AGI` 交易对 |
 | `DealRouter` | 重新部署，`WNATIVE` 指向 `WrappedAGI` |
 | `DealSwapAssetRegistry` | 独立查询合约，前端一次从 `DealPairManager` 读取三个官方 pair |
 
@@ -54,25 +54,25 @@ router
 
 ## 4. 前端怎么换
 
-### 4.1 DL <-> AGI
+### 4.1 DC <-> AGI
 
 AGI 是原生币时：
 
 | 方向 | 方法 |
 | --- | --- |
-| AGI -> DL | `DealRouter.swapExactETHFor0(pairDlAgi, minOut0Net, deadline)` |
-| DL -> AGI | `DealRouter.swapExact0ForETH(pairDlAgi, amount0In, minOutETH, deadline)` |
+| AGI -> DC | `DealRouter.swapExactETHFor0(pairDlAgi, minOut0Net, deadline)` |
+| DC -> AGI | `DealRouter.swapExact0ForETH(pairDlAgi, amount0In, minOutETH, deadline)` |
 
 如果用户手里已经是 `WAGI` ERC20，也可以按普通 ERC20 路径使用 `pairDlAgi`。
 
-### 4.2 DL <-> USDT / AUSD
+### 4.2 DC <-> USDT / AUSD
 
 继续走普通 ERC20 方法：
 
 | 方向 | 方法 |
 | --- | --- |
-| DL -> OTHER | `swapExact0For1(pair, amount0In, minOut1, deadline)` |
-| OTHER -> DL | `swapExact1For0(pair, amount1In, minOut0Net, deadline)` |
+| DC -> OTHER | `swapExact0For1(pair, amount0In, minOut1, deadline)` |
+| OTHER -> DC | `swapExact1For0(pair, amount1In, minOut0Net, deadline)` |
 
 ### 4.3 AGI <-> USDT / AUSD
 
@@ -86,9 +86,9 @@ AGI 是原生币时：
 其中：
 
 ```text
-pairA = DL-USDT 或 DL-AUSD
-pairB = DL-USDT 或 DL-AUSD
-pairDlAgi = DL-AGI
+pairA = DC-USDT 或 DC-AUSD
+pairB = DC-USDT 或 DC-AUSD
+pairDlAgi = DC-AGI
 ```
 
 ## 5. 部署脚本
@@ -103,8 +103,8 @@ npm run deploy:agiking:agi-swap
 
 | 变量 | 说明 |
 | --- | --- |
-| `PAIR_INIT_DL` | 初始化 `DL-AGI` pair 时注入的 DL 数量，18 位精度 |
-| `PAIR_INIT_AGI` | 初始化 `DL-AGI` pair 时注入的 AGI 数量，18 位精度 |
+| `PAIR_INIT_DL` | 初始化 `DC-AGI` pair 时注入的 DC 数量，18 位精度。变量名保留 `DL` 是历史脚本命名。 |
+| `PAIR_INIT_AGI` | 初始化 `DC-AGI` pair 时注入的 AGI 数量，18 位精度 |
 | `AGI_TOKEN_ADDRESS` | 如果已有包装 AGI 合约，可传入；不传则部署新的 `WrappedAGI` |
 | `REDEPLOY_ROUTER` | 默认 `true`；重新部署 Router 让原生币入口指向 AGI |
 | `SET_FACTORY_WRAPPED_NATIVE` | 默认 `true`；通过 `Factory.setCoreGlobals(...)` 让 `wrappedNative` 指向 AGI |
