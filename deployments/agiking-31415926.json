@@ -1,8 +1,8 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-26T12:57:11.409Z",
-  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
+  "deployedAt": "2026-05-27T08:50:11.221Z",
+  "deployer": "0x6807Ed8c44AE2a89DDB7706fA22A5b274EcD8785",
   "addresses": {
     "dlToken": "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
     "ausd": "0xb91cf0c6edd1b9ec971343237fd8a119f77c7abf",
@@ -42,7 +42,7 @@
     "dealSwapAssetRegistry": "0xd04770f2a4aa010fca460ccd5e3912e69b7f8329",
     "pairDlAgi": "0x5cbA53558F229136949AD23299fa6F989bA76609",
     "agi": "0xc6ac293de4a720b689e1afbfb4658cda8c44052a",
-    "dcDomainListReader": "0xf9958CbAF31f15753B55c716bF0E3f962F13861d"
+    "dcDomainListReader": "0x3aA2D217c81d19fD447fbb478Aa026034Dfb14Ab"
   },
   "abi": {
     "DealLib": [
@@ -21540,6 +21540,72 @@
         "inputs": [
           {
             "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "getDomainsByOwner",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "domainName",
+                "type": "string"
+              },
+              {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "creator",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "resolved",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "tradeVolume",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "dealCount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DCDomainListReader.DomainEntry[]",
+            "name": "page",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
             "name": "resolved",
             "type": "address"
           },
@@ -30162,5 +30228,10 @@
         "type": "function"
       }
     ]
-  }
+  },
+  "previousDeployment": "deployments/backups/agiking-31415926.before-domain-list-reader-owner-20260527-085011.json",
+  "upgrade": "domain-list-reader-owner-query",
+  "notes": [
+    "DCDomainListReader redeployed with getDomainsByOwner(owner, offset, limit) for current-holder domain lists."
+  ]
 }
