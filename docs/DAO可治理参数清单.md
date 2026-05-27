@@ -52,7 +52,7 @@
 
 | 参数/方法 | 当前含义 | 建议治理方式 |
 | --- | --- | --- |
-| `setMintPriceU` / `setMintPriceUByAdmin` | 身份 NFT 铸造价格 | 常规参数 |
+| `setMintPriceU` / `setMintPriceUByAdmin` | 身份 NFT 铸造价格，按 DealCoin（DC）本位直接 burn | 常规参数 |
 | `setMaxImageDataBytes` | NFT 图片链上数据上限 | 常规参数 |
 | `setCurrentSeason` | 当前赛季 | 常规参数 |
 | `setFactory` / `addFactory` / `removeFactory` | 授权工厂 | 重大变更 |

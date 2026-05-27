@@ -233,10 +233,12 @@ async function deployDomainFixture() {
       client: { wallet },
     });
 
-    await waitFor(publicClient, await infoNft.write.setMintPriceU([pairDlAusd, ONE]));
+    await waitFor(publicClient, await infoNft.write.setMintPriceU([zeroAddress, ONE]));
     await waitFor(publicClient, await dlAsUser.write.approve([infoNft.address, 1_000_000n * ONE]));
     const nextIdBefore = await infoNft.read.nextId();
+    const supplyBefore = await dl.read.totalSupply();
     await waitFor(publicClient, await infoNftAsUser.write.mintByBurn());
+    assert.equal(await dl.read.totalSupply(), supplyBefore - ONE);
     return nextIdBefore;
   }
 
