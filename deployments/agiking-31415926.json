@@ -1,8 +1,8 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-27T10:07:26.399Z",
-  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "deployedAt": "2026-05-28T10:31:08.165Z",
+  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
   "addresses": {
     "dlToken": "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
     "ausd": "0xb91cf0c6edd1b9ec971343237fd8a119f77c7abf",
@@ -17,32 +17,32 @@
     "dealAAssetNftOnlyImplementation": "0xeed72683e71640c8917636063e3a07b6d6283c94",
     "dealBAssetNftOnlyImplementation": "0xab217e37fe1e49d6ac54af0a7140cde3c3727066",
     "dealOpenTokenTokenImplementation": "0x77520b283688c638b79d3e62571dfadcd9577724",
-    "dealImplementationRegistry": "0x47b3d868ddbe169cb8501491c02515d16de10ddb",
+    "dealImplementationRegistry": "0x127611E70B2FC2Ceb4edB3421a488197D5951422",
     "pairImplementation": "0xb1203a0895c11278d43fc83ad921e2562ba4e5cc",
-    "dealFactory": "0x5ac67e8b3600a9493db46201d96aa1e4494a1066",
-    "dealMessageHub": "0x33ea710aa0b5293f392495a4b3bb6bb07cea4815",
+    "dealFactory": "0xEd83f77e98c3243D46559a37f0bA6Fdf6D58B2F5",
+    "dealMessageHub": "0x37cad1d448b6cCDB3bBa84186c64a15212b04E9B",
     "dealCreditGraph": "0xf721d35A5ae6DaB2576080061dF082E82f6cB697",
-    "dealActivityIndex": "0x4ac7eb5db47101d605dc77a0eca409ff8f1a127d",
-    "dealResultIndex": "0xc9b5555362bf3b69b058394e5201ac00e7e0348c",
-    "dealPairManager": "0x4d29f1d346966870076af986020d280ab2cc23b2",
+    "dealActivityIndex": "0x1A8298AFFecd39306DCA52a25D5661D914e3DEce",
+    "dealResultIndex": "0x2aCD153280AA4f18e28491255C6FC4e26a6F6951",
+    "dealPairManager": "0x16129b0e5dC57e8a87842f95d817C3DC4a713CC4",
     "dealInfoNFT": "0x7F83827b65AB95196e8466b8578B621Dac4Af841",
     "pairDlAusd": "0x29401FAf6Db21a2e0DB8EdC07069D450d5926C14",
     "pairDlUsdt": "0x54c6F62cfC3E0bCc0CE3ee43E35F2B150Ec0A1dD",
     "dealSwapOrderBook": "0xec83bfdc0b684642e409a29d6673ae03bd31ee67",
     "dealRouter": "0x9d4c1eeb9b6d3e9dfa86af31ea817863227ab80d",
-    "dealReader": "0x16491d6d3d4b6ce904da36087496aacbf2051b6d",
+    "dealReader": "0xa3468253D82C8Ff607eFB8fccd8d53C8552E28f7",
     "dcDomain": "0x4c2Ba367Ad95363E7551188B17c94DC3c986c644",
-    "dcDomainRank": "0xc3Eff481D58b449278d2b31e3152fE99301F12a6",
-    "dcDomainRankReader": "0x7EE2147Af381B54B5A78471B5042Ae39B036812E",
+    "dcDomainRank": "0xe5508dd72041b41Dd773fad156E99c7398C8a993",
+    "dcDomainRankReader": "0xA942ec4A1b76438511a5047E268bE3D77E65f626",
     "dcDomainMarket": "0x494309b589d5578dE60a7095Cb66cB0191758749",
-    "dcDomainSwap": "0x2A997Ac097D818436798Da79e42473a5Dc423C2d",
-    "dcDomainHall": "0x8b3FFc32FA1f9cEa21dFC400bCE7E4d5D5e09B97",
+    "dcDomainSwap": "0xa0aBfBCd1a4705268067ff0e894b1e7B2CB625c9",
+    "dcDomainHall": "0xBAa77b8fA614c1B20C9252dd166F9abe39a39FB8",
     "dToken": "0xF8fd2b61F96CE461015A8c84F5E5688460BD9B15",
     "voteDividendClaimer": "0x6bfC3E42ef340B540dF728828E4825042Ada4C4d",
     "dealSwapAssetRegistry": "0xd04770f2a4aa010fca460ccd5e3912e69b7f8329",
     "pairDlAgi": "0x5cbA53558F229136949AD23299fa6F989bA76609",
     "agi": "0xc6ac293de4a720b689e1afbfb4658cda8c44052a",
-    "dcDomainListReader": "0x3aA2D217c81d19fD447fbb478Aa026034Dfb14Ab",
+    "dcDomainListReader": "0x924e902601eD768D5E6714509035Ad42A16A355b",
     "dealNftGovernanceActivity": "0x9d2860d6c8B63Bc1530D28163BCE53494a94aC28",
     "nftVetoRegistry": "0xF0edCbca262df9409c3a147322fbe1e59070Fa56",
     "dealSeatVetoGovernor": "0x4EDb8fff6c3D5F75B475d60a9C062C205428fee1"
@@ -19912,6 +19912,11 @@
             "internalType": "address",
             "name": "deal",
             "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "completed",
+            "type": "bool"
           }
         ],
         "name": "closeDealFromAutoCloser",
@@ -33121,13 +33126,16 @@
       }
     ]
   },
-  "previousDeployment": "deployments/backups/agiking-31415926.before-info-nft-d18-20260527-100726.json",
-  "upgrade": "info-nft-direct-dc-burn-and-d-18-decimals",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-domain-completed-volume-20260528-103108.json",
+  "upgrade": "domain-completed-trade-volume",
   "notes": [
     "DCDomainListReader redeployed with getDomainsByOwner(owner, offset, limit) for current-holder domain lists.",
     "DealInfoNFT redeployed so mintByBurn burns mintPriceDL directly in DealCoin/DC, without U/pair conversion.",
     "D redeployed with 18 decimals, 100 D total supply, and 2.5 D seat threshold.",
     "DealCreditGraph and D governance/dividend contracts redeployed because they bind InfoNFT/D immutably.",
-    "Existing DealFactory was rewired to the new DealInfoNFT, DealCreditGraph, and DealNftGovernanceActivity."
+    "Existing DealFactory was rewired to the new DealInfoNFT, DealCreditGraph, and DealNftGovernanceActivity.",
+    "Domain tradeVolume now only counts deals that finish as Completed.",
+    "DealFactory auto-closes domain deals through DCDomainRank.closeDealFromAutoCloser(domain, deal, completed).",
+    "DCDomain/DCDomainMarket/tokens/pairs/router/order book were reused; Factory, Rank, domain readers, Swap, and Hall were redeployed."
   ]
 }
