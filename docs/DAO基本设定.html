@@ -311,10 +311,6 @@ DealInfoNFT 负责真实用户身份和重大治理中的用户侧参与。</cod
             <strong>当前活跃 NFT 定义</strong>
             只认官方 DealInfoNFT；1 个 tokenId = 1 票；按提案创建时的快照计票；默认活跃窗口 90 天。
           </div>
-          <pre><code>当前代码里已经有活跃 NFT 快照基础：
-DealNftGovernanceActivity 负责活跃窗口和活跃供应量。
-NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
-后续要改的是计票逻辑：从 20% NFT 否决，改成 70% NFT 赞成通过。</code></pre>
         </section>
 
         <section id="proposal-types">
