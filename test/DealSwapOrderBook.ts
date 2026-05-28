@@ -123,7 +123,7 @@ async function deployDexFixture() {
 }
 
 describe("DealSwapOrderBook", async function () {
-  it("partially fills a large DL sell order and queues the remainder", async function () {
+  it("partially fills a large DC sell order and queues the remainder", async function () {
     const fixture = await deployDexFixture();
     const { viem, publicClient, alice, dl, other, orderBook, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);
@@ -219,7 +219,7 @@ describe("DealSwapOrderBook", async function () {
     assert.equal(bobOrder[4], 50n * ONE);
   });
 
-  it("supports OTHER -> DL queued orders and charges cancel fees in OTHER", async function () {
+  it("supports OTHER -> DC queued orders and charges cancel fees in OTHER", async function () {
     const fixture = await deployDexFixture();
     const { viem, publicClient, alice, treasury, dl, other, orderBook, createPairWithReserves } = fixture;
     const { pairAddress } = await createPairWithReserves(1n, 1_000n * ONE);
@@ -249,7 +249,7 @@ describe("DealSwapOrderBook", async function () {
     assert.equal(await other.read.balanceOf([alice.account.address]), aliceOtherBefore - fee);
   });
 
-  it("router default exact-in DL sells auto-queue the remainder", async function () {
+  it("router default exact-in DC sells auto-queue the remainder", async function () {
     const fixture = await deployDexFixture();
     const { viem, publicClient, alice, dl, other, orderBook, router, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);
@@ -275,7 +275,7 @@ describe("DealSwapOrderBook", async function () {
     assert.ok(aliceOtherAfter > aliceOtherBefore);
   });
 
-  it("router default exact-in ETH buys of DL auto-queue the remainder", async function () {
+  it("router default exact-in ETH buys of DC auto-queue the remainder", async function () {
     const fixture = await deployDexFixture();
     const { viem, publicClient, alice, dl, orderBook, router, dealPairManager, wrappedNative } = fixture;
 
@@ -357,7 +357,7 @@ describe("DealSwapOrderBook", async function () {
     assert.equal(aliceAfter, aliceBefore - (200n * ONE) - placeGas - cancelGas + refund);
   });
 
-  it("router default exact-in DL sells to ETH auto-queue the remainder and unwrap on settlement", async function () {
+  it("router default exact-in DC sells to ETH auto-queue the remainder and unwrap on settlement", async function () {
     const fixture = await deployDexFixture();
     const { viem, publicClient, alice, dl, orderBook, router, dealPairManager, wrappedNative } = fixture;
 
@@ -472,7 +472,7 @@ describe("DealSwapOrderBook", async function () {
     assert.equal(order[4], preview.queuedIn);
   });
 
-  it("router preview reports exact-out immediate cap for buying DL", async function () {
+  it("router preview reports exact-out immediate cap for buying DC", async function () {
     const fixture = await deployDexFixture();
     const { router, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 interface IDealPair {
-    function token0() external view returns (address); // DL
+    function token0() external view returns (address); // DC
     function token1() external view returns (address); // OTHER / WNATIVE
     function getReserves() external view returns (uint112 r0, uint112 r1, uint32 ts);
     function getVirtualReserves() external view returns (uint256 v0, uint256 v1);

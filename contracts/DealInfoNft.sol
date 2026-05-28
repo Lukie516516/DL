@@ -38,7 +38,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     address public pair;
     uint256 public mintPriceDL;
 
-    /// @notice 铸造事件（记录 DC/DL 本位标价与燃烧结果）
+    /// @notice 铸造事件（记录 DealCoin/DC 本位标价与燃烧结果）
     event MintByBurn(address indexed minter, uint256 indexed tokenId, uint256 dlAmount, uint256 dlBurned);
     event CurrentSeasonUpdated(uint16 season);
     event DisplayNoAssigned(
@@ -330,14 +330,14 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         bytes memory json = abi.encodePacked(
             '{',
                 '"name":"Deal Info NFT ', displayNo, '",',
-                '"description":"Deal Info NFT - partner & DL stats",',
+                '"description":"Deal Info NFT - partner & DC stats",',
                 '"image":"', image, '",',
                 '"attributes":[',
                     '{"trait_type":"Display No","value":"', displayNo, '"},',
                     '{"trait_type":"Season","value":"', _toString(seasonOf[tokenId]), '"},',
                     '{"trait_type":"Date Code","value":"', _toString(dateCodeOf[tokenId]), '"},',
                     '{"trait_type":"Daily Serial","value":"', _toString(dailySerialOf[tokenId]), '"},',
-                    '{"trait_type":"Total DL Minted","value":"', _toString(totalDLMinted[tokenId]), '"},',
+                    '{"trait_type":"Total DC Minted","value":"', _toString(totalDLMinted[tokenId]), '"},',
                     '{"trait_type":"Locked","value":"', lockCount[tokenId] > 0 ? "true" : "false", '"}',
                 ']',
             '}'

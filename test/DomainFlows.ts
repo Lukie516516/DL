@@ -642,33 +642,71 @@ describe("Domain Flows", async function () {
     const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
       client: { wallet: bob },
     });
+    const createDeal = async (
+      swap: typeof swapAsAlice,
+      domainName: string,
+      aAmount: bigint,
+      bAmount: bigint,
+    ) => {
+      const hash = await swap.write.createDeal([
+        domainName,
+        ausd.address,
+        aAmount,
+        usdt.address,
+        bAmount,
+        "",
+        "",
+        zeroAddress,
+      ]);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const events = await publicClient.getContractEvents({
+        address: dcDomainSwap.address,
+        abi: dcDomainSwap.abi,
+        eventName: "DealCreated",
+        fromBlock: receipt.blockNumber,
+        toBlock: receipt.blockNumber,
+        strict: true,
+      });
+      return events[0].args.deal;
+    };
 
-    await waitFor(
-      publicClient,
-      await swapAsAlice.write.createDeal([
-        "dmn111",
-        ausd.address,
-        10n * ONE,
-        usdt.address,
-        20n * ONE,
-        "",
-        "",
-        zeroAddress,
-      ]),
-    );
-    await waitFor(
-      publicClient,
-      await swapAsBob.write.createDeal([
-        "dmn222",
-        ausd.address,
-        40n * ONE,
-        usdt.address,
-        50n * ONE,
-        "",
-        "",
-        zeroAddress,
-      ]),
-    );
+    const completeDeal = async (
+      dealAddress: Address,
+      aWallet: typeof alice,
+      bWallet: typeof bob,
+      aAmount: bigint,
+      bAmount: bigint,
+    ) => {
+      const dealAsA = await viem.getContractAt("DealOpenTokenToken", dealAddress, {
+        client: { wallet: aWallet },
+      });
+      const dealAsB = await viem.getContractAt("DealOpenTokenToken", dealAddress, {
+        client: { wallet: bWallet },
+      });
+      const ausdAsA = await viem.getContractAt("DCToken", ausd.address, {
+        client: { wallet: aWallet },
+      });
+      const usdtAsB = await viem.getContractAt("DCToken", usdt.address, {
+        client: { wallet: bWallet },
+      });
+
+      await waitFor(publicClient, await ausdAsA.write.approve([dealAddress, aAmount]));
+      await waitFor(publicClient, await usdtAsB.write.approve([dealAddress, bAmount]));
+      await waitFor(publicClient, await dealAsB.write.join([0n, false]));
+      await waitFor(publicClient, await dealAsA.write.pay());
+      await waitFor(publicClient, await dealAsB.write.pay());
+      await waitFor(publicClient, await dealAsA.write.setMyVote([ACCEPT]));
+      await waitFor(publicClient, await dealAsB.write.setMyVote([ACCEPT]));
+    };
+
+    const deal111 = await createDeal(swapAsAlice, "dmn111", 10n * ONE, 20n * ONE);
+    const deal222 = await createDeal(swapAsBob, "dmn222", 40n * ONE, 50n * ONE);
+
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["dmn111"]), 0n);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["dmn222"]), 0n);
+
+    await completeDeal(deal111, alice, bob, 10n * ONE, 20n * ONE);
+    await completeDeal(deal222, bob, alice, 40n * ONE, 50n * ONE);
 
     assert.equal(await dcDomain.read.creatorOf([id1]), getAddress(alice.account.address));
     assert.equal(await dcDomain.read.creatorOf([id2]), getAddress(bob.account.address));
@@ -844,6 +882,8 @@ describe("Domain Flows", async function () {
 
     assert.equal(await dcDomainRank.read.domainDealCount(["rank11"]), 2n);
     assert.equal(await dcDomainRank.read.domainDealCount(["rank22"]), 1n);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["rank11"]), 0n);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["rank22"]), 0n);
 
     const [globalDomains, globalCounts] = await dcDomainRank.read.getGlobalLeaderboard([10n]);
     assert.deepEqual(globalDomains, ["rank11", "rank22"]);
@@ -924,7 +964,7 @@ describe("Domain Flows", async function () {
     assert.equal(statusBeforeComplete[0], depositAmount);
 
     await assert.rejects(
-      rankAsBob.write.closeDealFromAutoCloser(["rank11", deal1]),
+      rankAsBob.write.closeDealFromAutoCloser(["rank11", deal1, true]),
       /not auto closer/,
     );
 
@@ -946,6 +986,8 @@ describe("Domain Flows", async function () {
     assert.ok(refundedOnComplete < statusBeforeComplete[0]);
     assert.equal(completedStatus[0], 0n, "terminal auto-close should refund remaining deposit");
     assert.equal(completedStatus[3], false);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["rank11"]), 33n * ONE);
+    assert.equal(await dcDomainRank.read.domainTradeVolume(["rank22"]), 0n);
 
     await testClient.setNextBlockTimestamp({ timestamp: (await publicClient.getBlock()).timestamp + 30n * 24n * 3600n });
     await testClient.mine({ blocks: 1 });

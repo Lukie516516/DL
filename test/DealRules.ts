@@ -649,6 +649,130 @@ describe("Deal Rules", async function () {
     assert.equal(bobPeers[0].creditSnapshot, expectedBaseCredit);
   });
 
+  it("mints DC rewards for same-token recognized trades on both sides", async function () {
+    const fixture = await deployFixture();
+    const { dl, ausd, usdt } = fixture;
+    await fixture.createAndInitPair(ausd.address);
+    await fixture.createAndInitPair(usdt.address);
+
+    const aliceBeforeAusd = await dl.read.balanceOf([fixture.alice.account.address]);
+    const bobBeforeAusd = await dl.read.balanceOf([fixture.bob.account.address]);
+    const ausdDeal = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 1_000n * ONE,
+      bSwapToken: ausd.address,
+      bSwapAmount: 2_000n * ONE,
+    });
+
+    await completeOpenDeal(fixture, ausdDeal, {
+      alice: [{ token: ausd, amount: 1_000n * ONE }],
+      bob: [{ token: ausd, amount: 2_000n * ONE }],
+    });
+
+    const ausdReward = await fixture.dealResultIndex.read.rewardOfDeal([ausdDeal]);
+    assert.equal(ausdReward.exists, true);
+    assert.ok(ausdReward.toA > 0n);
+    assert.equal(ausdReward.toA, ausdReward.toB);
+    assert.equal(
+      (await dl.read.balanceOf([fixture.alice.account.address])) - aliceBeforeAusd,
+      ausdReward.toA,
+    );
+    assert.equal(
+      (await dl.read.balanceOf([fixture.bob.account.address])) - bobBeforeAusd,
+      ausdReward.toB,
+    );
+
+    const aliceBeforeUsdt = await dl.read.balanceOf([fixture.alice.account.address]);
+    const bobBeforeUsdt = await dl.read.balanceOf([fixture.bob.account.address]);
+    const usdtDeal = await createDealAndGetAddress(fixture, {
+      aSwapToken: usdt.address,
+      aSwapAmount: 1_500n * ONE,
+      bSwapToken: usdt.address,
+      bSwapAmount: 500n * ONE,
+    });
+
+    await completeOpenDeal(fixture, usdtDeal, {
+      alice: [{ token: usdt, amount: 1_500n * ONE }],
+      bob: [{ token: usdt, amount: 500n * ONE }],
+    });
+
+    const usdtReward = await fixture.dealResultIndex.read.rewardOfDeal([usdtDeal]);
+    assert.equal(usdtReward.exists, true);
+    assert.ok(usdtReward.toA > 0n);
+    assert.equal(usdtReward.toA, usdtReward.toB);
+    assert.equal(
+      (await dl.read.balanceOf([fixture.alice.account.address])) - aliceBeforeUsdt,
+      usdtReward.toA,
+    );
+    assert.equal(
+      (await dl.read.balanceOf([fixture.bob.account.address])) - bobBeforeUsdt,
+      usdtReward.toB,
+    );
+  });
+
+  it("mints equal DC rewards to a resolved C target", async function () {
+    const fixture = await deployFixture();
+    const { publicClient, owner, dl, ausd } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+    await fixture.createAndInitPair(ausd.address);
+
+    const ownerInfoId = await fixture.mintInfoNft(owner);
+    const aliceInfoId = await fixture.mintInfoNft(fixture.alice);
+
+    await waitFor(
+      publicClient,
+      await creditGraph.write.recordDeal([
+        owner.account.address,
+        zeroAddress,
+        ownerInfoId,
+        true,
+        0n,
+        false,
+        1_000n * ONE,
+      ]),
+    );
+    await waitFor(
+      publicClient,
+      await creditGraph.write.recordDeal([
+        owner.account.address,
+        fixture.alice.account.address,
+        ownerInfoId,
+        true,
+        aliceInfoId,
+        true,
+        10n * ONE,
+      ]),
+    );
+
+    const ownerBefore = await dl.read.balanceOf([owner.account.address]);
+    const aliceBefore = await dl.read.balanceOf([fixture.alice.account.address]);
+    const bobBefore = await dl.read.balanceOf([fixture.bob.account.address]);
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: ausd.address,
+      aSwapAmount: 1_000n * ONE,
+      bSwapToken: zeroAddress,
+      bSwapAmount: 0n,
+      aNftId: aliceInfoId,
+      templateType: TEMPLATE_TOKEN_TO_EMPTY,
+    });
+
+    await completeOpenDeal(fixture, dealAddress, {
+      alice: [{ token: ausd, amount: 1_000n * ONE }],
+    });
+
+    const reward = await fixture.dealResultIndex.read.rewardOfDeal([dealAddress]);
+    assert.equal(reward.exists, true);
+    assert.equal(reward.cAddr, getAddress(owner.account.address));
+    assert.ok(reward.toA > 0n);
+    assert.equal(reward.toA, reward.toB);
+    assert.equal(reward.toA, reward.toC);
+    assert.equal((await dl.read.balanceOf([owner.account.address])) - ownerBefore, reward.toC);
+    assert.equal((await dl.read.balanceOf([fixture.alice.account.address])) - aliceBefore, reward.toA);
+    assert.equal((await dl.read.balanceOf([fixture.bob.account.address])) - bobBefore, reward.toB);
+    assert.equal(await fixture.dealResultIndex.read.rewardDealCount([owner.account.address]), 1n);
+  });
+
   it("applies base credit plus inverse-score extra reward with zero-score boundaries", async function () {
     const fixture = await deployFixture();
     const { alice, bob } = fixture;
@@ -808,7 +932,7 @@ describe("Deal Rules", async function () {
     assert.equal(await dl.read.totalSupply(), dlSupplyBefore);
   });
 
-  it("charges 0.1% on DL-DL trades and burns the fee when no C exists", async function () {
+  it("charges 0.1% on DC-DC trades and burns the fee when no C exists", async function () {
     const fixture = await deployFixture();
     const { dl } = fixture;
     const aSwapAmount = 1_000n * ONE;
@@ -831,7 +955,7 @@ describe("Deal Rules", async function () {
     assert.equal(await dl.read.totalSupply(), supplyBefore - totalFee);
   });
 
-  it("does not count margin toward fees or DL rebates", async function () {
+  it("does not count margin toward fees or DC rewards", async function () {
     const aSwapAmount = 1_000n * ONE;
     const aMarginAmount = 500n * ONE;
 
@@ -897,7 +1021,7 @@ describe("Deal Rules", async function () {
     );
   });
 
-  it("rejects recognized-token deals when the DL pair is missing", async function () {
+  it("rejects recognized-token deals when the DC pair is missing", async function () {
     const fixture = await deployFixture();
     const { ausd, factory } = fixture;
 

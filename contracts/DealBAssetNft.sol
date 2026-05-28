@@ -577,7 +577,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         );
     }
 
-    /* ========== 奖励（按认可币交易额返 DL） ========== */
+    /* ========== 奖励（按认可币交易额返 DC） ========== */
     function _computeRewards() internal returns (Rewards memory r) {
         (r.toA, r.toB, r.toC, r.cAddr, r.cToken) = DealLib.computeDealRewards(
             DealLib.ComputeDealRewardsParams({

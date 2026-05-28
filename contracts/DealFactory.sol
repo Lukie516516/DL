@@ -172,7 +172,7 @@ interface IDealDomainView {
 }
 interface IDCDomainRankAutoClose {
     function closeDeal(string calldata domainName, address deal) external returns (uint256 refunded, uint256 consumed);
-    function closeDealFromAutoCloser(string calldata domainName, address deal)
+    function closeDealFromAutoCloser(string calldata domainName, address deal, bool completed)
         external
         returns (uint256 refunded, uint256 consumed);
 }
@@ -802,7 +802,7 @@ contract DealFactory is Ownable {
         _markNftGovernanceActivity(tokenId);
     }
 
-    function _tryCloseDomainAd(address deal) internal {
+    function _tryCloseDomainAd(address deal, bool completed) internal {
         address rank = dcDomainRank;
         if (rank == address(0)) return;
 
@@ -822,7 +822,7 @@ contract DealFactory is Ownable {
         }
         if (bytes(name).length == 0) return;
 
-        try IDCDomainRankAutoClose(rank).closeDealFromAutoCloser(name, deal) returns (uint256, uint256) {
+        try IDCDomainRankAutoClose(rank).closeDealFromAutoCloser(name, deal, completed) returns (uint256, uint256) {
             emit DomainAdAutoClosed(deal, name, true);
         } catch {
             emit DomainAdAutoClosed(deal, name, false);
@@ -848,7 +848,7 @@ contract DealFactory is Ownable {
         if (creator != address(0)) _removeTracked(creator, msg.sender);
         if (prevParticipant != address(0))
             _removeTracked(prevParticipant, msg.sender);
-        if (domainDeal) _tryCloseDomainAd(msg.sender);
+        if (domainDeal) _tryCloseDomainAd(msg.sender, false);
     }
     function onFinishedFor(address partyA, address partyB, bool trackA, bool trackB, bool completed, bool domainDeal) external onlyDeal {
         address deal = msg.sender;
@@ -858,7 +858,7 @@ contract DealFactory is Ownable {
         }
         if (trackA && partyA != address(0)) _removeTracked(partyA, deal);
         if (trackB && partyB != address(0)) _removeTracked(partyB, deal);
-        if (domainDeal) _tryCloseDomainAd(deal);
+        if (domainDeal) _tryCloseDomainAd(deal, completed);
     }
 
     /* ========== 热索引只读（活跃） ========== */

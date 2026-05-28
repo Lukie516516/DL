@@ -28,7 +28,7 @@ contract VoteDividendClaimer is ReentrancyGuard {
     IERC20  public immutable dlc;
     /// 只有该地址可执行开轮（建议设为 DAO 执行合约）
     address public executor;
-    /// 分红资金来源（treasury / DAO 分红金库），createRound 从这里拉取 DL。
+    /// 分红资金来源（treasury / DAO 分红金库），createRound 从这里拉取 DC。
     address public dividendSource;
     address public infoNft;
     address public governanceActivity;
@@ -93,7 +93,7 @@ contract VoteDividendClaimer is ReentrancyGuard {
     }
 
     /// DAO / executor：开新一轮（记录“过去”的快照，避免与本交易同一 timepoint）
-    /// 本函数从 dividendSource 拉取本轮 DL，提案人/执行人不需要用自己的钱出资。
+    /// 本函数从 dividendSource 拉取本轮 DC，提案人/执行人不需要用自己的钱出资。
     /// dividendSource 需要提前 approve 本合约，或由治理提案先完成授权。
     function createRound(uint256 total) external onlyExecutor {
         require(total > 0, "total=0");

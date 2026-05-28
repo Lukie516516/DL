@@ -355,7 +355,7 @@ timeoutSeconds()
 新 Factory / 新入口部署后，需要做以下接线：
 
 ```text
-DL.grantRole(MINTER_ROLE, newFactory)
+DC.grantRole(MINTER_ROLE, newFactory)
 DealInfoNFT.addFactory(newFactory)
 DealInfoNFT.setFactory(newFactory)
 DealCreditGraph.setRecorder(newFactory, true)

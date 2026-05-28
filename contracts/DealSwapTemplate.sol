@@ -36,14 +36,14 @@ contract DealSwapTemplate is Initializable, ReentrancyGuard {
 
     /* ---------------- Storage (initialize 设置) ---------------- */
     address public factory; // 仅此地址可做初始化、调费率等治理操作
-    address public token0; // DL
+    address public token0; // DC
     address public token1; // OTHER
 
     /// @dev 旧版本用于把 token1 虚拟垫高混入会计储备；现在仅保留为 legacy 配置记录，不再混入 reserve。
     uint256 public token1BalanceInit;
 
     /* ---------------- Reserves / TWAP ---------------- */
-    uint112 private reserve0; // DL（真实）
+    uint112 private reserve0; // DC（真实）
     uint112 private reserve1; // OTHER（真实）
     uint32 private blockTimestampLast;
 
@@ -76,7 +76,7 @@ contract DealSwapTemplate is Initializable, ReentrancyGuard {
         bool virtualReserve1Enabled
     );
 
-    // amount0In/Out 表示 DL，amount1In/Out 表示 OTHER，amount0OutNet（仅买 DL 时有意义）
+    // amount0In/Out 表示 DC，amount1In/Out 表示 OTHER，amount0OutNet（仅买 DC 时有意义）
     event Swap(
         address indexed sender,
         uint256 amount0In,
@@ -323,7 +323,7 @@ contract DealSwapTemplate is Initializable, ReentrancyGuard {
         );
     }
 
-    /// 由 Factory 完成初始化（需先把 DL 与 OTHER 转入本合约）
+    /// 由 Factory 完成初始化（需先把 DC 与 OTHER 转入本合约）
     /// @dev `_b1` 保留为 legacy 参数：若非 0，则默认作为 token1 的初始虚拟储备写入配置，但不再混入真实 reserve。
     function mintInitial(uint256 _b1) external nonReentrant onlyFactory returns (uint256 amountDL, uint256 amountOther) {
         if (liquidityInited) revert AlreadyInit();

@@ -117,7 +117,7 @@ async function deployRouterFixture() {
 }
 
 describe("DealRouter regression", async function () {
-  it("swaps exact-in across two DL pairs and leaves no router dust", async function () {
+  it("swaps exact-in across two DC pairs and leaves no router dust", async function () {
     const fixture = await deployRouterFixture();
     const { viem, publicClient, alice, dl, tokenA, tokenB, router, createTokenPair } = fixture;
     const { pairAddress: pairA, pair: pairAContract } = await createTokenPair(
@@ -155,7 +155,7 @@ describe("DealRouter regression", async function () {
     assert.equal(await dl.read.balanceOf([router.address]), 0n);
   });
 
-  it("refunds unused ETH on exact-out via DL and leaves no router dust", async function () {
+  it("refunds unused ETH on exact-out via DC and leaves no router dust", async function () {
     const fixture = await deployRouterFixture();
     const { viem, publicClient, alice, dl, tokenB, wrappedNative, router, createTokenPair, createWNativePair } =
       fixture;

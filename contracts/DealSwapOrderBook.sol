@@ -24,7 +24,7 @@ contract DealSwapOrderBook is ReentrancyGuard {
     struct Order {
         address owner;
         address pair;
-        bool isSellDL; // true: DL -> OTHER, false: OTHER -> DL
+        bool isSellDL; // true: DC -> OTHER, false: OTHER -> DC
         bool active;
         uint256 remainingIn;
         uint64 createdAt;
@@ -39,8 +39,8 @@ contract DealSwapOrderBook is ReentrancyGuard {
 
     mapping(uint256 => Order) public orders;
 
-    mapping(address => uint256[]) private _sellQueues; // DL -> OTHER
-    mapping(address => uint256[]) private _buyQueues; // OTHER -> DL
+    mapping(address => uint256[]) private _sellQueues; // DC -> OTHER
+    mapping(address => uint256[]) private _buyQueues; // OTHER -> DC
     mapping(address => uint256) public sellHead;
     mapping(address => uint256) public buyHead;
 

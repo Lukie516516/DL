@@ -103,7 +103,7 @@ npm run deploy:agiking:agi-swap
 
 | 变量 | 说明 |
 | --- | --- |
-| `PAIR_INIT_DL` | 初始化 `DC-AGI` pair 时注入的 DC 数量，18 位精度。变量名保留 `DL` 是历史脚本命名。 |
+| `PAIR_INIT_DL` | 初始化 `DC-AGI` pair 时注入的 DC 数量，18 位精度。变量名保留 `DL` 只是历史脚本命名。 |
 | `PAIR_INIT_AGI` | 初始化 `DC-AGI` pair 时注入的 AGI 数量，18 位精度 |
 | `AGI_TOKEN_ADDRESS` | 如果已有包装 AGI 合约，可传入；不传则部署新的 `WrappedAGI` |
 | `REDEPLOY_ROUTER` | 默认 `true`；重新部署 Router 让原生币入口指向 AGI |

@@ -92,10 +92,12 @@ contract DCDomainRank is ReentrancyGuard {
     mapping(address => bool) public isDealReporter;
     mapping(string  => uint256) public domainDealCount;
     mapping(string  => uint256) public domainTradeVolume;
+    mapping(string => mapping(address => uint256)) private _reportedDealVolume;
+    mapping(string => mapping(address => bool)) private _dealTradeVolumeCounted;
     string[] private _globalDomains;
     mapping(string  => bool) private _globalDomainExists;
 
-    /// @dev 按域名累积、待域名 NFT 持有人提取的广告费（DL，与商家充值同一 token）
+    /// @dev 按域名累积、待域名 NFT 持有人提取的广告费（DC，与商家充值同一 token）
     mapping(string => uint256) private _holderRewardsPending;
 
     /// @dev 域名级广告费策略（默认 None，映射为 0）
@@ -261,7 +263,7 @@ contract DCDomainRank is ReentrancyGuard {
         return _holderRewardsPending[domainName];
     }
 
-    /// @notice 域名 NFT 持有人提取本域名累积的广告费（DL）
+    /// @notice 域名 NFT 持有人提取本域名累积的广告费（DC）
     function withdraw(string calldata domainName) external nonReentrant {
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         require(_domainOwner(domainName) == msg.sender, "DCDomainRank: not domain owner");
@@ -289,7 +291,7 @@ contract DCDomainRank is ReentrancyGuard {
     /// @notice 设置本域名广告费模式；仅域名 NFT 持有人可调用
     /// @param mode 0=None（禁止商家 deposit）1=等比 2=等差
     /// @param proportionalBpsPerHour 等比：每小时从当前余额扣除的比例（万分比），须 1..9999
-    /// @param fixedHourlyRateWei 等差：每小时固定扣除的 DL（wei），mode=2 时须 >0
+    /// @param fixedHourlyRateWei 等差：每小时固定扣除的 DC（wei），mode=2 时须 >0
     function setDomainAdFeePolicy(
         string calldata domainName,
         uint8 mode,
@@ -504,15 +506,25 @@ contract DCDomainRank is ReentrancyGuard {
         if (changed) emit LeaderboardUpdated(domainName);
     }
 
-    function _closeDeal(string memory domainName, address deal, bool checkTerminal)
+    function _closeDeal(string memory domainName, address deal, bool checkTerminal, bool completedHint)
         internal
         returns (uint256 refunded, uint256 consumed)
     {
-        if (_dealAdClosed[domainName][deal]) return (0, 0);
+        if (_dealAdClosed[domainName][deal]) {
+            _accountCompletedTradeVolume(domainName, deal, completedHint);
+            return (0, 0);
+        }
 
         address merchantAddr = _merchantOfDeal[domainName][deal];
         require(merchantAddr != address(0), "DCDomainRank: deal not reported");
-        if (checkTerminal) require(_isDealTerminal(deal), "DCDomainRank: deal not closed");
+        bool completed = completedHint;
+        if (checkTerminal) {
+            (bool ok, uint8 s, ) = _dealStatus(deal);
+            require(ok && s >= 3, "DCDomainRank: deal not closed");
+            completed = s == 3;
+        }
+
+        _accountCompletedTradeVolume(domainName, deal, completed);
 
         Player storage p = _dealPlayers[domainName][deal][merchantAddr];
         uint256 before_ = p.depositedDC;
@@ -540,17 +552,17 @@ contract DCDomainRank is ReentrancyGuard {
         nonReentrant
         returns (uint256 refunded, uint256 consumed)
     {
-        return _closeDeal(domainName, deal, true);
+        return _closeDeal(domainName, deal, true, false);
     }
 
     /// @notice Factory terminal callback path. Some old templates notify before writing Abandoned status.
-    function closeDealFromAutoCloser(string calldata domainName, address deal)
+    function closeDealFromAutoCloser(string calldata domainName, address deal, bool completed)
         external
         nonReentrant
         returns (uint256 refunded, uint256 consumed)
     {
         require(msg.sender == autoCloser, "DCDomainRank: not auto closer");
-        return _closeDeal(domainName, deal, false);
+        return _closeDeal(domainName, deal, false, completed);
     }
 
     // ═══════════════════════════════════════════
@@ -746,6 +758,12 @@ contract DCDomainRank is ReentrancyGuard {
         emit DomainTradeVolumeAdded(domainName, deal, volume, domainTradeVolume[domainName]);
     }
 
+    function _accountCompletedTradeVolume(string memory domainName, address deal, bool completed) internal {
+        if (!completed || _dealTradeVolumeCounted[domainName][deal]) return;
+        _dealTradeVolumeCounted[domainName][deal] = true;
+        _addDomainTradeVolume(domainName, deal, _reportedDealVolume[domainName][deal]);
+    }
+
     function _reportDeal(string memory domainName, address deal, address merchant_, uint256 volume) internal {
         require(isDealReporter[msg.sender], "DCDomainRank: not reporter");
         require(deal != address(0) && merchant_ != address(0), "DCDomainRank: zero addr");
@@ -758,10 +776,10 @@ contract DCDomainRank is ReentrancyGuard {
             if (_merchantOfDeal[domainName][deal] == address(0)) {
                 _merchantOfDeal[domainName][deal] = merchant_;
             }
+            _reportedDealVolume[domainName][deal] = volume;
         }
 
         _ensureGlobalDomain(domainName);
-        _addDomainTradeVolume(domainName, deal, volume);
         emit DomainDealReported(domainName, deal, merchant_, domainDealCount[domainName]);
     }
 
@@ -771,7 +789,7 @@ contract DCDomainRank is ReentrancyGuard {
         _reportDeal(domainName, deal, merchant_, 0);
     }
 
-    /// @notice 新 reporter：同时上报本单名义成交额，供域名列表默认排序。
+    /// @notice 新 reporter：登记本单名义成交额；只有 deal 最终 Completed 才计入域名累计成交额。
     function reportDealWithVolume(string calldata domainName, address deal, address merchant_, uint256 volume) external {
         _reportDeal(domainName, deal, merchant_, volume);
     }
