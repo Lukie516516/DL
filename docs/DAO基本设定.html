@@ -1,47 +1,29 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DAO 基本设定</title>
   <style>
     :root {
-      --bg: #f4f1ea;
-      --paper: #fffaf1;
-      --ink: #1f2933;
-      --muted: #64707d;
-      --line: #d8cfc0;
-      --accent: #0f766e;
-      --accent-2: #b45309;
-      --accent-soft: #d9f0ed;
-      --warn-soft: #f8e6c8;
-      --code: #172026;
-      --code-ink: #edf2f7;
-      --shadow: 0 18px 48px rgba(64, 50, 28, 0.12);
+      --bg: #0f1218;
+      --panel: #171c24;
+      --panel-2: #1d2430;
+      --line: #2b3442;
+      --text: #e8edf5;
+      --muted: #9ca8b8;
+      --accent: #d8b24f;
+      --danger: #d66a6a;
+      --ok: #6ecf8b;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      color: var(--ink);
-      background:
-        linear-gradient(135deg, rgba(15, 118, 110, 0.12), transparent 32%),
-        linear-gradient(315deg, rgba(180, 83, 9, 0.12), transparent 30%),
-        var(--bg);
-      font-family: "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, serif;
-      line-height: 1.72;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .layout {
@@ -55,302 +37,178 @@
       top: 0;
       align-self: start;
       height: 100vh;
-      padding: 32px 22px;
+      padding: 28px 24px;
       border-right: 1px solid var(--line);
-      background: rgba(255, 250, 241, 0.82);
-      backdrop-filter: blur(12px);
-      overflow: auto;
-    }
-
-    .brand {
-      margin-bottom: 28px;
+      background: #121720;
     }
 
     .eyebrow {
       margin: 0 0 8px;
       color: var(--accent);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0;
       text-transform: uppercase;
+      letter-spacing: 0;
     }
 
-    h1 {
-      margin: 0;
-      font-size: 32px;
-      line-height: 1.15;
-      letter-spacing: 0;
-    }
+    h1, h2, h3 { margin: 0; letter-spacing: 0; }
+
+    h1 { font-size: 30px; line-height: 1.2; margin-bottom: 10px; }
+    h2 { font-size: 28px; line-height: 1.25; margin-bottom: 16px; }
+    h3 { font-size: 18px; line-height: 1.35; margin-bottom: 8px; }
 
     .subtitle {
-      margin: 12px 0 0;
+      margin: 0;
       color: var(--muted);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: 14px;
-      line-height: 1.65;
     }
 
     .nav {
       display: grid;
-      gap: 6px;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 14px;
+      gap: 10px;
+      margin-top: 28px;
     }
 
     .nav a {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      padding: 8px 10px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 10px 12px;
+      border: 1px solid transparent;
       border-radius: 8px;
-      color: #394552;
+      background: transparent;
     }
 
     .nav a:hover {
-      background: var(--accent-soft);
-      color: #0f4f4a;
+      color: var(--text);
+      border-color: var(--line);
+      background: rgba(255,255,255,0.02);
     }
 
     .nav span {
-      min-width: 24px;
+      display: inline-block;
+      width: 28px;
       color: var(--accent);
-      font-weight: 700;
     }
 
     main {
-      padding: 44px;
+      padding: 36px 40px 56px;
     }
 
     .doc {
-      max-width: 1040px;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 44px;
+      display: grid;
+      gap: 22px;
+    }
+
+    .hero, section {
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(255, 250, 241, 0.94);
-      box-shadow: var(--shadow);
+      border-radius: 8px;
+      padding: 24px;
     }
 
     .hero {
       display: grid;
-      gap: 24px;
-      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      grid-template-columns: 1.45fr 1fr;
+      gap: 18px;
       align-items: start;
-      padding-bottom: 34px;
-      border-bottom: 2px solid var(--line);
     }
 
-    .hero h2 {
-      margin: 0;
-      font-size: 44px;
-      line-height: 1.12;
-      letter-spacing: 0;
+    .summary-box, .note {
+      padding: 16px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
     }
 
-    .hero p {
-      margin: 14px 0 0;
-      color: var(--muted);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 16px;
+    .summary-box strong, .note strong {
+      display: block;
+      margin-bottom: 6px;
     }
 
-    .summary-box {
-      padding: 20px;
-      border: 1px solid #8ebbb5;
-      border-radius: 10px;
-      background: #eef8f6;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    .note.warn {
+      border-color: rgba(214,106,106,0.45);
+      background: rgba(214,106,106,0.08);
     }
 
-    .summary-box strong {
-      color: var(--accent);
-    }
-
-    section {
-      padding: 36px 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    section:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    h2 {
-      margin: 0 0 18px;
-      font-size: 30px;
-      line-height: 1.25;
-      letter-spacing: 0;
-    }
-
-    h3 {
-      margin: 26px 0 12px;
-      color: #24313d;
-      font-size: 21px;
-      line-height: 1.35;
-      letter-spacing: 0;
+    .note.ok {
+      border-color: rgba(110,207,139,0.45);
+      background: rgba(110,207,139,0.08);
     }
 
     p {
-      margin: 10px 0;
+      margin: 0 0 12px;
+      color: var(--text);
     }
 
-    .lead {
-      color: var(--muted);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 15px;
-    }
+    .lead { color: var(--muted); }
 
     .grid {
       display: grid;
-      gap: 14px;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-top: 18px;
+      gap: 14px;
+      margin-top: 16px;
     }
 
     .tile {
-      min-height: 132px;
-      padding: 18px;
+      padding: 16px;
+      border-radius: 8px;
+      background: var(--panel-2);
       border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fffdf8;
-    }
-
-    .tile h3 {
-      margin-top: 0;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 17px;
-    }
-
-    .tile p {
-      color: var(--muted);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 14px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 16px 0 4px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      font-size: 14px;
+      margin-top: 14px;
     }
 
-    th,
-    td {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
+    th, td {
       text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
       vertical-align: top;
     }
 
     th {
-      background: #efe6d7;
-      color: #26313d;
-      font-weight: 700;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 13px;
     }
 
-    tr:last-child td {
-      border-bottom: 0;
-    }
+    td { font-size: 14px; }
 
-    code,
     pre {
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      margin: 14px 0 0;
+      padding: 16px;
+      overflow: auto;
+      border-radius: 8px;
+      background: #11161d;
+      border: 1px solid var(--line);
+      color: #dfe7f2;
     }
 
     code {
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: #eee4d4;
-      color: #374151;
-      font-size: 0.92em;
-    }
-
-    pre {
-      margin: 16px 0;
-      padding: 18px;
-      border-radius: 10px;
-      background: var(--code);
-      color: var(--code-ink);
-      overflow: auto;
-      line-height: 1.65;
-      white-space: pre-wrap;
-    }
-
-    pre code {
-      padding: 0;
-      background: transparent;
-      color: inherit;
-    }
-
-    .note {
-      margin: 18px 0;
-      padding: 16px 18px;
-      border-left: 4px solid var(--accent);
-      border-radius: 8px;
-      background: #edf8f6;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-    }
-
-    .warn {
-      border-left-color: var(--accent-2);
-      background: var(--warn-soft);
-    }
-
-    .case {
-      margin: 18px 0;
-      padding: 20px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fffdf8;
-    }
-
-    .case h3 {
-      margin-top: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
     }
 
     .footer {
       color: var(--muted);
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: 13px;
+      margin-top: 10px;
     }
 
     @media (max-width: 980px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
+      .layout { grid-template-columns: 1fr; }
       .side {
         position: static;
         height: auto;
         border-right: 0;
         border-bottom: 1px solid var(--line);
       }
-
-      main {
-        padding: 22px;
-      }
-
-      .doc {
-        padding: 26px;
-      }
-
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .hero h2 {
-        font-size: 34px;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
+      main { padding: 24px 16px 40px; }
+      .hero, .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -360,18 +218,17 @@
       <div class="brand">
         <p class="eyebrow">DealCoin Protocol</p>
         <h1>DAO 基本设定</h1>
-        <p class="subtitle">D 代币、DAO 治理、协议分红、官方 NFT 用户否决机制的统一说明。</p>
+        <p class="subtitle">计划改造版：D 主网投票、主网分红、重大提案活跃 NFT 双院参与。</p>
       </div>
       <nav class="nav" aria-label="目录">
         <a href="#overview"><span>01</span>总体定位</a>
         <a href="#d-token"><span>02</span>D 代币</a>
-        <a href="#dividend"><span>03</span>分红体系</a>
-        <a href="#governance"><span>04</span>治理模型</a>
-        <a href="#nft-veto"><span>05</span>NFT 否决</a>
-        <a href="#cases"><span>06</span>使用案例</a>
+        <a href="#participants"><span>03</span>治理参与方</a>
+        <a href="#proposal-types"><span>04</span>提案分层</a>
+        <a href="#dividend"><span>05</span>分红与主链</a>
+        <a href="#major"><span>06</span>重大事项</a>
         <a href="#contracts"><span>07</span>代码承载</a>
-        <a href="#frontend"><span>08</span>前端页面</a>
-        <a href="#defaults"><span>09</span>默认值</a>
+        <a href="#defaults"><span>08</span>默认值</a>
       </nav>
     </aside>
 
@@ -379,13 +236,13 @@
       <article class="doc">
         <header class="hero" id="overview">
           <div>
-            <p class="eyebrow">DAO / Dividend / Governance</p>
-            <h2>让协议收入、治理权和用户保护机制形成闭环</h2>
-            <p>这份文档用于给产品、运营、管理层和开发同事统一说明 DealCoin（DC）项目的 D 代币、DAO 治理、协议分红和官方 NFT 用户否决机制。</p>
+            <p class="eyebrow">Planned Governance</p>
+            <h2>把 D 主网投票、主网分红、活跃 NFT 重大参与统一成一套明确规则</h2>
+            <p class="lead">这份文档是计划改造版口径，用于产品、运营、前端和合约改造同步，不等于当前链上已经全部生效的治理实现。</p>
           </div>
           <div class="summary-box">
-            <strong>一句话：</strong>
-            <p>D 是固定 100 枚的协议权益代币；持有 D 可以按比例领取协议分红；2.5 D 以上成为 DAO 席位；重大升级还要接受官方 DealInfoNFT 用户否决。</p>
+            <strong>一句话</strong>
+            <p>D 固定 100 枚，18 位精度，1 D = 1% 分红权；参数调整和 treasury 打款只由 D 决定；升级和重大提案由 D 与当前活跃官方 DealInfoNFT 双院通过；持有 2.5 D 及以上保留一票否决权。</p>
           </div>
         </header>
 
@@ -398,255 +255,195 @@
             </div>
             <div class="tile">
               <h3>D</h3>
-              <p>协议权益代币，负责分红权、DAO 席位资格和治理否决权。</p>
+              <p>协议权益代币，负责主网分红权、主网治理投票权、席位资格和一票否决权。</p>
             </div>
             <div class="tile">
               <h3>DealInfoNFT</h3>
-              <p>官方身份 NFT，负责信用、交易身份和重大提案用户否决。</p>
+              <p>官方身份 NFT，负责重大提案中的用户侧参与，一枚 tokenId 一票。</p>
             </div>
           </div>
-          <pre><code>DealCoin（DC）负责生态流通。
-D 负责协议权益。
-DealInfoNFT 负责真实用户身份和治理用户侧保护。</code></pre>
+          <pre><code>DC 负责生态流通。
+D 负责主网协议权益。
+DealInfoNFT 负责真实用户身份和重大治理中的用户侧参与。</code></pre>
         </section>
 
         <section id="d-token">
           <h2>D 代币规则</h2>
           <table>
             <thead>
-              <tr>
-                <th>项目</th>
-                <th>V1 规则</th>
-              </tr>
+              <tr><th>项目</th><th>计划规则</th></tr>
             </thead>
             <tbody>
               <tr><td>总量</td><td>固定 100 D</td></tr>
-              <tr><td>精度</td><td>18 位小数，和 DealCoin（DC）常用精度一致</td></tr>
-              <tr><td>是否可转让</td><td>可以</td></tr>
-              <tr><td>是否可增发</td><td>不可增发</td></tr>
-              <tr><td>分红权</td><td>按持有比例领取协议分红</td></tr>
+              <tr><td>精度</td><td>18 位</td></tr>
+              <tr><td>分红权</td><td>1 D = 1% 分红权</td></tr>
               <tr><td>席位门槛</td><td>持有 2.5 D 及以上</td></tr>
+              <tr><td>席位权利</td><td>可发起提案，保留一票否决权</td></tr>
+              <tr><td>发行链</td><td>只在 ETH 主链</td></tr>
+            </tbody>
+          </table>
+          <div class="note ok">
+            <strong>人话解释</strong>
+            持有 1 D = 拥有协议 1% 分红权。持有 2.5 D 或以上 = 拥有 DAO 席位资格。D 可以转让，但只影响未来分红和未来提案。
+          </div>
+        </section>
+
+        <section id="participants">
+          <h2>治理参与方</h2>
+          <table>
+            <thead>
+              <tr><th>参与方</th><th>适用范围</th><th>计票规则</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>D 持有人</td>
+                <td>参数调整、treasury 指定打款、升级 / 重大提案</td>
+                <td>D-only 或重大案里的 D 院通过条件都统一为 <code>赞成 D &gt;= 70 D</code></td>
+              </tr>
+              <tr>
+                <td>当前活跃官方 DealInfoNFT</td>
+                <td>只参与升级 / 重大提案</td>
+                <td><code>赞成 NFT &gt;= 当前活跃 NFT 快照总票数的 70%</code></td>
+              </tr>
             </tbody>
           </table>
           <div class="note">
-            持有 1 D = 拥有协议 1% 的分红权。持有 2.5 D 或以上 = 拥有 DAO 席位资格。D 可以转让，但转让只影响未来分红和未来提案。
+            <strong>当前活跃 NFT 定义</strong>
+            只认官方 DealInfoNFT；1 个 tokenId = 1 票；按提案创建时的快照计票；默认活跃窗口 90 天。
           </div>
         </section>
 
-        <section id="dividend">
-          <h2>分红体系</h2>
-          <p class="lead">分红只分协议收入。协议收入先进入 treasury 或指定的 dividendSource，最终建议统一换成 DealCoin（DC）后再分给 D 持有人。</p>
-          <table>
-            <thead>
-              <tr>
-                <th>来源</th>
-                <th>说明</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>交易手续费</td><td>Deal 成交产生的协议手续费</td></tr>
-              <tr><td>域名收入</td><td>域名注册、域名市场、域名广告等收入</td></tr>
-              <tr><td>其他协议收入</td><td>后续新增模块产生的可分配收入</td></tr>
-            </tbody>
-          </table>
-          <h3>标准分红流程</h3>
-          <pre><code>1. 协议收入进入 treasury / dividendSource。
-2. 运营、多签或 DAO 把可分红资产换成 DealCoin（DC）。
-3. treasury / dividendSource 授权分红合约使用本轮 DealCoin（DC）。
-4. D 席位发起分红提案。
-5. 提案无人否决后，executor / DAO 执行账户创建分红轮。
-6. 分红合约记录 D 持仓快照。
-7. D 持有人按快照时的持仓比例领取 DealCoin（DC）。</code></pre>
-          <div class="note warn">
-            D 席位可以发起分红提案，但不能绕过 DAO 直接创建分红轮。分红资金来自 treasury / dividendSource，不来自提案人的个人钱包。
-          </div>
-          <h3>快照机制</h3>
-          <pre><code>D 总量 = 100
-本轮分红池 = 10,000 DC
-A 在快照时持有 1 D
-
-A 可领取 = 1 / 100 * 10,000 = 100 DC</code></pre>
-        </section>
-
-        <section id="governance">
-          <h2>DAO 治理模型</h2>
-          <p class="lead">V1 采用“否决型治理”，不是传统多数赞成型投票。有人提出参数修改或重大变更，进入否决窗口；如果有合格席位否决，提案失败；如果没人否决，到期后可以执行。</p>
+        <section id="proposal-types">
+          <h2>提案分层</h2>
           <table>
             <thead>
               <tr>
                 <th>提案类型</th>
-                <th>适用范围</th>
-                <th>流程</th>
+                <th>参与方</th>
+                <th>通过条件</th>
+                <th>投票期</th>
+                <th>投票期内否决规则</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>常规提案</td>
-                <td>手续费、Swap 参数、奖励参数、NFT 价格、消息费用、域名费率等日常运营参数</td>
-                <td>48 小时 D 席位否决；无人否决后执行</td>
+                <td>参数调整</td>
+                <td>只有 D</td>
+                <td>赞成 D &gt;= 70 D</td>
+                <td>48 小时</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
               </tr>
               <tr>
-                <td>重大提案</td>
-                <td>合约升级、核心权限迁移、分红规则重写、信用体系迁移、D 规则变更</td>
-                <td>120 小时 D 席位否决 + 官方 NFT 用户否决</td>
+                <td>treasury 指定打款</td>
+                <td>只有 D</td>
+                <td>赞成 D &gt;= 70 D</td>
+                <td>120 小时</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
+              </tr>
+              <tr>
+                <td>升级 / 重大提案</td>
+                <td>D + 当前活跃 NFT</td>
+                <td>赞成 D &gt;= 70 D，且赞成 NFT &gt;= 当前活跃 NFT 快照的 70%</td>
+                <td>120 小时</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
               </tr>
             </tbody>
           </table>
+          <div class="note warn">
+            <strong>席位一票否决</strong>
+            只要地址在否决快照时持有 2.5 D 或以上，就保留一票否决权。否决在投票期内即可发生；任意合格席位否决，提案立即失败，不再额外设置通过后的否决窗口。
+          </div>
         </section>
 
-        <section id="nft-veto">
-          <h2>官方 NFT 用户否决</h2>
-          <p class="lead">重大提案会接入官方 DealInfoNFT 的用户否决。外部 NFT 不参与治理。</p>
+        <section id="dividend">
+          <h2>分红与主链边界</h2>
           <table>
             <thead>
-              <tr>
-                <th>项目</th>
-                <th>V1 规则</th>
-              </tr>
+              <tr><th>项目</th><th>规则</th></tr>
             </thead>
             <tbody>
-              <tr><td>参与 NFT</td><td>只认官方 DealInfoNFT</td></tr>
-              <tr><td>计票方式</td><td>一枚有效治理 NFT = 一票</td></tr>
-              <tr><td>是否按信用分加权</td><td>V1 不做</td></tr>
-              <tr><td>否决阈值</td><td>有效治理 NFT 的 20%</td></tr>
-              <tr><td>活跃窗口</td><td>默认 90 天</td></tr>
+              <tr><td>D 发行</td><td>只在 ETH 主链</td></tr>
+              <tr><td>D 投票</td><td>只在 ETH 主链</td></tr>
+              <tr><td>D 分红</td><td>只在 ETH 主链</td></tr>
+              <tr><td>分红资产</td><td>统一使用主网 DC</td></tr>
+              <tr><td>recognized 资产</td><td>继续按当前逻辑进入 pair，不算 treasury 分红来源</td></tr>
+              <tr><td>非主网 Deal / DC</td><td>可以运行，但不承载 D 治理和 D 分红</td></tr>
             </tbody>
           </table>
-          <pre><code>提案创建时，谁持有这个官方 NFT，谁对这条提案有否决权。
-提案创建后 NFT 可以继续转让。
-新 owner 不能投这条旧提案。
-新 owner 从下一条新提案开始拥有投票权。
-同一个 tokenId 对同一条提案只能投一次。</code></pre>
+          <pre><code>1. 主网 treasury / dividendSource 收资产。
+2. 可安全兑换的资产换成主网 DC。
+3. D-only 提案投票通过且未被席位否决。
+4. executor 创建分红轮。
+5. D 持有人按主网 D 快照领取主网 DC。</code></pre>
+          <div class="note">
+            普通席位可以发起分红相关提案，但不能绕过 DAO 直接创建分红轮。
+          </div>
         </section>
 
-        <section id="cases">
-          <h2>DAO 使用案例</h2>
-          <div class="case">
-            <h3>调整交易手续费</h3>
-            <p>当前点对点交易手续费是 0.3%，团队希望把手续费调整为 0.25%。</p>
-            <pre><code>1. 持有 2.5 D 以上的席位钱包发起常规提案。
-2. 提案内容写清楚：把交易手续费从 0.3% 调整到 0.25%。
-3. 进入 48 小时否决窗口。
-4. 如果任意 D 席位认为不合理，可以否决，提案失败。
-5. 如果 48 小时内无人否决，提案通过。
-6. executor / 有权限账户执行参数修改。
-7. 后续交易按 0.25% 收费。</code></pre>
-          </div>
-
-          <div class="case">
-            <h3>发起一次协议分红</h3>
-            <p>treasury 已经把可分红资产换成 50,000 DC，团队希望分给 D 持有人。</p>
-            <pre><code>1. treasury / dividendSource 授权分红合约使用 50,000 DC。
-2. 持有 2.5 D 以上的席位钱包发起分红提案。
-3. 提案写清楚：本轮分红总额 50,000 DC，资金来自 treasury。
-4. 进入否决窗口。
-5. 如果没有 D 席位否决，提案通过。
-6. executor 调用 createRound(50,000 DC) 创建分红轮。
-7. 合约记录 D 持仓快照。
-8. D 持有人在前端看到可领取额度，并自行 claim。</code></pre>
-          </div>
-
-          <div class="case">
-            <h3>替换核心合约模板</h3>
-            <p>新的 Deal 模板完成测试和审计，需要把 Factory 的模板地址切换到新版本。</p>
-            <pre><code>1. 持有 2.5 D 以上的席位钱包发起重大提案。
-2. 提案写清楚旧模板地址、新模板地址、升级原因、审计结论。
-3. 进入 120 小时 D 席位否决窗口。
-4. 如果 D 席位没有否决，进入官方 DealInfoNFT 用户否决阶段。
-5. 如果 NFT 否决达到有效治理 NFT 的 20%，提案失败。
-6. 如果两边都没有触发否决，到期后 executor 执行模板替换。
-7. 新创建的 deal 使用新模板，旧 deal 继续按旧合约逻辑运行。</code></pre>
-          </div>
-
-          <div class="case">
-            <h3>修改域名广告费率</h3>
-            <p>域名广告消耗速度过快或过慢，团队希望调整广告费率规则。</p>
-            <pre><code>1. D 席位发起常规提案。
-2. 提案写清楚新费率、适用范围、修改原因。
-3. 进入 48 小时否决窗口。
-4. 无人否决后执行参数修改。
-5. 新的域名广告充值和消耗按新规则计算。</code></pre>
-            <div class="note">
-              如果只是调整费率，属于常规参数。如果要迁移 DCDomainRank 合约、迁移 treasury 或更换 reporter 权限，则属于重大提案。
-            </div>
-          </div>
+        <section id="major">
+          <h2>重大事项范围</h2>
+          <table>
+            <thead>
+              <tr><th>类型</th><th>包含内容</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>核心合约升级</td><td>新 Factory、新模板、新 Router、新 Reader、新 Treasury</td></tr>
+              <tr><td>治理规则修改</td><td>投票模型、席位否决模型、执行路径</td></tr>
+              <tr><td>分红规则修改</td><td>分红资产、开轮权限、领取公式、未领取余额处理</td></tr>
+              <tr><td>D 规则修改</td><td>总量、精度、席位门槛、转让限制</td></tr>
+              <tr><td>核心权限迁移</td><td>treasury、owner、admin、minter、recorder、reporter</td></tr>
+              <tr><td>信用体系迁移</td><td>更换 CreditGraph、迁移信用分</td></tr>
+            </tbody>
+          </table>
+          <pre><code>改旋钮 = 参数调整
+动国库 = D-only treasury 打款提案
+换合约 / 换治理 / 换权益规则 = 重大提案</code></pre>
         </section>
 
         <section id="contracts">
-          <h2>当前代码承载</h2>
+          <h2>与当前代码的关系</h2>
           <table>
             <thead>
-              <tr>
-                <th>模块</th>
-                <th>合约</th>
-                <th>当前作用</th>
-              </tr>
+              <tr><th>模块</th><th>当前合约</th><th>状态</th></tr>
             </thead>
             <tbody>
-              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>固定总量 100 D，18 位精度，2.5 D 席位判断</td></tr>
-              <tr><td>分红领取</td><td><code>contracts/VoteDividendClaimer.sol</code></td><td>按 D 历史持仓快照领取 DealCoin（DC）分红</td></tr>
-              <tr><td>席位否决</td><td><code>contracts/DealSeatVetoGovernor.sol</code></td><td>常规提案、重大提案、席位否决窗口</td></tr>
-              <tr><td>NFT 活跃</td><td><code>contracts/DealNftGovernanceActivity.sol</code></td><td>记录官方 NFT 治理活跃时间</td></tr>
-              <tr><td>NFT 否决</td><td><code>contracts/NftVetoRegistry.sol</code></td><td>重大提案第二重官方 NFT 否决</td></tr>
-              <tr><td>旧 Governor</td><td><code>contracts/DealDao.sol</code></td><td>OpenZeppelin 标准 Governor，当前不作为主路径</td></tr>
+              <tr><td>D 代币</td><td><code>contracts/D.sol</code></td><td>可直接复用：100 D、18 位精度、2.5 D 席位门槛</td></tr>
+              <tr><td>主网分红</td><td><code>contracts/VoteDividendClaimer.sol</code></td><td>可继续复用：D 快照分红</td></tr>
+              <tr><td>NFT 活跃</td><td><code>contracts/DealNftGovernanceActivity.sol</code></td><td>可继续复用：活跃窗口和活跃供应量</td></tr>
+              <tr><td>活跃 NFT 快照</td><td><code>contracts/NftVetoRegistry.sol</code></td><td>快照基础可复用，但计票逻辑要改</td></tr>
+              <tr><td>旧席位治理</td><td><code>contracts/DealSeatVetoGovernor.sol</code></td><td>当前是旧否决制，后续需替换或重构</td></tr>
+              <tr><td>旧 Governor 路径</td><td><code>contracts/DealDao.sol</code></td><td>当前不是主路径，是否复用待定</td></tr>
             </tbody>
           </table>
-          <pre><code>当前主路径：
-D + DealSeatVetoGovernor + NftVetoRegistry + DealNftGovernanceActivity + VoteDividendClaimer</code></pre>
-        </section>
-
-        <section id="frontend">
-          <h2>前端页面建议</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>页面</th>
-                <th>展示内容</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>D 代币页面</td><td>D 余额、分红权比例、是否席位、是否可提案、是否可否决</td></tr>
-              <tr><td>DAO 提案页面</td><td>常规提案、重大提案、提案状态、剩余时间、参数对比、操作按钮</td></tr>
-              <tr><td>分红页面</td><td>分红轮次、快照时间、本轮总额、我的快照持仓、可领取金额、是否已领取</td></tr>
-            </tbody>
-          </table>
+          <div class="note warn">
+            当前链上主路径仍是旧否决制。计划改造后的关键变化是：从“无人否决即通过”切到“投票期内可否决，期末按赞成门槛判定是否通过”。
+          </div>
         </section>
 
         <section id="defaults">
-          <h2>当前默认值</h2>
+          <h2>默认值</h2>
           <table>
             <thead>
-              <tr>
-                <th>项目</th>
-                <th>默认</th>
-              </tr>
+              <tr><th>项目</th><th>计划默认值</th></tr>
             </thead>
             <tbody>
               <tr><td>D 总量</td><td>100</td></tr>
               <tr><td>D 精度</td><td>18 位</td></tr>
+              <tr><td>1 D 分红权</td><td>1%</td></tr>
               <tr><td>席位门槛</td><td>2.5 D</td></tr>
-              <tr><td>分红资产</td><td>DealCoin（DC）</td></tr>
-              <tr><td>分红依据</td><td>D 持仓快照</td></tr>
-              <tr><td>常规提案窗口</td><td>48 小时</td></tr>
-              <tr><td>重大提案窗口</td><td>120 小时</td></tr>
-              <tr><td>NFT 否决阈值</td><td>20%</td></tr>
+              <tr><td>参数调整投票期</td><td>48 小时</td></tr>
+              <tr><td>treasury 打款投票期</td><td>120 小时</td></tr>
+              <tr><td>重大提案投票期</td><td>120 小时</td></tr>
+              <tr><td>D 席位否决时间</td><td>对应提案投票期内</td></tr>
+              <tr><td>D 通过门槛</td><td>70 D 赞成</td></tr>
+              <tr><td>NFT 通过门槛</td><td>当前活跃 NFT 快照的 70% 赞成</td></tr>
               <tr><td>NFT 活跃窗口</td><td>90 天</td></tr>
-              <tr><td>是否需要 delegate 才能分红</td><td>不需要</td></tr>
             </tbody>
           </table>
-          <div class="note warn">
-            需要最终确认：D 初始接收地址、treasury 权限、executor 权限、分红频率、未领取 DealCoin（DC）处理方式、NFT 活跃窗口和 NFT 否决阈值是否允许治理调整。
-          </div>
-        </section>
-
-        <section>
-          <h2>对外总结</h2>
-          <pre><code>D 是固定 100 枚的协议权益代币。
-持有 D 可以按比例领取协议分红。
-2.5 D 以上成为治理席位。
-常规参数采用席位否决制，无人反对即可执行。
-重大升级除了 D 席位否决，还要接受官方 DealInfoNFT 用户否决。
-分红按 D 的历史持仓快照领取，防止转让后重复领取。</code></pre>
+          <pre><code>D 是 ETH 主链上的协议权益与治理代币，总量固定 100，18 位精度。
+参数调整和 treasury 指定打款只由 D 决定。
+升级和重大提案由 D 与当前活跃官方 DealInfoNFT 双院通过。
+所有提案在投票期内均可被合格 D 席位一票否决。</code></pre>
           <p class="footer">对应 Markdown 主文档：docs/DAO基本设定.md。参数附录：docs/DAO可治理参数清单.md。</p>
         </section>
       </article>

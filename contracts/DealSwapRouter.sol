@@ -6,7 +6,7 @@ pragma solidity ^0.8.26;
   - 支持 ERC20 与 原生币 via WNATIVE
   - 所有 swap 均带 deadline + minOut / maxIn
   - 报价→成交：先转入→按“实际到帐”报价→再 swap（抗扣税 OTHER）
-  - 覆盖：单跳 / 双跳（A↔DL↔B）/ ETH 便捷双跳（四条路径已对称齐全）
+  - 覆盖：单跳 / 双跳（A↔DC↔B）/ ETH 便捷双跳（四条路径已对称齐全）
 */
 
 import "./interfaces/IDealPair.sol";
@@ -53,11 +53,11 @@ contract DealRouter is ReentrancyGuard {
     event SwapExact0ForETH(address indexed pair, address indexed sender, uint256 in0, uint256 ethOut, uint256 feeIn, address indexed to);
     event Swap0ForExactETH(address indexed pair, address indexed sender, uint256 in0Used, uint256 ethOutTarget, uint256 feeIn, address indexed to);
 
-    // —— 双跳（A ↔ DL ↔ B，ERC20） —— //
+    // —— 双跳（A ↔ DC ↔ B，ERC20） —— //
     event SwapExact1For1ViaDL(address indexed pairA, address indexed pairB, address indexed sender, uint256 inA, uint256 dlNet, uint256 outB, uint256 feeOutDL, uint256 feeInDL, address to);
     event Swap1ForExact1ViaDL(address indexed pairA, address indexed pairB, address indexed sender, uint256 inAUsed, uint256 dlRequired, uint256 outBTarget, uint256 feeOutDL, uint256 feeInDL, uint256 dlRefund, address to);
 
-    // —— 双跳便捷（ETH ↔ DL ↔ ERC20） —— //
+    // —— 双跳便捷（ETH ↔ DC ↔ ERC20） —— //
     event SwapExactETHFor1ViaDL(address indexed pairWNATIVE, address indexed pairB, address indexed sender, uint256 ethIn, uint256 dlNet, uint256 outB, uint256 feeOutDL, uint256 feeInDL, address to);
     event Swap1ForExactETHViaDL(address indexed pairA, address indexed pairWNATIVE, address indexed sender, uint256 inAUsed, uint256 dlRequired, uint256 outETHTarget, uint256 feeOutDL, uint256 feeInDL, uint256 dlRefund, address to);
     event SwapExact1ForETHViaDL(address indexed pairA, address indexed pairWNATIVE, address indexed sender, uint256 inA, uint256 dlNet, uint256 ethOut, uint256 feeOutDL, uint256 feeInDL, address to);
@@ -73,7 +73,7 @@ contract DealRouter is ReentrancyGuard {
     struct ResSingle { // 用于外层发事件（单跳）
         uint256 inAmt;      // 实际到帐（in1 或 in0 或 ethUsed）
         uint256 outAmt;     // out0Net / out1 / ethOut
-        uint256 outGross;   // out0Gross（买 DL 时）
+        uint256 outGross;   // out0Gross（买 DC 时）
         uint256 feeSide;    // feeOut or feeIn
         uint256 refund;     // ethRefund（仅 ETH exact-out 用）
     }
@@ -262,7 +262,7 @@ contract DealRouter is ReentrancyGuard {
      *                INTERNAL EXEC (单跳)                   *
      * ===================================================== */
 
-    // DL net exact-out -> OTHER max-in
+    // DC net exact-out -> OTHER max-in
     function _exec1ForExact0Net(address pair, address from, address to, uint256 out0NetTarget, uint256 maxAmount1In)
         internal
         returns (ResSingle memory r)
@@ -278,7 +278,7 @@ contract DealRouter is ReentrancyGuard {
         r.feeSide = q.feeOut;
     }
 
-    // OTHER exact-out -> DL max-in
+    // OTHER exact-out -> DC max-in
     function _exec0ForExact1(address pair, address from, address to, uint256 out1Target, uint256 maxAmount0In)
         internal
         returns (ResSingle memory r)
@@ -295,7 +295,7 @@ contract DealRouter is ReentrancyGuard {
 
     /* ============== INTERNAL EXEC（ETH 单跳） ============== */
 
-    // DL net exact-out -> ETH max-in（退回多余 ETH）
+    // DC net exact-out -> ETH max-in（退回多余 ETH）
     function _execETHForExact0Net(address pair, address to, uint256 out0NetTarget, uint256 ethMax)
         internal
         returns (ResSingle memory r)
@@ -313,7 +313,7 @@ contract DealRouter is ReentrancyGuard {
         r.refund   = ethMax - q.in1Min; // 由外层退回
     }
 
-    // OTHER exact-out(ETH) -> DL max-in
+    // OTHER exact-out(ETH) -> DC max-in
     function _exec0ForExactETH(address pair, uint256 outETHTarget, address from, address to, uint256 maxAmount0In)
         internal
         returns (ResSingle memory r)
@@ -335,7 +335,7 @@ contract DealRouter is ReentrancyGuard {
      *              INTERNAL EXEC (双跳 & 便捷)              *
      * ===================================================== */
 
-    // A exact-in -> B min-out（A/DL = pairA, DL/B = pairB）
+    // A exact-in -> B min-out（A/DC = pairA, DC/B = pairB）
     function _execExact1For1ViaDL(address pairA, address pairB, address from, address to, uint256 amountAIn, uint256 minOutB)
         internal
         returns (ResDouble memory r)
@@ -343,7 +343,7 @@ contract DealRouter is ReentrancyGuard {
         require(IDealPair(pairA).token0() == IDealPair(pairB).token0(), "DL_MISMATCH");
         address tokenA = IDealPair(pairA).token1();
 
-        // 跳1：A->DL（Router 收 DL）
+        // 跳1：A->DC（Router 收 DC）
         uint256 inA = _pullToPairAndGetIn(tokenA, pairA, from, amountAIn);
         require(inA > 0, "NO_IN_A");
         QBuyIn1 memory q1 = _qBuyIn1(pairA, inA);
@@ -352,7 +352,7 @@ contract DealRouter is ReentrancyGuard {
         r.dlNetOrReq  = q1.out0Net;
         r.feeOutDL    = q1.feeOut;
 
-        // 跳2：DL->B（用户收 B）
+        // 跳2：DC->B（用户收 B）
         QSellIn0 memory q2 = _qSellIn0(pairB, r.dlNetOrReq);
         require(q2.out1 >= minOutB, "SLIPPAGE_B");
         IERC20(IDealPair(pairA).token0()).safeTransfer(pairB, r.dlNetOrReq);
@@ -361,30 +361,30 @@ contract DealRouter is ReentrancyGuard {
         r.feeInDL   = q2.feeIn;
     }
 
-    // B exact-out -> A max-in（多余 DL 退回）
+    // B exact-out -> A max-in（多余 DC 退回）
     function _exec1ForExact1ViaDL(address pairA, address pairB, address from, address to, uint256 outBTarget, uint256 maxAmountAIn)
         internal
         returns (ResDouble memory r)
     {
         require(IDealPair(pairA).token0() == IDealPair(pairB).token0(), "DL_MISMATCH");
 
-        // 第二跳需求：为 outBTarget 需要的 DL
+        // 第二跳需求：为 outBTarget 需要的 DC
         QSellOut1 memory s = _qSellOut1(pairB, outBTarget);
-        r.dlNetOrReq = s.in0Min; // required DL
+        r.dlNetOrReq = s.in0Min; // required DC
         r.feeInDL    = s.feeIn;
 
         // 第一跳需求：为 dlRequired 需要的 A
         QBuyNet memory b = _qBuyNet(pairA, r.dlNetOrReq);
         require(b.in1Min <= maxAmountAIn, "MAX_IN_EXCEEDED_A");
 
-        // 跳1：A->DL（Router 收 DL）
+        // 跳1：A->DC（Router 收 DC）
         address tokenA = IDealPair(pairA).token1();
         _pullToPairMin(tokenA, pairA, from, b.in1Min, "AFTER_TAX_A_LOW");
         IDealPair(pairA).swap(b.gross, 0, address(this));
         r.inAUsed  = b.in1Min;
         r.feeOutDL = b.feeOut;
 
-        // 跳2：DL->B（exact-out），退回多余 DL
+        // 跳2：DC->B（exact-out），退回多余 DC
         address dl = IDealPair(pairA).token0();
         uint256 dlBal = IERC20(dl).balanceOf(address(this));
         require(dlBal >= r.dlNetOrReq, "DL_NOT_ENOUGH");
@@ -395,7 +395,7 @@ contract DealRouter is ReentrancyGuard {
         if (r.dlRefund > 0) IERC20(dl).safeTransfer(from, r.dlRefund);
     }
 
-    // ETH exact-in -> DL -> B min-out（pairWNATIVE=DL/WNATIVE）
+    // ETH exact-in -> DC -> B min-out（pairWNATIVE=DC/WNATIVE）
     function _execExactETHFor1ViaDL(address pairWNATIVE, address pairB, address to, uint256 ethIn, uint256 minOutB)
         internal
         returns (ResDouble memory r)
@@ -404,7 +404,7 @@ contract DealRouter is ReentrancyGuard {
         require(IDealPair(pairWNATIVE).token0() == IDealPair(pairB).token0(), "DL_MISMATCH");
         require(ethIn > 0, "ZERO_ETH");
 
-        // 跳1：ETH->DL（Router 收 DL）
+        // 跳1：ETH->DC（Router 收 DC）
         _wrapToPair(pairWNATIVE, ethIn);
         QBuyIn1 memory q1 = _qBuyIn1(pairWNATIVE, ethIn);
         IDealPair(pairWNATIVE).swap(q1.gross, 0, address(this));
@@ -412,7 +412,7 @@ contract DealRouter is ReentrancyGuard {
         r.dlNetOrReq  = q1.out0Net; // dlNet
         r.feeOutDL    = q1.feeOut;
 
-        // 跳2：DL->B（用户收 B）
+        // 跳2：DC->B（用户收 B）
         QSellIn0 memory q2 = _qSellIn0(pairB, r.dlNetOrReq);
         require(q2.out1 >= minOutB, "SLIPPAGE_B");
         IERC20(IDealPair(pairB).token0()).safeTransfer(pairB, r.dlNetOrReq);
@@ -421,7 +421,7 @@ contract DealRouter is ReentrancyGuard {
         r.feeInDL   = q2.feeIn;
     }
 
-    // B exact-out -> DL -> ETH max-in（多余 DL 退回；ETH 由 Router 解包转出）
+    // B exact-out -> DC -> ETH max-in（多余 DC 退回；ETH 由 Router 解包转出）
     function _exec1ForExactETHViaDL(address pairA, address pairWNATIVE, address from, address to, uint256 outETHTarget, uint256 maxAmountAIn)
         internal
         returns (ResDouble memory r)
@@ -429,23 +429,23 @@ contract DealRouter is ReentrancyGuard {
         require(IDealPair(pairWNATIVE).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
         require(IDealPair(pairA).token0() == IDealPair(pairWNATIVE).token0(), "DL_MISMATCH");
 
-        // 第二跳：为 outETHTarget 需要的 DL
+        // 第二跳：为 outETHTarget 需要的 DC
         QSellOut1 memory s = _qSellOut1(pairWNATIVE, outETHTarget);
-        r.dlNetOrReq = s.in0Min; // required DL
+        r.dlNetOrReq = s.in0Min; // required DC
         r.feeInDL    = s.feeIn;
 
         // 第一跳：为 dlRequired 需要的 A
         QBuyNet memory b = _qBuyNet(pairA, r.dlNetOrReq);
         require(b.in1Min <= maxAmountAIn, "MAX_IN_EXCEEDED_A");
 
-        // 跳1：A->DL（Router 收 DL）
+        // 跳1：A->DC（Router 收 DC）
         address tokenA = IDealPair(pairA).token1();
         _pullToPairMin(tokenA, pairA, from, b.in1Min, "AFTER_TAX_A_LOW");
         IDealPair(pairA).swap(b.gross, 0, address(this));
         r.inAUsed  = b.in1Min;
         r.feeOutDL = b.feeOut;
 
-        // 跳2：DL->WNATIVE->ETH
+        // 跳2：DC->WNATIVE->ETH
         address dl = IDealPair(pairA).token0();
         uint256 dlBal = IERC20(dl).balanceOf(address(this));
         require(dlBal >= r.dlNetOrReq, "DL_NOT_ENOUGH");
@@ -455,12 +455,12 @@ contract DealRouter is ReentrancyGuard {
         _sendETH(to, outETHTarget);
         r.outBOrETH = outETHTarget;
 
-        // 退回多余 DL
+        // 退回多余 DC
         r.dlRefund = dlBal - r.dlNetOrReq;
         if (r.dlRefund > 0) IERC20(dl).safeTransfer(from, r.dlRefund);
     }
 
-    // ====== B exact-in -> ETH min-out（pairA=A/DL，pairWNATIVE=DL/WNATIVE） ====== //
+    // ====== B exact-in -> ETH min-out（pairA=A/DC，pairWNATIVE=DC/WNATIVE） ====== //
     function _execExact1ForETHViaDL(address pairA, address pairWNATIVE, address from, address to, uint256 amountAIn, uint256 minOutETH)
         internal
         returns (ResDouble memory r)
@@ -468,7 +468,7 @@ contract DealRouter is ReentrancyGuard {
         require(IDealPair(pairWNATIVE).token1() == WNATIVE, "PAIR_NOT_WNATIVE");
         require(IDealPair(pairA).token0() == IDealPair(pairWNATIVE).token0(), "DL_MISMATCH");
 
-        // 跳1：A -> DL（Router 收 DL）
+        // 跳1：A -> DC（Router 收 DC）
         address tokenA = IDealPair(pairA).token1();
         uint256 inA = _pullToPairAndGetIn(tokenA, pairA, from, amountAIn);
         require(inA > 0, "NO_IN_A");
@@ -478,7 +478,7 @@ contract DealRouter is ReentrancyGuard {
         r.dlNetOrReq = q1.out0Net;
         r.feeOutDL   = q1.feeOut;
 
-        // 跳2：DL -> WNATIVE -> ETH（用户收 ETH）
+        // 跳2：DC -> WNATIVE -> ETH（用户收 ETH）
         QSellIn0 memory q2 = _qSellIn0(pairWNATIVE, r.dlNetOrReq);
         require(q2.out1 >= minOutETH, "SLIPPAGE_ETH");
         IERC20(IDealPair(pairA).token0()).safeTransfer(pairWNATIVE, r.dlNetOrReq);
@@ -490,7 +490,7 @@ contract DealRouter is ReentrancyGuard {
         r.feeInDL   = q2.feeIn;
     }
 
-    // ====== ETH max-in -> B exact-out（pairWNATIVE=DL/WNATIVE，pairB=DL/B） ====== //
+    // ====== ETH max-in -> B exact-out（pairWNATIVE=DC/WNATIVE，pairB=DC/B） ====== //
     function _execETHForExact1ViaDL(address pairWNATIVE, address pairB, address from, address to, uint256 outBTarget, uint256 ethMax)
         internal
         returns (ResDouble memory r)
@@ -499,12 +499,12 @@ contract DealRouter is ReentrancyGuard {
         require(IDealPair(pairWNATIVE).token0() == IDealPair(pairB).token0(), "DL_MISMATCH");
         require(ethMax > 0, "ZERO_ETH");
 
-        // 第二跳需求：为 outBTarget 需要的 DL
+        // 第二跳需求：为 outBTarget 需要的 DC
         QSellOut1 memory s = _qSellOut1(pairB, outBTarget);
-        r.dlNetOrReq = s.in0Min; // required DL
+        r.dlNetOrReq = s.in0Min; // required DC
         r.feeInDL    = s.feeIn;
 
-        // 第一跳：ETH -> DL（只换入所需 ETH）
+        // 第一跳：ETH -> DC（只换入所需 ETH）
         QBuyNet memory b = _qBuyNet(pairWNATIVE, r.dlNetOrReq);
         require(b.in1Min <= ethMax, "ETH_NOT_ENOUGH");
         _wrapToPair(pairWNATIVE, b.in1Min);
@@ -512,7 +512,7 @@ contract DealRouter is ReentrancyGuard {
         r.inAUsed  = b.in1Min; // 实际用掉 ETH
         r.feeOutDL = b.feeOut;
 
-        // 跳2：DL -> B（exact-out），退回多余 DL
+        // 跳2：DC -> B（exact-out），退回多余 DC
         address dl = IDealPair(pairB).token0();
         uint256 dlBal = IERC20(dl).balanceOf(address(this));
         require(dlBal >= r.dlNetOrReq, "DL_NOT_ENOUGH");
@@ -752,7 +752,7 @@ contract DealRouter is ReentrancyGuard {
         emit Swap0ForExactETH(pair, msg.sender, r.inAmt, outETHTarget, r.feeSide, msg.sender);
     }
 
-    // —— 双跳（A ↔ DL ↔ B，ERC20） —— //
+    // —— 双跳（A ↔ DC ↔ B，ERC20） —— //
     function swapExact1For1ViaDL(address pairA, address pairB, uint256 amountAIn, uint256 minOutB, uint256 deadline) external nonReentrant {
         _deadline(deadline);
         ResDouble memory r = _execExact1For1ViaDL(pairA, pairB, msg.sender, msg.sender, amountAIn, minOutB);
@@ -768,7 +768,7 @@ contract DealRouter is ReentrancyGuard {
         emit Swap1ForExact1ViaDL(pairA, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, msg.sender);
     }
 
-    // —— 双跳便捷（ETH ↔ DL ↔ ERC20） —— //
+    // —— 双跳便捷（ETH ↔ DC ↔ ERC20） —— //
     function swapExactETHFor1ViaDL(address pairWNATIVE, address pairB, uint256 minOutB, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
         uint256 ethIn = msg.value;

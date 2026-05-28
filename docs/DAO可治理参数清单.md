@@ -1,152 +1,172 @@
 # DAO 可治理参数清单
 
-本文把当前合约里适合交给 DAO/席位治理的内容先拉出来，方便后续逐项确认。
+> 说明：本文按 **计划改造版治理模型** 整理。当前链上主路径仍是旧否决制；这里列的是后续文档、前端和合约改造要对齐的目标口径。
 
 ## 1. 治理分层
 
-建议先分两类：
+| 类型 | 参与方 | 通过条件 | 投票期 | 投票期内否决规则 |
+| --- | --- | --- | --- | --- |
+| 参数调整 | 只有 D | `赞成 D >= 70 D` | `48 小时` | 投票期内任意合格 D 席位可一票否决 |
+| treasury 指定打款 | 只有 D | `赞成 D >= 70 D` | `120 小时` | 投票期内任意合格 D 席位可一票否决 |
+| 升级 / 重大提案 | D + 当前活跃 NFT | `赞成 D >= 70 D` 且 `赞成 NFT >= 当前活跃 NFT 快照的 70%` | `120 小时` | 投票期内任意合格 D 席位可一票否决 |
 
-| 类型 | 含义 | 建议流程 |
-| --- | --- | --- |
-| 常规参数 | 费率、价格、开关、时间窗口、白名单等日常运营参数 | 席位提案，48 小时内任意席位可否决，无人否决后执行 |
-| 重大变更 | 合约升级、模板替换、核心权限迁移、分红规则重写 | 至少走 120 小时席位否决；后续再接 NFT 第二重否决 |
-
-人话：
+补充规则：
 
 ```text
-常规参数是日常旋钮。
-重大变更是换合约、换权限、换规则。
+发起提案的席位门槛 = 2.5 D。
+一票否决权的席位门槛 = 2.5 D。
+不单独设置 quorum，直接按绝对赞成门槛判断。
 ```
 
-## 2. 常规参数候选
+## 2. 参数调整（D-only）
+
+这类提案只由 D 投票，适合日常运营旋钮。
 
 ### 2.1 DealFactory
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
+| 参数/方法 | 当前含义 | 计划治理方式 |
 | --- | --- | --- |
-| `setMinTimeoutSeconds` / `setMinTimeoutSecondsByAdmin` | Deal 最小等待窗口 | 常规参数，需范围限制 |
-| `setMinWindowSec` / `setMinWindowSecByAdmin` | 展示/时间窗口最小值 | 常规参数，需范围限制 |
-| `setRecognizedTokens` | 官方认可交易币种 | 常规参数，但新增币种需谨慎 |
-| `setAllowedMarginToken` | 保证金币种白名单 | 常规参数 |
-| `setAllowedCreateFor` | 允许第三方代创建 deal | 常规参数/权限开关 |
-| `setFeesAndMintOnFees` / `setFeesAndMintOnFeesByAdmin` | 协议手续费、DealCoin（DC）奖励相关参数 | 常规参数，必须有上限 |
-| `setSpecialNoFeeTokenByAdmin` | 特殊免手续费 token | 常规参数，但需要记录原因 |
-| `setTreasuryByAdmin` | 国库地址 | 建议按重大变更处理，至少多签确认 |
-| `setMessagePriceRule` / `setMessagePriceRuleByAdmin` | 留言 burn/付费规则 | 常规参数，默认可关闭 |
-| `setCreateBurnRule` / `setCreateBurnRuleByAdmin` | 创建 deal burn 规则 | 常规参数，默认可关闭 |
-| `createPair` | 新建 DealCoin（DC）交易对 | 常规参数偏高风险 |
-| `initPair` | 初始化交易对流动性 | 常规参数偏高风险 |
-| `setPairFee` / `setPairFeeByAdmin` | 交易对手续费 | 常规参数，必须有上限 |
-| `setPairVirtualReserves` / `setPairVirtualReservesByBps` | 虚拟流动性参数 | 常规参数偏高风险 |
-| `mapExistingPair` | 映射已有交易对 | 常规参数偏高风险 |
+| `setMinTimeoutSeconds` / `setMinTimeoutSecondsByAdmin` | Deal 最小等待窗口 | 参数调整（D-only） |
+| `setMinWindowSec` / `setMinWindowSecByAdmin` | 展示 / 时间窗口最小值 | 参数调整（D-only） |
+| `setRecognizedTokens` | 官方认可交易币种 | 参数调整（D-only），新增币种需谨慎 |
+| `setAllowedMarginToken` | 保证金币种白名单 | 参数调整（D-only） |
+| `setAllowedCreateFor` | 允许第三方代创建 deal | 参数调整（D-only） |
+| `setFeesAndMintOnFees` / `setFeesAndMintOnFeesByAdmin` | 协议手续费、DC 奖励参数 | 参数调整（D-only），需范围限制 |
+| `setSpecialNoFeeTokenByAdmin` | 特殊免手续费 token | 参数调整（D-only） |
+| `setMessagePriceRule` / `setMessagePriceRuleByAdmin` | 留言 burn / 付费规则 | 参数调整（D-only） |
+| `setCreateBurnRule` / `setCreateBurnRuleByAdmin` | 创建 deal burn 规则 | 参数调整（D-only） |
+| `createPair` | 新建 DC 交易对 | 参数调整（D-only，高风险） |
+| `initPair` | 初始化交易对流动性 | 参数调整（D-only，高风险） |
+| `setPairFee` / `setPairFeeByAdmin` | 交易对手续费 | 参数调整（D-only） |
+| `setPairVirtualReserves` / `setPairVirtualReservesByBps` | 虚拟流动性参数 | 参数调整（D-only，高风险） |
+| `mapExistingPair` | 映射已有交易对 | 参数调整（D-only，高风险） |
 
 ### 2.2 DealOpenTokenToken / DCDomainSwap
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
+| 参数/方法 | 当前含义 | 计划治理方式 |
 | --- | --- | --- |
-| `replaceTimeoutSeconds` | B 占坑/未完成时可被 C 顶替的等待时间 | 常规参数 |
-| 默认值 | 120 秒 | 可由 DAO 固定或调整 |
-| 范围 | 60 秒 - 86400 秒 | 建议合约层限制 |
+| `replaceTimeoutSeconds` | B 占坑/未完成时可被 C 顶替的等待时间 | 参数调整（D-only） |
 
 ### 2.3 DealInfoNFT
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
+| 参数/方法 | 当前含义 | 计划治理方式 |
 | --- | --- | --- |
-| `setMintPriceU` / `setMintPriceUByAdmin` | 身份 NFT 铸造价格，按 DealCoin（DC）本位直接 burn | 常规参数 |
-| `setMaxImageDataBytes` | NFT 图片链上数据上限 | 常规参数 |
-| `setCurrentSeason` | 当前赛季 | 常规参数 |
-| `setFactory` / `addFactory` / `removeFactory` | 授权工厂 | 重大变更 |
-| `setAdmin` | 管理员迁移 | 重大变更 |
+| `setMintPriceU` / `setMintPriceUByAdmin` | 身份 NFT 铸造价格，按 DC 本位直接 burn | 参数调整（D-only） |
+| `setMaxImageDataBytes` | NFT 图片链上数据上限 | 参数调整（D-only） |
+| `setCurrentSeason` | 当前赛季 | 参数调整（D-only） |
 
-### 2.4 CreditGraph
+### 2.4 域名模块
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
-| --- | --- | --- |
-| `setRecorder` | 授权写信用分的记录器 | 重大变更 |
-| `importCredit` | 迁移/导入信用分 | 重大变更，仅迁移期使用 |
-| `lockMigration` | 锁定迁移 | 重大变更 |
-
-### 2.5 域名模块
-
-| 合约 | 参数/方法 | 当前含义 | 建议治理方式 |
+| 合约 | 参数/方法 | 当前含义 | 计划治理方式 |
 | --- | --- | --- | --- |
-| `DCDomain` | base price / treasury / payment token / market | 域名注册与收款配置 | 常规参数到重大变更之间，按具体字段区分 |
-| `DCDomainMarket` | fee recipient / fee bps | 域名市场手续费和收款地址 | 费率常规；收款地址重大 |
-| `DCDomainRank` | `kickInactivitySeconds` | 榜单/广告踢出时间 | 常规参数 |
-| `DCDomainRank` | `minDeposit` / `baseHourlyRate` / `depositRateBps` | 域名广告与押金相关参数 | 常规参数 |
-| `DCDomainRank` | `dealReporter` / treasury | 上报者和国库 | 重大变更 |
+| `DCDomain` | base price / payment token | 域名注册与收款配置 | 参数调整（D-only） |
+| `DCDomainMarket` | fee bps | 域名市场手续费比例 | 参数调整（D-only） |
+| `DCDomainRank` | `kickInactivitySeconds` | 榜单/广告踢出时间 | 参数调整（D-only） |
+| `DCDomainRank` | `minDeposit` / `baseHourlyRate` / `depositRateBps` | 域名广告与押金参数 | 参数调整（D-only） |
 
-### 2.6 Swap / OrderBook
+### 2.5 Swap / OrderBook
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
+| 参数/方法 | 当前含义 | 计划治理方式 |
 | --- | --- | --- |
-| `DealSwapOrderBook.setRouter` | 设置路由合约 | 重大变更 |
-| `DealSwapTemplate.setFee` | Pair 手续费 | 常规参数 |
-| `DealSwapTemplate.setVirtualReserves` | 虚拟储备 | 常规参数偏高风险 |
+| `DealSwapTemplate.setFee` | Pair 手续费 | 参数调整（D-only） |
+| `DealSwapTemplate.setVirtualReserves` | 虚拟储备 | 参数调整（D-only，高风险） |
 
-### 2.7 DealCoin（DC）/ D 权限
+## 3. treasury 指定打款（D-only）
 
-| 参数/方法 | 当前含义 | 建议治理方式 |
-| --- | --- | --- |
-| `D.constructor(initialHolder)` | D 初始 100 枚一次性接收地址 | 部署前确认，建议多签/分配钱包 |
-| `DCToken.grantRole(MINTER_ROLE, ...)` | 授权增发 DealCoin（DC） | 重大变更 |
-| `DCToken.revokeRole(MINTER_ROLE, ...)` | 移除 DealCoin（DC）增发权限 | 重大变更 |
-| `DCToken.grantRole(PAUSER_ROLE, ...)` | 授权暂停 DealCoin（DC） | 重大变更 |
-| `D` 总量、精度、席位门槛 | 100 枚、18 位、2.5 D | 不建议上线后改；需要新合约或重大变更 |
+这类提案也只由 D 决定，但比普通调参更重，所以投票期更长。
 
-## 3. 重大变更候选
+提案至少要写清楚：
 
-这些建议不要走普通 48 小时常规参数流程：
+- 打什么资产
+- 打多少
+- 打给谁
+- 用途 / 备注
+
+适用场景：
+
+- 投资款
+- 合作拨款
+- 运营支出
+- 外包 / 审计 / 法务 / 基础设施支出
+
+当前仓库里没有成熟的 treasury payout 合约，这部分后续需要新做或重构。
+
+## 4. 升级 / 重大提案（D + 当前活跃 NFT）
+
+这些不走普通参数流程，必须走双院通过。
 
 | 类型 | 包含内容 |
 | --- | --- |
-| 模板替换 | `setDealImplementation`、`setPairImplementation`、`DealImplementationRegistry.setDealImplementations` |
-| 核心地址迁移 | Factory、InfoNFT、CreditGraph、MessageHub、Router、Treasury |
-| 权限变更 | Minter、Recorder、Reporter、Admin、Owner |
-| 分红规则变更 | 分红资产、开轮权限、领取公式、未领取余额处理 |
+| 核心合约升级 | 新 Factory、新模板、新 Router、新 Reader、新 Treasury |
+| 治理规则修改 | 投票模型、席位否决模型、执行路径 |
+| 分红规则修改 | 分红资产、开轮权限、领取公式、未领取余额处理 |
 | D 规则变更 | 总量、精度、席位门槛、转让限制 |
-| 信用规则变更 | 信用分公式、C 位奖励规则、CreditGraph 写入权限 |
+| 核心权限迁移 | treasury、owner、admin、minter、recorder、reporter |
+| 信用体系迁移 | 更换 CreditGraph、迁移信用分 |
 
-## 4. 分红运营参数
-
-分红不建议由合约自动扫所有 treasury 资产后自动兑换，V1 先走人工/多签/DAO 执行：
+NFT 侧口径：
 
 ```text
-treasury 收资产
-多签/DAO 挑选可兑换资产
-换成 DealCoin（DC）
-treasury / dividendSource approve VoteDividendClaimer
-D 席位发起分红提案
-无人否决后 executor / DAO 执行 createRound
-D 持有人自行领取
+只认官方 DealInfoNFT。
+1 个 tokenId = 1 票。
+按当前活跃 NFT 快照计票。
+70% 赞成才算 NFT 侧通过。
 ```
 
-`createRound` 只允许分红 executor / DAO 执行账户调用。达到 2.5 D 的席位可以发起分红提案，但不能绕过 DAO 直接开轮；分红资金来自 treasury / dividendSource，避免把个人赞助误认为协议 treasury 分红。
+## 5. 分红运营规则
 
-需要治理或运营确认：
+主网分红统一使用 DC，按 D 历史快照发放。
 
-| 参数 | 建议默认 |
+建议流程：
+
+```text
+主网 treasury 收资产
+挑选可分配资产
+换成主网 DC
+treasury / dividendSource approve VoteDividendClaimer
+D-only 提案投票通过且未被席位否决
+executor 创建分红轮
+D 持有人领取
+```
+
+边界说明：
+
+| 项目 | 口径 |
 | --- | --- |
-| 分红资产 | DealCoin（DC） |
-| 分红来源 | treasury 中可分红收入 |
-| 可兑换资产 | treasury 可接收全部资产；只有有安全兑换路径的资产进入分红 |
-| 无交易对资产 | 先不换，留在 treasury |
-| 换 DealCoin（DC）方式 | 先多签/DAO 手动，后续再做路由合约 |
-| 滑点保护 | 必须有 `minOut` |
-| 开轮执行权限 | 多签 / DAO Executor；D 席位只能发起分红提案，不能直接开轮 |
-| 分红频率 | 先手动，后续可每周或每月 |
-| 未领取 DealCoin（DC） | 留在合约，后续单独定回收规则 |
-| 用户领取方式 | 前端展示可领取额度，用户自己 `claim` |
+| 分红链 | 只在 ETH 主链 |
+| 分红资产 | 主网 DC |
+| recognized 资产 | 继续按当前逻辑进 pair，不算 treasury 分红来源 |
+| 无安全兑换路径资产 | 留在 treasury，不自动进分红 |
+| 开轮权限 | executor / DAO 执行账户 |
+| 普通席位权限 | 可发起提案，不可绕过 DAO 直接开轮 |
 
-## 5. 还需要你们定的点
+## 6. 当前代码可复用部分
 
-| 问题 | 建议默认 |
+| 模块 | 当前合约 | 备注 |
+| --- | --- | --- |
+| D 快照分红 | `VoteDividendClaimer.sol` | 可继续作为主网分红承载 |
+| 活跃 NFT 统计 | `DealNftGovernanceActivity.sol` | 已有活跃窗口和活跃供应量 |
+| 活跃 NFT 快照 | `NftVetoRegistry.sol` | 已有 proposal register + active supply snapshot 基础 |
+| D 席位门槛 | `D.sol` | 已固定 2.5 D |
+
+## 7. 需要改造的地方
+
+| 当前合约 | 当前逻辑 | 计划方向 |
+| --- | --- | --- |
+| `DealSeatVetoGovernor.sol` | 否决制 | 改为投票制 + 投票期内席位一票否决 |
+| `NftVetoRegistry.sol` | 活跃 NFT 20% 否决阈值 | 改为活跃 NFT 70% 赞成通过 |
+| `DealDao.sol` | OZ Governor 试验路径 | 视最终方案决定复用与否 |
+| treasury payout | 当前缺失 | 新增 D-only 打款模块 |
+
+## 8. 当前默认值
+
+| 项目 | 默认值 |
 | --- | --- |
-| 常规参数否决窗口 | 48 小时 |
-| 重大提案席位否决窗口 | 120 小时 |
-| 常规参数执行者 | 任意当前 D 席位 |
-| 常规参数是否都必须有范围 | 是 |
-| 国库地址变更算不算重大 | 建议算重大 |
-| 新交易对创建算不算重大 | 建议先按常规偏高风险处理；上线后可升级为重大 |
-| NFT 第二重否决怎么计票 | 已按 V1 落地：只认官方 DealInfoNFT，按有效治理 NFT 分母，一 NFT 一票，否决阈值 `>= 20%` |
-| NFT 活跃记录 | 已新增 `DealNftGovernanceActivity`，记录 `lastActiveAt(tokenId)` |
+| 席位门槛 | 2.5 D |
+| 参数调整投票期 | 48 小时 |
+| treasury 打款投票期 | 120 小时 |
+| 重大提案投票期 | 120 小时 |
+| D 席位否决时间 | 对应提案投票期内 |
+| D 通过门槛 | 70 D 赞成 |
+| NFT 通过门槛 | 当前活跃 NFT 快照的 70% 赞成 |
+| NFT 活跃窗口 | 90 天 |

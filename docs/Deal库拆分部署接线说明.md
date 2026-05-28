@@ -27,7 +27,7 @@
 | `**DealOpenTokenToken` 实现**    | **是**（与新版 `DealLib` 配套） | 源码里对 `DealLib.processDealFees` / `computeDealRewards` 的调用已改为 **struct**；须用 **与当前 `DealLib` 同一次编译/同一套 ABI** 重新部署 OpenTT 实现。**旧 OpenTT 实现 + 新 `DealLib` 不可混用。** |
 | `**DealFactory`（工厂本体）**        | **通常不必**                | 多数流程只需 `**setDealImplementation`**、`**setDealOpenTokenTokenImplementation**` 指到 **新实现地址**；只有当你要换新工厂治理/配置策略时才部署新工厂。                                            |
 | **已创建的 Deal / OpenTT 克隆**      | **不必**（不能靠重部署克隆升级）      | 克隆逻辑在 **当时的实现地址**；升级 = 工厂改 **实现指针**，之后 **新创建的**实例才用新代码。                                                                                                       |
-| **Pair、Router、OrderBook、DL 等** | **不必**（与本次库拆分无直接关系）     | 除非你们另有升级计划。                                                                                                                                                   |
+| **Pair、Router、OrderBook、DC 等** | **不必**（与本次库拆分无直接关系）     | 除非你们另有升级计划。                                                                                                                                                   |
 
 
 **最小可执行组合（在同一发版内对齐）：**
@@ -168,5 +168,4 @@ Hardhat 集成测试中的 `Deal` 部署均已增加 `DealAssetNftLib`（例如 
 | ---------- | ----------------------------------------------------------------- |
 | 2026-04-22 | 初版：Deal 双库链接、`DealAssetNftLib` 台账、`DealLib` 直接调用 ABI 变更说明、过时脚本警示。 |
 | 2026-04-22 | 增补 §0：明确本次上线须重部署的合约、工厂/克隆是否动、以及 OpenTT 须与新版 `DealLib` 配套。         |
-
 

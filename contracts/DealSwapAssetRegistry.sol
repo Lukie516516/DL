@@ -5,7 +5,7 @@ interface IDealPairManagerLookup {
     function pairForToken(address token) external view returns (address);
 }
 
-/// @notice Lightweight frontend registry for the official DL swap assets.
+/// @notice Lightweight frontend registry for the official DC swap assets.
 /// Core pair creation and swap logic lives in PairManager/Pair/Router.
 contract DealSwapAssetRegistry {
     struct SwapPairSet {

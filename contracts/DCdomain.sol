@@ -117,7 +117,7 @@ contract DCDomain is ERC721, Ownable {
     // 价格计算
     // ─────────────────────────────────────────────
 
-    /// @notice 计算域名价格：当前所有一级注册域名统一 500 DC/DL
+    /// @notice 计算域名价格：当前所有一级注册域名统一 500 DC
     function getPrice(string memory) public view returns (uint256) {
         return basePrice;
     }

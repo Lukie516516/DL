@@ -48,7 +48,7 @@
 
 ### 3.2 `DealFactory.mintAndRecordDealRewards`
 
-- `onlyDeal`：仅已登记 clone 可调用；成交时批量完成 DL 奖励 mint、`DealResultIndex.recordReward`、`DealRewardsLogged`、InfoNFT minted 累计记录。
+- `onlyDeal`：仅已登记 clone 可调用；成交时批量完成 DC 奖励 mint、`DealResultIndex.recordReward`、`DealRewardsLogged`、InfoNFT minted 累计记录。
 - `DealRewardsLogged` 事件参数顺序为 `(deal, partyA, partyB, toA, toB, cAddr, toC)`，与 `RewardsMinted` 数据对齐，供索引单点订阅。
 
 ### 3.3 进程事件与时间戳
