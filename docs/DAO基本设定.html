@@ -326,7 +326,7 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
                 <th>参与方</th>
                 <th>通过条件</th>
                 <th>投票期</th>
-                <th>通过后流程</th>
+                <th>投票期内否决规则</th>
               </tr>
             </thead>
             <tbody>
@@ -335,27 +335,27 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
                 <td>只有 D</td>
                 <td>赞成 D &gt;= 70 D</td>
                 <td>48 小时</td>
-                <td>进入 48 小时席位否决窗口</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
               </tr>
               <tr>
                 <td>treasury 指定打款</td>
                 <td>只有 D</td>
                 <td>赞成 D &gt;= 70 D</td>
                 <td>120 小时</td>
-                <td>进入 48 小时席位否决窗口</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
               </tr>
               <tr>
                 <td>升级 / 重大提案</td>
                 <td>D + 当前活跃 NFT</td>
                 <td>赞成 D &gt;= 70 D，且赞成 NFT &gt;= 当前活跃 NFT 快照的 70%</td>
                 <td>120 小时</td>
-                <td>进入 48 小时席位否决窗口</td>
+                <td>投票期内任意合格 D 席位可一票否决</td>
               </tr>
             </tbody>
           </table>
           <div class="note warn">
             <strong>席位一票否决</strong>
-            只要地址在否决快照时持有 2.5 D 或以上，就保留一票否决权。提案先投票，投票达标后再进入 48 小时否决窗口；任意合格席位否决，提案直接失败。
+            只要地址在否决快照时持有 2.5 D 或以上，就保留一票否决权。否决在投票期内即可发生；任意合格席位否决，提案立即失败，不再额外设置通过后的否决窗口。
           </div>
         </section>
 
@@ -376,7 +376,7 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
           </table>
           <pre><code>1. 主网 treasury / dividendSource 收资产。
 2. 可安全兑换的资产换成主网 DC。
-3. D-only 提案通过并过席位否决窗口。
+3. D-only 提案投票通过且未被席位否决。
 4. executor 创建分红轮。
 5. D 持有人按主网 D 快照领取主网 DC。</code></pre>
           <div class="note">
@@ -420,7 +420,7 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
             </tbody>
           </table>
           <div class="note warn">
-            当前链上主路径仍是旧否决制。计划改造后的关键变化是：从“无人否决即通过”切到“先投票通过，再进入席位否决窗口”。
+            当前链上主路径仍是旧否决制。计划改造后的关键变化是：从“无人否决即通过”切到“投票期内可否决，期末按赞成门槛判定是否通过”。
           </div>
         </section>
 
@@ -438,7 +438,7 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
               <tr><td>参数调整投票期</td><td>48 小时</td></tr>
               <tr><td>treasury 打款投票期</td><td>120 小时</td></tr>
               <tr><td>重大提案投票期</td><td>120 小时</td></tr>
-              <tr><td>D 席位否决窗口</td><td>48 小时</td></tr>
+              <tr><td>D 席位否决时间</td><td>对应提案投票期内</td></tr>
               <tr><td>D 通过门槛</td><td>70 D 赞成</td></tr>
               <tr><td>NFT 通过门槛</td><td>当前活跃 NFT 快照的 70% 赞成</td></tr>
               <tr><td>NFT 活跃窗口</td><td>90 天</td></tr>
@@ -447,7 +447,7 @@ NftVetoRegistry 已经会在提案注册时记录 activeSupplySnapshot。
           <pre><code>D 是 ETH 主链上的协议权益与治理代币，总量固定 100，18 位精度。
 参数调整和 treasury 指定打款只由 D 决定。
 升级和重大提案由 D 与当前活跃官方 DealInfoNFT 双院通过。
-所有通过的提案在执行前仍保留 48 小时席位一票否决窗口。</code></pre>
+所有提案在投票期内均可被合格 D 席位一票否决。</code></pre>
           <p class="footer">对应 Markdown 主文档：docs/DAO基本设定.md。参数附录：docs/DAO可治理参数清单.md。</p>
         </section>
       </article>
