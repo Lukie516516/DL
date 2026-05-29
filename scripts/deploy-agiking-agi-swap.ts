@@ -176,10 +176,14 @@ async function main() {
   }
 
   let routerAddress = getAddress(a.dealRouter) as Address;
+  let routerQuoterAddress = a.dealRouterQuoter ? getAddress(a.dealRouterQuoter) as Address : undefined;
   if (envBool("REDEPLOY_ROUTER", true)) {
     const router = await viem.deployContract("DealRouter", [agi, existing.dealSwapOrderBook], { client });
     routerAddress = getAddress(router.address) as Address;
     console.log("DealRouter redeployed:", routerAddress);
+    const quoter = await viem.deployContract("DealRouterQuoter", [existing.dealSwapOrderBook], { client });
+    routerQuoterAddress = getAddress(quoter.address) as Address;
+    console.log("DealRouterQuoter deployed:", routerQuoterAddress);
     await waitFor(publicClient, await orderBook.write.setRouter([routerAddress]));
     console.log("OrderBook.router =", routerAddress);
   }
@@ -196,6 +200,7 @@ async function main() {
     agi,
     wrappedNative: agi,
     dealRouter: routerAddress,
+    ...(routerQuoterAddress ? { dealRouterQuoter: routerQuoterAddress } : {}),
     pairDlAgi: getAddress(pairDlAgi),
     dealSwapAssetRegistry: getAddress(registry.address),
   };
@@ -204,6 +209,7 @@ async function main() {
     ...base.abi,
     WrappedAGI: loadAbi("WrappedAGI.sol/WrappedAGI.json"),
     DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
+    DealRouterQuoter: loadAbi("DealRouterQuoter.sol/DealRouterQuoter.json"),
     DealSwapAssetRegistry: loadAbi("DealSwapAssetRegistry.sol/DealSwapAssetRegistry.json"),
   };
 
@@ -237,6 +243,7 @@ async function main() {
 | USDT | \`${mergedAddresses.usdt}\` | 官方 USDT 测试/映射币 |
 | AUSD | \`${mergedAddresses.ausd}\` | 官方 AUSD 测试/映射币 |
 | DealRouter | \`${mergedAddresses.dealRouter}\` | 普通 swap 主入口 |
+| DealRouterQuoter | \`${mergedAddresses.dealRouterQuoter ?? ""}\` | swap 预览/报价读取入口 |
 | DealSwapAssetRegistry | \`${mergedAddresses.dealSwapAssetRegistry}\` | 查询三个官方 pair |
 | DC-AGI Pair | \`${mergedAddresses.pairDlAgi}\` | DC <-> AGI |
 | DC-USDT Pair | \`${mergedAddresses.pairDlUsdt}\` | DC <-> USDT |
@@ -264,6 +271,7 @@ router
 - AGI 是原生币时，前端用 Router 的 ETH/native 系列方法，并传 \`pairDlAgi\`。
 - AGI 作为 ERC20 展示/授权时，用 \`agi\` 地址，也就是 WAGI。
 - USDT/AUSD 走 ERC20 swap 方法。
+- 交易预览读 \`DealRouterQuoter\`，真实成交写 \`DealRouter\`。
 - 双跳兑换继续用 \`ViaDL\` 路径名（历史函数命名），业务路径是 AGI -> DC -> USDT。
 
 ## Deployment Notes

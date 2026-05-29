@@ -153,9 +153,13 @@
 
 ---
 
-## 3. Router：前端必须补的预览接口
+## 3. DealRouterQuoter：前端必须补的预览接口
 
-这次新增后，前端最重要的新接口就是这 4 个：
+预览/报价已经从 `DealRouter` 拆到独立的 `DealRouterQuoter`。
+
+前端交易前读 `DealRouterQuoter`，真实成交仍然写 `DealRouter`。
+
+前端最重要的预览接口就是这 4 个：
 
 ### 3.1 exact-in 预览
 
@@ -359,10 +363,10 @@
 - 如果需要 exact-out，再接 `swap0ForExact1` / `swap1ForExact0Net`
 
 读：
-- `previewExact0For1`
-- `previewExact1For0`
-- `preview0ForExact1`
-- `preview1ForExact0Net`
+- `DealRouterQuoter.previewExact0For1`
+- `DealRouterQuoter.previewExact1For0`
+- `DealRouterQuoter.preview0ForExact1`
+- `DealRouterQuoter.preview1ForExact0Net`
 - `getReserves`
 - `getVirtualReserves`
 - `getEffectiveReserves`

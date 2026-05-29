@@ -29,12 +29,14 @@ export type AgikingDeploymentAddresses = {
   dealResultIndex?: Address;
   dealPairManager?: Address;
   dealInfoNFT: Address;
+  dealInfoNFTRenderer?: Address;
   pairDlAusd: Address;
   pairDlUsdt: Address;
   pairDlAgi?: Address;
   dealSwapAssetRegistry?: Address;
   dealSwapOrderBook: Address;
   dealRouter: Address;
+  dealRouterQuoter?: Address;
   dealReader: Address;
   dcDomain: Address;
   dcDomainRank: Address;

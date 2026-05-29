@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ERC721Votes} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Votes.sol";
 
@@ -12,6 +11,10 @@ interface IFactoryLite {
     function dlToken() external view returns (address);
 }
 interface IDLBurnable is IERC20 { function burnFrom(address from, uint256 value) external; }
+interface IDealInfoNFTRenderer {
+    function imageOf(address nft, uint256 tokenId) external view returns (string memory);
+    function tokenURI(address nft, uint256 tokenId) external view returns (string memory);
+}
 
 contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     /* ========== 基本配置 ========== */
@@ -37,10 +40,12 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
 
     address public pair;
     uint256 public mintPriceDL;
+    address public renderer;
 
     /// @notice 铸造事件（记录 DealCoin/DC 本位标价与燃烧结果）
     event MintByBurn(address indexed minter, uint256 indexed tokenId, uint256 dlAmount, uint256 dlBurned);
     event CurrentSeasonUpdated(uint16 season);
+    event RendererUpdated(address indexed renderer);
     event DisplayNoAssigned(
         uint256 indexed tokenId,
         uint16 indexed season,
@@ -173,6 +178,12 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         emit MaxImageDataBytesUpdated(newLimit);
     }
 
+    function setRenderer(address renderer_) external onlyOwner {
+        require(renderer_ != address(0), "ZERO_RENDERER");
+        renderer = renderer_;
+        emit RendererUpdated(renderer_);
+    }
+
     function setCurrentSeason(uint16 season_) external onlyOwner {
         require(season_ > 0, "BAD_SEASON");
         currentSeason = season_;
@@ -204,25 +215,20 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         _media[tokenId].mime = mime; _media[tokenId].data = data;
         emit TokenImageDataSet(tokenId, mime, data.length);
     }
-    function imageOf(uint256 tokenId) public view returns (string memory) {
+    function mediaOf(uint256 tokenId)
+        external
+        view
+        returns (string memory uri, string memory mime, bytes memory data)
+    {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
         Media storage m = _media[tokenId];
-        if (bytes(m.uri).length != 0) return m.uri;
-        if (m.data.length != 0) {
-            return string(abi.encodePacked(
-                "data:", bytes(m.mime).length != 0 ? m.mime : "application/octet-stream",
-                ";base64,", Base64.encode(m.data)
-            ));
-        }
-        string memory svg = string(
-            abi.encodePacked(
-                "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 350 350'>",
-                "<rect fill='#121212' width='100%' height='100%'/>",
-                "<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='20' fill='#fff'>DINFT #",
-                _toString(tokenId), "</text></svg>"
-            )
-        );
-        return string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(bytes(svg))));
+        return (m.uri, m.mime, m.data);
+    }
+    function imageOf(uint256 tokenId) public view returns (string memory) {
+        require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
+        address r = renderer;
+        require(r != address(0), "RENDERER_NOT_SET");
+        return IDealInfoNFTRenderer(r).imageOf(address(this), tokenId);
     }
 
     mapping(uint256 => string) public username;
@@ -325,24 +331,9 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
     /* ========== tokenURI ========== */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "NONEXISTENT");
-        string memory image = imageOf(tokenId);
-        string memory displayNo = displayNoOf(tokenId);
-        bytes memory json = abi.encodePacked(
-            '{',
-                '"name":"Deal Info NFT ', displayNo, '",',
-                '"description":"Deal Info NFT - partner & DC stats",',
-                '"image":"', image, '",',
-                '"attributes":[',
-                    '{"trait_type":"Display No","value":"', displayNo, '"},',
-                    '{"trait_type":"Season","value":"', _toString(seasonOf[tokenId]), '"},',
-                    '{"trait_type":"Date Code","value":"', _toString(dateCodeOf[tokenId]), '"},',
-                    '{"trait_type":"Daily Serial","value":"', _toString(dailySerialOf[tokenId]), '"},',
-                    '{"trait_type":"Total DC Minted","value":"', _toString(totalDLMinted[tokenId]), '"},',
-                    '{"trait_type":"Locked","value":"', lockCount[tokenId] > 0 ? "true" : "false", '"}',
-                ']',
-            '}'
-        );
-        return string(abi.encodePacked("data:application/json;base64,", Base64.encode(json)));
+        address r = renderer;
+        require(r != address(0), "RENDERER_NOT_SET");
+        return IDealInfoNFTRenderer(r).tokenURI(address(this), tokenId);
     }
 
     /* ========== 转移拦截 + 地址枚举维护 ========== */

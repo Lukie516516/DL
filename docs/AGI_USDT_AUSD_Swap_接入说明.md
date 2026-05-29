@@ -25,6 +25,7 @@ USDT <-> DC <-> AUSD
 | `WrappedAGI` | 原生 AGI 的 WETH-style 包装合约，支持 `deposit()` / `withdraw()` |
 | `DC-AGI Pair` | 新增 `DC <-> AGI` 交易对 |
 | `DealRouter` | 重新部署，`WNATIVE` 指向 `WrappedAGI` |
+| `DealRouterQuoter` | 独立预览/报价合约，前端交易前 preview 读这里 |
 | `DealSwapAssetRegistry` | 独立查询合约，前端一次从 `DealPairManager` 读取三个官方 pair |
 
 没有把 AGI 逻辑继续塞进 `DealFactory` 或 Deal 模板里。Pair 创建、初始化、虚拟流动性等运维入口直接走 `DealPairManager`，避免主合约体积继续变紧。
@@ -123,5 +124,6 @@ deployments/frontend-handoff-agiking-31415926-*.md
 | AGI 原生币 | 前端展示为 AGI，合约内部 pair 资产是 `WAGI` |
 | `address(0)` | Router 原生币路径使用；pair 查询统一通过 `DealSwapAssetRegistry` 或 `DealPairManager.pairForToken(agi)` |
 | 老 Router | 新部署后前端必须换新 `DealRouter` 地址 |
+| 预览报价 | 读 `DealRouterQuoter`；真实成交仍写 `DealRouter` |
 | 老 WNATIVE | 当前旧部署里的 `WNATIVE` 是测试 ERC20，不是真正的原生币包装合约；新 AGI 入口以 `WrappedAGI` 为准 |
 | 信用分 U 价值 | 交易信用仍以 U 价值资产为主；AGI 如果要按 U 计信用，需要后续增加 AGI/USD 定价口径 |

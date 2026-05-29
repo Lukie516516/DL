@@ -63,6 +63,8 @@ async function deployBusinessFixture() {
     "0x0000000000000000000000000000000000000000",
     0n,
   ]);
+  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer");
+  await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
   const orderBook = await viem.deployContract("DealSwapOrderBook", [treasury.account.address]);
   const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address]);
   const dcDomain = await viem.deployContract("DCDomain", [dl.address, treasury.account.address]);

@@ -1,7 +1,7 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-28T10:31:08.165Z",
+  "deployedAt": "2026-05-29T11:49:36.974Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
   "addresses": {
     "dlToken": "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
@@ -11,41 +11,42 @@
     "dealLib": "0xefc77a73b630acb1ace85b8dfcc7b7073d96961c",
     "dealAssetNftLib": "0xabb1871111463ee36dfb8408889339be80785173",
     "dealImplementation": "0xd366e85e5c8928bd59f8305bff4a5ecd86f15053",
-    "dealNoAssetImplementation": "0xe948959d55a91035dfdcc4b8cde8a883fc198b8d",
-    "dealAAssetNftImplementation": "0x7de165577836316e4adcc4f12884cb1eeb0ce4a5",
-    "dealBAssetNftImplementation": "0x18ec6cbb4f31960a298d69a7fabb04a32229aa13",
+    "dealNoAssetImplementation": "0xD8A3E414BF27aaCd70D75dFd1C62972Eb514cCfe",
+    "dealAAssetNftImplementation": "0x0fB06175CAE18F537AA3Dd6d71afB6284408cfe0",
+    "dealBAssetNftImplementation": "0x3526C38Dc8ba6F6f32345DE02184D86b0C9A94d6",
     "dealAAssetNftOnlyImplementation": "0xeed72683e71640c8917636063e3a07b6d6283c94",
     "dealBAssetNftOnlyImplementation": "0xab217e37fe1e49d6ac54af0a7140cde3c3727066",
-    "dealOpenTokenTokenImplementation": "0x77520b283688c638b79d3e62571dfadcd9577724",
-    "dealImplementationRegistry": "0x127611E70B2FC2Ceb4edB3421a488197D5951422",
+    "dealOpenTokenTokenImplementation": "0x4907ccEA17231726C8CD2B31A9dbb228069a1d13",
+    "dealImplementationRegistry": "0x89cCcd7b67AF8c0595923b7cf2a36956649dF764",
     "pairImplementation": "0xb1203a0895c11278d43fc83ad921e2562ba4e5cc",
-    "dealFactory": "0xEd83f77e98c3243D46559a37f0bA6Fdf6D58B2F5",
-    "dealMessageHub": "0x37cad1d448b6cCDB3bBa84186c64a15212b04E9B",
+    "dealFactory": "0x0b20917DF7040D859D04313a71517f315EFd0898",
+    "dealMessageHub": "0xb1Cd85F3A4c115CfaE1B08baCD0a669F9b85E4C5",
     "dealCreditGraph": "0xf721d35A5ae6DaB2576080061dF082E82f6cB697",
-    "dealActivityIndex": "0x1A8298AFFecd39306DCA52a25D5661D914e3DEce",
-    "dealResultIndex": "0x2aCD153280AA4f18e28491255C6FC4e26a6F6951",
-    "dealPairManager": "0x16129b0e5dC57e8a87842f95d817C3DC4a713CC4",
+    "dealActivityIndex": "0x9e22A6877Cd22297D3648dE53fc1B883C6077c11",
+    "dealResultIndex": "0x8175b939e947F160761B012a8a49EE13e26C8c05",
+    "dealPairManager": "0x62e33F04229e3e631B30881527E5903b5d7D7EA3",
     "dealInfoNFT": "0x7F83827b65AB95196e8466b8578B621Dac4Af841",
     "pairDlAusd": "0x29401FAf6Db21a2e0DB8EdC07069D450d5926C14",
     "pairDlUsdt": "0x54c6F62cfC3E0bCc0CE3ee43E35F2B150Ec0A1dD",
     "dealSwapOrderBook": "0xec83bfdc0b684642e409a29d6673ae03bd31ee67",
-    "dealRouter": "0x9d4c1eeb9b6d3e9dfa86af31ea817863227ab80d",
+    "dealRouter": "0x0567914660B853B5C8eB330552fbcCcE30B23a55",
     "dealReader": "0xa3468253D82C8Ff607eFB8fccd8d53C8552E28f7",
     "dcDomain": "0x4c2Ba367Ad95363E7551188B17c94DC3c986c644",
     "dcDomainRank": "0xe5508dd72041b41Dd773fad156E99c7398C8a993",
     "dcDomainRankReader": "0xA942ec4A1b76438511a5047E268bE3D77E65f626",
     "dcDomainMarket": "0x494309b589d5578dE60a7095Cb66cB0191758749",
-    "dcDomainSwap": "0xa0aBfBCd1a4705268067ff0e894b1e7B2CB625c9",
-    "dcDomainHall": "0xBAa77b8fA614c1B20C9252dd166F9abe39a39FB8",
+    "dcDomainSwap": "0xBcB85564c19149A054eB3485dBb7f4eBed9BA8Cc",
+    "dcDomainHall": "0x1D62D0069D06B13A0802be5025d5a86FD4F4b46B",
     "dToken": "0xF8fd2b61F96CE461015A8c84F5E5688460BD9B15",
     "voteDividendClaimer": "0x6bfC3E42ef340B540dF728828E4825042Ada4C4d",
-    "dealSwapAssetRegistry": "0xd04770f2a4aa010fca460ccd5e3912e69b7f8329",
+    "dealSwapAssetRegistry": "0x3F1415e45D7b59CBAAe200d4d00fa6091758Fe60",
     "pairDlAgi": "0x5cbA53558F229136949AD23299fa6F989bA76609",
     "agi": "0xc6ac293de4a720b689e1afbfb4658cda8c44052a",
     "dcDomainListReader": "0x924e902601eD768D5E6714509035Ad42A16A355b",
     "dealNftGovernanceActivity": "0x9d2860d6c8B63Bc1530D28163BCE53494a94aC28",
     "nftVetoRegistry": "0xF0edCbca262df9409c3a147322fbe1e59070Fa56",
-    "dealSeatVetoGovernor": "0x4EDb8fff6c3D5F75B475d60a9C062C205428fee1"
+    "dealSeatVetoGovernor": "0x4EDb8fff6c3D5F75B475d60a9C062C205428fee1",
+    "dealRouterQuoter": "0xe3DC8dB874cB8c374f4AC88B0C7177c7fC6f12F8"
   },
   "abi": {
     "DealLib": [
@@ -5259,7 +5260,7 @@
             "type": "uint8"
           }
         ],
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
       },
       {
@@ -6909,7 +6910,7 @@
             "type": "uint8"
           }
         ],
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
       },
       {
@@ -11621,7 +11622,7 @@
             "type": "uint8"
           }
         ],
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
       },
       {
@@ -11793,11 +11794,6 @@
       {
         "inputs": [],
         "name": "GateIdZero",
-        "type": "error"
-      },
-      {
-        "inputs": [],
-        "name": "InfoNftAmountInvalid",
         "type": "error"
       },
       {
@@ -12511,25 +12507,6 @@
         "type": "function"
       },
       {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          }
-        ],
-        "name": "completedCount",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
         "inputs": [],
         "name": "createBurnAmountInToken",
         "outputs": [
@@ -13048,69 +13025,6 @@
       {
         "inputs": [
           {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "offset",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "limit",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "newestFirst",
-            "type": "bool"
-          }
-        ],
-        "name": "getCompleted",
-        "outputs": [
-          {
-            "internalType": "address[]",
-            "name": "list",
-            "type": "address[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "offset",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "limit",
-            "type": "uint256"
-          }
-        ],
-        "name": "getTracked",
-        "outputs": [
-          {
-            "internalType": "address[]",
-            "name": "list",
-            "type": "address[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
             "internalType": "uint256",
             "name": "tokenId",
             "type": "uint256"
@@ -13198,30 +13112,6 @@
           }
         ],
         "name": "isDeal",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "deal",
-            "type": "address"
-          }
-        ],
-        "name": "isTracked",
         "outputs": [
           {
             "internalType": "bool",
@@ -14019,25 +13909,6 @@
             "internalType": "address",
             "name": "",
             "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "user",
-            "type": "address"
-          }
-        ],
-        "name": "trackedCount",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
           }
         ],
         "stateMutability": "view",
@@ -17448,200 +17319,6 @@
             "internalType": "address",
             "name": "",
             "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "pair",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "out1Target",
-            "type": "uint256"
-          }
-        ],
-        "name": "preview0ForExact1",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "bool",
-                "name": "fullyImmediate",
-                "type": "bool"
-              },
-              {
-                "internalType": "uint256",
-                "name": "immediateOutCap",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "queuedOut",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "requiredInForTarget",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "requiredInForImmediateCap",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct DealRouter.PreviewExactOut",
-            "name": "p",
-            "type": "tuple"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "pair",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "out0NetTarget",
-            "type": "uint256"
-          }
-        ],
-        "name": "preview1ForExact0Net",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "bool",
-                "name": "fullyImmediate",
-                "type": "bool"
-              },
-              {
-                "internalType": "uint256",
-                "name": "immediateOutCap",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "queuedOut",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "requiredInForTarget",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "requiredInForImmediateCap",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct DealRouter.PreviewExactOut",
-            "name": "p",
-            "type": "tuple"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "pair",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount0In",
-            "type": "uint256"
-          }
-        ],
-        "name": "previewExact0For1",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "immediateIn",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "immediateOut",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "queuedIn",
-                "type": "uint256"
-              },
-              {
-                "internalType": "bool",
-                "name": "fullyImmediate",
-                "type": "bool"
-              }
-            ],
-            "internalType": "struct DealRouter.PreviewExactIn",
-            "name": "p",
-            "type": "tuple"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "pair",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount1In",
-            "type": "uint256"
-          }
-        ],
-        "name": "previewExact1For0",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "immediateIn",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "immediateOut",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "queuedIn",
-                "type": "uint256"
-              },
-              {
-                "internalType": "bool",
-                "name": "fullyImmediate",
-                "type": "bool"
-              }
-            ],
-            "internalType": "struct DealRouter.PreviewExactIn",
-            "name": "p",
-            "type": "tuple"
           }
         ],
         "stateMutability": "view",
@@ -33119,6 +32796,226 @@
             "internalType": "contract IDividendSnapshotToken",
             "name": "",
             "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ],
+    "DealRouterQuoter": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "orderBook_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "ORDER_BOOK",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "pair",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "out1Target",
+            "type": "uint256"
+          }
+        ],
+        "name": "preview0ForExact1",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "fullyImmediate",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "immediateOutCap",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "queuedOut",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "requiredInForTarget",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "requiredInForImmediateCap",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DealRouterQuoter.PreviewExactOut",
+            "name": "p",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "pair",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "out0NetTarget",
+            "type": "uint256"
+          }
+        ],
+        "name": "preview1ForExact0Net",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "fullyImmediate",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "immediateOutCap",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "queuedOut",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "requiredInForTarget",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "requiredInForImmediateCap",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DealRouterQuoter.PreviewExactOut",
+            "name": "p",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "pair",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount0In",
+            "type": "uint256"
+          }
+        ],
+        "name": "previewExact0For1",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "immediateIn",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "immediateOut",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "queuedIn",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "fullyImmediate",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct DealRouterQuoter.PreviewExactIn",
+            "name": "p",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "pair",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount1In",
+            "type": "uint256"
+          }
+        ],
+        "name": "previewExact1For0",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "immediateIn",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "immediateOut",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "queuedIn",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "fullyImmediate",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct DealRouterQuoter.PreviewExactIn",
+            "name": "p",
+            "type": "tuple"
           }
         ],
         "stateMutability": "view",
