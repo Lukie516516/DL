@@ -65,6 +65,7 @@ function deploymentAbi(currentAbi: Record<string, unknown[]>) {
     D: loadAbi("D.sol/D.json"),
     DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
     DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
+    DealInfoNFTRenderer: loadAbi("DealInfoNFTRenderer.sol/DealInfoNFTRenderer.json"),
     DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
     DealNftGovernanceActivity: loadAbi("DealNftGovernanceActivity.sol/DealNftGovernanceActivity.json"),
     NftVetoRegistry: loadAbi("NftVetoRegistry.sol/NftVetoRegistry.json"),
@@ -175,6 +176,9 @@ async function main() {
   console.log("\n--- Deploy InfoNFT + CreditGraph ---");
   const infoNft = await viem.deployContract("DealInfoNFT", [old.dealFactory, zeroAddress, 88n * ONE], { client }) as AnyContract;
   console.log("DealInfoNFT:", infoNft.address);
+  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer", [], { client }) as AnyContract;
+  console.log("DealInfoNFTRenderer:", infoNftRenderer.address);
+  await tx("DealInfoNFT.setRenderer", publicClient, infoNft.write.setRenderer([infoNftRenderer.address]));
   const creditGraph = await viem.deployContract("DealCreditGraph", [infoNft.address], { client }) as AnyContract;
   console.log("DealCreditGraph:", creditGraph.address);
   await tx("DealCreditGraph.setRecorder(Factory)", publicClient, creditGraph.write.setRecorder([old.dealFactory, true]));
@@ -256,6 +260,7 @@ async function main() {
   const addresses: Record<string, Address> = {
     ...old,
     dealInfoNFT: getAddress(infoNft.address) as Address,
+    dealInfoNFTRenderer: getAddress(infoNftRenderer.address) as Address,
     dealCreditGraph: getAddress(creditGraph.address) as Address,
     dToken: getAddress(dToken.address) as Address,
     dealNftGovernanceActivity: getAddress(nftActivity.address) as Address,

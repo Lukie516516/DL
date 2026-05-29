@@ -208,7 +208,6 @@ contract DealFactory is Ownable {
     error GateIdZero();
     error InvalidTemplateShape();
     error MarginTokenNotAllowed();
-    error InfoNftAmountInvalid();
     error InfoNftZero();
     error RewardPairMissing();
     error OpenTokenTokenFastNotTT();
@@ -439,11 +438,26 @@ contract DealFactory is Ownable {
         address _dealResultIndex,
         address _dealImplementationRegistry
     ) external onlyOwner {
-        _setOptionalGlobal("dealMessageHub", _dealMessageHub);
-        _setOptionalGlobal("creditGraph", _creditGraph);
-        _setOptionalGlobal("dealActivityIndex", _dealActivityIndex);
-        _setOptionalGlobal("dealResultIndex", _dealResultIndex);
-        _setOptionalGlobal("dealImplementationRegistry", _dealImplementationRegistry);
+        if (_dealMessageHub != address(0)) {
+            dealMessageHub = _dealMessageHub;
+            emit GlobalAddressSet("dealMessageHub", _dealMessageHub);
+        }
+        if (_creditGraph != address(0)) {
+            creditGraph = _creditGraph;
+            emit GlobalAddressSet("creditGraph", _creditGraph);
+        }
+        if (_dealActivityIndex != address(0)) {
+            dealActivityIndex = _dealActivityIndex;
+            emit GlobalAddressSet("dealActivityIndex", _dealActivityIndex);
+        }
+        if (_dealResultIndex != address(0)) {
+            dealResultIndex = _dealResultIndex;
+            emit GlobalAddressSet("dealResultIndex", _dealResultIndex);
+        }
+        if (_dealImplementationRegistry != address(0)) {
+            dealImplementationRegistry = _dealImplementationRegistry;
+            emit GlobalAddressSet("dealImplementationRegistry", _dealImplementationRegistry);
+        }
     }
 
     function setOpsGlobals(
@@ -451,9 +465,18 @@ contract DealFactory is Ownable {
         address _dealNftGovernanceActivity,
         address _dcDomainRank
     ) external onlyOwner {
-        _setOptionalGlobal("swapOrderBook", _swapOrderBook);
-        _setOptionalGlobal("dealNftGovernanceActivity", _dealNftGovernanceActivity);
-        _setOptionalGlobal("dcDomainRank", _dcDomainRank);
+        if (_swapOrderBook != address(0)) {
+            swapOrderBook = _swapOrderBook;
+            emit GlobalAddressSet("swapOrderBook", _swapOrderBook);
+        }
+        if (_dealNftGovernanceActivity != address(0)) {
+            dealNftGovernanceActivity = _dealNftGovernanceActivity;
+            emit GlobalAddressSet("dealNftGovernanceActivity", _dealNftGovernanceActivity);
+        }
+        if (_dcDomainRank != address(0)) {
+            dcDomainRank = _dcDomainRank;
+            emit GlobalAddressSet("dcDomainRank", _dcDomainRank);
+        }
     }
 
     function setMinWindowSec(uint32 sec_) external onlyOwner {
@@ -861,51 +884,6 @@ contract DealFactory is Ownable {
         if (domainDeal) _tryCloseDomainAd(deal, completed);
     }
 
-    /* ========== 热索引只读（活跃） ========== */
-    function trackedCount(address user) external view returns (uint256) {
-        address index = dealActivityIndex;
-        if (index == address(0)) return 0;
-        return IDealActivityIndex(index).trackedCount(user);
-    }
-    function getTracked(
-        address user,
-        uint256 offset,
-        uint256 limit
-    ) external view returns (address[] memory list) {
-        address index = dealActivityIndex;
-        if (index == address(0)) return new address[](0);
-        return IDealActivityIndex(index).getTracked(user, offset, limit);
-    }
-    function isTracked(
-        address user,
-        address deal
-    ) external view returns (bool) {
-        address index = dealActivityIndex;
-        if (index == address(0)) return false;
-        return IDealActivityIndex(index).isTracked(user, deal);
-    }
-
-    /* ========== 完成热索引只读 ========== */
-    function completedCount(address user) external view returns (uint256) {
-        address index = dealActivityIndex;
-        if (index == address(0)) return 0;
-        return IDealActivityIndex(index).completedCount(user);
-    }
-
-    /**
-     * @param newestFirst true: newest->older；false: oldest->newer
-     */
-    function getCompleted(
-        address user,
-        uint256 offset,
-        uint256 limit,
-        bool newestFirst
-    ) external view returns (address[] memory list) {
-        address index = dealActivityIndex;
-        if (index == address(0)) return new address[](0);
-        return IDealActivityIndex(index).getCompleted(user, offset, limit, newestFirst);
-    }
-
     /* ---------- 辅助（活跃热索引） ---------- */
     function _addTracked(address user, address deal) internal {
         address index = dealActivityIndex;
@@ -923,20 +901,6 @@ contract DealFactory is Ownable {
         address index = dealActivityIndex;
         if (index != address(0) && IDealActivityIndex(index).addCompleted(user, deal))
             emit CompletedAdded(user, deal);
-    }
-
-    function _setOptionalGlobal(bytes32 key, address value) internal {
-        if (value == address(0)) return;
-        if (key == "dealMessageHub") dealMessageHub = value;
-        else if (key == "creditGraph") creditGraph = value;
-        else if (key == "dealActivityIndex") dealActivityIndex = value;
-        else if (key == "dealResultIndex") dealResultIndex = value;
-        else if (key == "dealImplementationRegistry") dealImplementationRegistry = value;
-        else if (key == "swapOrderBook") swapOrderBook = value;
-        else if (key == "dealNftGovernanceActivity") dealNftGovernanceActivity = value;
-        else if (key == "dcDomainRank") dcDomainRank = value;
-        else revert();
-        emit GlobalAddressSet(key, value);
     }
 
     function _pairManager() internal view returns (IDealPairManager manager) {

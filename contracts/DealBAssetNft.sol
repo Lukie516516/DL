@@ -81,7 +81,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
 
     Status   public status;
     JoinMode public joinMode;
-    TemplateType public templateType;
     address  public expectedB;
 
     // 门禁 & NFT（仅锁引用）
@@ -111,8 +110,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     // 锁定/投票/超时
     uint64 public lockedAt;
     uint64 public timeoutSeconds;
-    uint64 public timeStart;
-    uint64 public timeEnd;
     uint64 public createdAt;
     uint64 public endedAt;
     uint64 public aAt; uint64 public bAt;
@@ -238,7 +235,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
             9
         );
         _check(p.joinMode <= uint8(JoinMode.ExactAddressAndNftGated), 10);
-        templateType = TemplateType(p.templateType);
         joinMode  = JoinMode(p.joinMode);
         expectedB = p.expectedB;
         if (joinMode == JoinMode.ExactAddress || joinMode == JoinMode.ExactAddressAndNftGated) {
@@ -253,7 +249,7 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         bNftId    = 0;
 
         title=p.title; description=p.description; timeoutSeconds=p.timeoutSeconds;
-        createdAt = uint64(block.timestamp); timeStart = createdAt;
+        createdAt = uint64(block.timestamp);
 
         isDomainDeal = p.isDomainDeal;
         domainName = p.domainName;
@@ -299,7 +295,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
 
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Abandoned;
         emit DealAbandoned(a, ts);
         _recordTimeline(8, a, true, 0);
@@ -469,7 +464,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     function _complete(CompletionReason reason) internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Completed;
 
         Fees memory f = _computeFees();
@@ -480,7 +474,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
         _recordDealCredit(f);
         _refreshMaxPointers();
 
-        // 内部标记
         aPaid = false; bPaid = false;
         aClaimed = true; bClaimed = true;
 
@@ -508,7 +501,6 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     function _cancel() internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Canceled;
 
         if (aPaid) {
@@ -774,6 +766,18 @@ contract DealBAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
 
     function _recordTimeline(uint8 action, address actor, bool isPartyA, uint256 value) internal {
         IFactoryTimeline(factory).recordDealTimeline(action, actor, isPartyA, value);
+    }
+
+    function templateType() external pure returns (TemplateType) {
+        return TemplateType.TokenToNft;
+    }
+
+    function timeStart() external view returns (uint64) {
+        return createdAt;
+    }
+
+    function timeEnd() external view returns (uint64) {
+        return endedAt;
     }
 
     function onERC721Received(address, address, uint256, bytes calldata)

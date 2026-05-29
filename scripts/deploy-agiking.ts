@@ -212,6 +212,9 @@ async function main() {
 
   const infoNft = await viem.deployContract("DealInfoNFT", [factory.address, zeroAddress, 0n], { client });
   console.log("DealInfoNFT", infoNft.address);
+  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer", [], { client });
+  console.log("DealInfoNFTRenderer", infoNftRenderer.address);
+  await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
   const creditGraph = await viem.deployContract("DealCreditGraph", [infoNft.address], { client });
   console.log("DealCreditGraph", creditGraph.address);
 
@@ -278,6 +281,8 @@ async function main() {
     client,
   });
   console.log("DealRouter", router.address);
+  const routerQuoter = await viem.deployContract("DealRouterQuoter", [orderBook.address], { client });
+  console.log("DealRouterQuoter", routerQuoter.address);
 
   await waitFor(publicClient, await orderBook.write.setRouter([router.address]));
 
@@ -379,10 +384,12 @@ async function main() {
     dealActivityIndex: dealActivityIndex.address,
     dealResultIndex: dealResultIndex.address,
     dealInfoNFT: infoNft.address,
+    dealInfoNFTRenderer: infoNftRenderer.address,
     pairDlAusd: pairAusd,
     pairDlUsdt: pairUsdt,
     dealSwapOrderBook: orderBook.address,
     dealRouter: router.address,
+    dealRouterQuoter: routerQuoter.address,
     dealReader: dealReader.address,
     dcDomain: dcDomain.address,
     dcDomainRank: dcRank.address,
@@ -424,8 +431,10 @@ async function main() {
       DealActivityIndex: loadAbi("DealActivityIndex.sol/DealActivityIndex.json"),
       DealResultIndex: loadAbi("DealResultIndex.sol/DealResultIndex.json"),
       DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
+      DealInfoNFTRenderer: loadAbi("DealInfoNFTRenderer.sol/DealInfoNFTRenderer.json"),
       DealSwapOrderBook: loadAbi("DealSwapOrderBook.sol/DealSwapOrderBook.json"),
       DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
+      DealRouterQuoter: loadAbi("DealRouterQuoter.sol/DealRouterQuoter.json"),
       DealReader: loadAbi("DealReader.sol/DealReader.json"),
       DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),

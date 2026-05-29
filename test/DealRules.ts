@@ -120,6 +120,8 @@ async function deployFixture() {
     zeroAddress,
     0n,
   ]);
+  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer");
+  await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
 
   const mintAmount = 10_000_000n * ONE;
   const minterRole = await dl.read.MINTER_ROLE();
@@ -896,7 +898,7 @@ describe("Deal Rules", async function () {
       await usdt.read.balanceOf([usdtPair]),
       usdtPairBalanceBefore + bFee,
     );
-    assert.equal(await factory.read.trackedCount([getAddress(fixture.alice.account.address)]), 0n);
+    assert.equal(await fixture.dealActivityIndex.read.trackedCount([getAddress(fixture.alice.account.address)]), 0n);
 
     const { viem } = fixture;
     const deal = await viem.getContractAt("Deal", dealAddress);
@@ -1423,8 +1425,8 @@ describe("Deal Rules", async function () {
     assert.equal(events.length, 1);
     const dealAddress = events[0].args.deal;
     assert.equal(await factory.read.isDeal([dealAddress]), true);
-    assert.equal(await factory.read.trackedCount([getAddress(alice.account.address)]), 1n);
-    assert.equal(await factory.read.isTracked([getAddress(alice.account.address), dealAddress]), true);
+    assert.equal(await fixture.dealActivityIndex.read.trackedCount([getAddress(alice.account.address)]), 1n);
+    assert.equal(await fixture.dealActivityIndex.read.isTracked([getAddress(alice.account.address), dealAddress]), true);
   });
 
   it("charges message fees through allowed external callers using the configured pricing pair", async function () {

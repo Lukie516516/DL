@@ -52,6 +52,7 @@ async function deployDexFixture() {
   const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const orderBook = await viem.deployContract("DealSwapOrderBook", [treasury.account.address]);
   const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address]);
+  const routerQuoter = await viem.deployContract("DealRouterQuoter", [orderBook.address]);
 
   const mintAmount = 10_000_000n * ONE;
   for (const token of [dl, other, wrappedNative]) {
@@ -117,6 +118,7 @@ async function deployDexFixture() {
     dealPairManager,
     orderBook,
     router,
+    routerQuoter,
     createPairWithReserves,
     createPairWithVirtualDepth,
   };
@@ -448,7 +450,7 @@ describe("DealSwapOrderBook", async function () {
 
   it("router preview matches default hybrid exact-in behavior and queues the remainder", async function () {
     const fixture = await deployDexFixture();
-    const { viem, publicClient, alice, dl, orderBook, router, createPairWithVirtualDepth } = fixture;
+    const { viem, publicClient, alice, dl, orderBook, router, routerQuoter, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);
 
     const routerAlice = await viem.getContractAt("DealRouter", router.address, {
@@ -457,7 +459,7 @@ describe("DealSwapOrderBook", async function () {
     const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
 
     const sellAmount = 200n * ONE;
-    const preview = await router.read.previewExact0For1([pairAddress, sellAmount]);
+    const preview = await routerQuoter.read.previewExact0For1([pairAddress, sellAmount]);
     assert.ok(preview.immediateIn > 0n);
     assert.ok(preview.queuedIn > 0n);
     assert.equal(preview.immediateIn + preview.queuedIn, sellAmount);
@@ -474,10 +476,10 @@ describe("DealSwapOrderBook", async function () {
 
   it("router preview reports exact-out immediate cap for buying DC", async function () {
     const fixture = await deployDexFixture();
-    const { router, createPairWithVirtualDepth } = fixture;
+    const { routerQuoter, createPairWithVirtualDepth } = fixture;
     const { pairAddress } = await createPairWithVirtualDepth(1_000n * ONE, 10n * ONE, 90n * ONE);
 
-    const preview = await router.read.preview1ForExact0Net([pairAddress, 998n * ONE]);
+    const preview = await routerQuoter.read.preview1ForExact0Net([pairAddress, 998n * ONE]);
     assert.equal(preview.fullyImmediate, false);
     assert.ok(preview.immediateOutCap > 0n);
     assert.ok(preview.queuedOut > 0n);

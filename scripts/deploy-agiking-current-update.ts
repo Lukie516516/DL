@@ -85,6 +85,7 @@ function deploymentAbi() {
     DealSwapAssetRegistry: loadAbi("DealSwapAssetRegistry.sol/DealSwapAssetRegistry.json"),
     WrappedAGI: loadAbi("WrappedAGI.sol/WrappedAGI.json"),
     DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
+    DealRouterQuoter: loadAbi("DealRouterQuoter.sol/DealRouterQuoter.json"),
     DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
     DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),
     DCDomainRankReader: loadAbi("DCDomainRankReader.sol/DCDomainRankReader.json"),
@@ -94,6 +95,7 @@ function deploymentAbi() {
     DCDomainHall: loadAbi("DCDomainHall.sol/DCDomainHall.json"),
     DCToken: loadAbi("DL.sol/DCToken.json"),
     DealInfoNFT: loadAbi("DealInfoNft.sol/DealInfoNFT.json"),
+    DealInfoNFTRenderer: loadAbi("DealInfoNFTRenderer.sol/DealInfoNFTRenderer.json"),
     DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
     DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
     DealSwapOrderBook: loadAbi("DealSwapOrderBook.sol/DealSwapOrderBook.json"),
@@ -188,6 +190,8 @@ async function main() {
   console.log("WrappedAGI", wrappedAGI.address);
   const router = await viem.deployContract("DealRouter", [wrappedAGI.address, base.dealSwapOrderBook], { client }) as AnyContract;
   console.log("DealRouter", router.address);
+  const routerQuoter = await viem.deployContract("DealRouterQuoter", [base.dealSwapOrderBook], { client }) as AnyContract;
+  console.log("DealRouterQuoter", routerQuoter.address);
   const swapAssetRegistry = await viem.deployContract("DealSwapAssetRegistry", [
     dep,
     pairManager.address,
@@ -317,6 +321,7 @@ async function main() {
     dealResultIndex: getAddress(resultIndex.address),
     dealImplementationRegistry: getAddress(registry.address),
     dealRouter: getAddress(router.address),
+    dealRouterQuoter: getAddress(routerQuoter.address),
     dealSwapAssetRegistry: getAddress(swapAssetRegistry.address),
     pairDlAgi: getAddress(pairDlAgi),
     dcDomain: getAddress(dcDomain.address),

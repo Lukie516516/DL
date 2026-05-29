@@ -126,6 +126,8 @@ async function deployDomainFixture() {
     zeroAddress,
     0n,
   ]);
+  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer");
+  await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
 
   const dcDomain = await viem.deployContract("DCDomain", [
     dl.address,

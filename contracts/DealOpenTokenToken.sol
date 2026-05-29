@@ -88,7 +88,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     Status public status;
     /// @dev 与 Deal 一致：Open 币币固定为 0（TokenToToken）
-    uint8 public templateType;
     JoinMode public joinMode;
     address public expectedB;
 
@@ -113,8 +112,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     uint64 public timeoutSeconds;
     uint64 public replaceTimeoutSeconds;
     uint64 public bJoinedAt;
-    uint64 public timeStart;
-    uint64 public timeEnd;
     uint64 public createdAt;
     uint64 public endedAt;
     uint64 public aAt;
@@ -124,9 +121,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     bool public aHasPreAccepted;
     uint64 public aPreAcceptAt;
-
-    bool private aClaimed;
-    bool private bClaimed;
 
     uint256 private aSwapNetForB;
     uint256 private bSwapNetForA;
@@ -289,7 +283,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         _check(aSwapAmount > 0 && bSwapAmount > 0, 14);
 
-        templateType = p.templateType;
         joinMode = JoinMode(p.joinMode);
         expectedB = p.expectedB;
         if (joinMode == JoinMode.ExactAddress) {
@@ -306,7 +299,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
             57
         );
         createdAt = uint64(block.timestamp);
-        timeStart = createdAt;
 
         isDomainDeal = p.isDomainDeal;
         domainName = p.domainName;
@@ -362,7 +354,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Abandoned;
         emit DealAbandoned(a, ts);
         _recordTimeline(8, a, true, 0);
@@ -606,7 +597,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     function _complete(CompletionReason reason) internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Completed;
 
         Fees memory f = _computeFees();
@@ -620,8 +610,6 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         aPaid = false;
         bPaid = false;
-        aClaimed = true;
-        bClaimed = true;
 
         _sendOut(bSwapToken, a, bSwapNetForA);
         _sendOut(aMarginToken, a, aMarginAmount);
@@ -645,19 +633,16 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     function _cancel() internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Canceled;
 
         if (aPaid) {
             aPaid = false;
-            aClaimed = true;
             _sendOut(aSwapToken, a, aSwapAmount);
             _sendOut(aMarginToken, a, aMarginAmount);
             emit Claimed(a, aSwapToken, aSwapAmount, aMarginToken, aMarginAmount);
         }
         if (bPaid) {
             bPaid = false;
-            bClaimed = true;
             _sendOut(bSwapToken, b, bSwapAmount);
             _sendOut(bMarginToken, b, bMarginAmount);
             emit Claimed(b, bSwapToken, bSwapAmount, bMarginToken, bMarginAmount);
@@ -935,6 +920,18 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
     function _recordTimeline(uint8 action, address actor, bool isPartyA, uint256 value) internal {
         IFactoryTimelineOpen(factory).recordDealTimeline(action, actor, isPartyA, value);
+    }
+
+    function templateType() external pure returns (uint8) {
+        return 0;
+    }
+
+    function timeStart() external view returns (uint64) {
+        return createdAt;
+    }
+
+    function timeEnd() external view returns (uint64) {
+        return endedAt;
     }
 
     receive() external payable {}

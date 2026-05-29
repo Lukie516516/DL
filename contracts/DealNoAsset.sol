@@ -102,8 +102,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
 
     uint64 public lockedAt;
     uint64 public timeoutSeconds;
-    uint64 public timeStart;
-    uint64 public timeEnd;
     uint64 public createdAt;
     uint64 public endedAt;
     uint64 public aAt;
@@ -283,7 +281,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
         description = p.description;
         timeoutSeconds = p.timeoutSeconds;
         createdAt = uint64(block.timestamp);
-        timeStart = createdAt;
 
         isDomainDeal = p.isDomainDeal;
         domainName = p.domainName;
@@ -334,7 +331,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
 
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Abandoned;
         emit DealAbandoned(a, ts);
         _recordTimeline(8, a, true, 0);
@@ -516,7 +512,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
     function _complete(CompletionReason reason) internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Completed;
 
         Fees memory f = _computeFees();
@@ -552,7 +547,6 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
     function _cancel() internal {
         uint64 ts = uint64(block.timestamp);
         endedAt = ts;
-        timeEnd = ts;
         status = Status.Canceled;
 
         if (aPaid) {
@@ -802,6 +796,14 @@ contract DealNoAsset is Initializable, ReentrancyGuard {
 
     function _recordTimeline(uint8 action, address actor, bool isPartyA, uint256 value) internal {
         IFactoryTimelineNoAsset(factory).recordDealTimeline(action, actor, isPartyA, value);
+    }
+
+    function timeStart() external view returns (uint64) {
+        return createdAt;
+    }
+
+    function timeEnd() external view returns (uint64) {
+        return endedAt;
     }
 
     receive() external payable {}
