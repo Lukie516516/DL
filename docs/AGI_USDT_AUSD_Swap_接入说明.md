@@ -126,4 +126,4 @@ deployments/frontend-handoff-agiking-31415926-*.md
 | 老 Router | 新部署后前端必须换新 `DealRouter` 地址 |
 | 预览报价 | 读 `DealRouterQuoter`；真实成交仍写 `DealRouter` |
 | 老 WNATIVE | 当前旧部署里的 `WNATIVE` 是测试 ERC20，不是真正的原生币包装合约；新 AGI 入口以 `WrappedAGI` 为准 |
-| 信用分 U 价值 | 交易信用仍以 U 价值资产为主；AGI 如果要按 U 计信用，需要后续增加 AGI/USD 定价口径 |
+| 信用分 U 价值 | AGI 点对点交易会先通过 `DC-AGI` 折成 DC，再通过 `DC-USDT` 或 `DC-AUSD` 折成 U 价值后写入信用分 |

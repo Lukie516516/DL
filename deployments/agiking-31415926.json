@@ -1,30 +1,30 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-05-29T11:49:36.974Z",
+  "deployedAt": "2026-05-30T06:05:54.788Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
   "addresses": {
     "dlToken": "0x0688c9148d968bf4c2422caa8739112a04ddb5a5",
     "ausd": "0xb91cf0c6edd1b9ec971343237fd8a119f77c7abf",
     "usdt": "0x21e6f21aa27ae519a6b7272611a1f2fd3b82dcda",
     "wrappedNative": "0xc6ac293de4a720b689e1afbfb4658cda8c44052a",
-    "dealLib": "0xefc77a73b630acb1ace85b8dfcc7b7073d96961c",
+    "dealLib": "0xD033FD14Feb2213a5E62BBeEd3Df19FcA990BDf9",
     "dealAssetNftLib": "0xabb1871111463ee36dfb8408889339be80785173",
     "dealImplementation": "0xd366e85e5c8928bd59f8305bff4a5ecd86f15053",
-    "dealNoAssetImplementation": "0xD8A3E414BF27aaCd70D75dFd1C62972Eb514cCfe",
-    "dealAAssetNftImplementation": "0x0fB06175CAE18F537AA3Dd6d71afB6284408cfe0",
-    "dealBAssetNftImplementation": "0x3526C38Dc8ba6F6f32345DE02184D86b0C9A94d6",
+    "dealNoAssetImplementation": "0x4cd82fC578F0cAEC9cf266753E7338D0ec13B4f0",
+    "dealAAssetNftImplementation": "0x7916c39Ada4dB13f03fD954D805cC8870869b97c",
+    "dealBAssetNftImplementation": "0xE5242aa6b8385E7061F549a5508D65492b19d18E",
     "dealAAssetNftOnlyImplementation": "0xeed72683e71640c8917636063e3a07b6d6283c94",
     "dealBAssetNftOnlyImplementation": "0xab217e37fe1e49d6ac54af0a7140cde3c3727066",
-    "dealOpenTokenTokenImplementation": "0x4907ccEA17231726C8CD2B31A9dbb228069a1d13",
-    "dealImplementationRegistry": "0x89cCcd7b67AF8c0595923b7cf2a36956649dF764",
+    "dealOpenTokenTokenImplementation": "0x0f6Fa2Dec458E50bdaFda2d5da95B7BDFEc40Aa3",
+    "dealImplementationRegistry": "0x9741503D47d4b20420E102A960F0812ed0Df6162",
     "pairImplementation": "0xb1203a0895c11278d43fc83ad921e2562ba4e5cc",
-    "dealFactory": "0x0b20917DF7040D859D04313a71517f315EFd0898",
-    "dealMessageHub": "0xb1Cd85F3A4c115CfaE1B08baCD0a669F9b85E4C5",
+    "dealFactory": "0x794a87b4D03294936B9AFCB1916a8A7885E8998F",
+    "dealMessageHub": "0x5a93fFB25642042ffF009Bb79b41Ae6e1631B1E0",
     "dealCreditGraph": "0xf721d35A5ae6DaB2576080061dF082E82f6cB697",
-    "dealActivityIndex": "0x9e22A6877Cd22297D3648dE53fc1B883C6077c11",
-    "dealResultIndex": "0x8175b939e947F160761B012a8a49EE13e26C8c05",
-    "dealPairManager": "0x62e33F04229e3e631B30881527E5903b5d7D7EA3",
+    "dealActivityIndex": "0xa348cf4B4935322eae3443FcEa59C247AcD90611",
+    "dealResultIndex": "0x4De897543F3F2C2bEB319Cb3627eF59FB471D363",
+    "dealPairManager": "0x2ABE89F02558d5Ba2944A6310dda35b0860aC573",
     "dealInfoNFT": "0x7F83827b65AB95196e8466b8578B621Dac4Af841",
     "pairDlAusd": "0x29401FAf6Db21a2e0DB8EdC07069D450d5926C14",
     "pairDlUsdt": "0x54c6F62cfC3E0bCc0CE3ee43E35F2B150Ec0A1dD",
@@ -35,8 +35,8 @@
     "dcDomainRank": "0xe5508dd72041b41Dd773fad156E99c7398C8a993",
     "dcDomainRankReader": "0xA942ec4A1b76438511a5047E268bE3D77E65f626",
     "dcDomainMarket": "0x494309b589d5578dE60a7095Cb66cB0191758749",
-    "dcDomainSwap": "0xBcB85564c19149A054eB3485dBb7f4eBed9BA8Cc",
-    "dcDomainHall": "0x1D62D0069D06B13A0802be5025d5a86FD4F4b46B",
+    "dcDomainSwap": "0x420AC597818E4A2105462Aa219502BCDb9288C6b",
+    "dcDomainHall": "0xEC7B5D6FDED1Ca31Fa8416dEA004DD2fE93dF5d5",
     "dToken": "0xF8fd2b61F96CE461015A8c84F5E5688460BD9B15",
     "voteDividendClaimer": "0x6bfC3E42ef340B540dF728828E4825042Ada4C4d",
     "dealSwapAssetRegistry": "0x3F1415e45D7b59CBAAe200d4d00fa6091758Fe60",
@@ -140,6 +140,21 @@
         "inputs": [
           {
             "internalType": "address",
+            "name": "factory_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "dl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "WNATIVE",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
             "name": "tokenNorm",
             "type": "address"
           },
@@ -156,6 +171,11 @@
           {
             "internalType": "address",
             "name": "recognizedToken1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "pair",
             "type": "address"
           }
         ],
@@ -11892,6 +11912,11 @@
       {
         "inputs": [],
         "name": "RatioInvalid",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "RewardExceedsFee",
         "type": "error"
       },
       {
@@ -33023,8 +33048,8 @@
       }
     ]
   },
-  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-domain-completed-volume-20260528-103108.json",
-  "upgrade": "domain-completed-trade-volume",
+  "previousDeployment": "/Users/a1234/Desktop/Solidity_code/deal完整 2/deal完整 2/deployments/backups/agiking-31415926.before-credit-pricing-20260530-060554.json",
+  "upgrade": "deal-credit-pricing-and-reward-cap",
   "notes": [
     "DCDomainListReader redeployed with getDomainsByOwner(owner, offset, limit) for current-holder domain lists.",
     "DealInfoNFT redeployed so mintByBurn burns mintPriceDL directly in DealCoin/DC, without U/pair conversion.",
@@ -33033,6 +33058,10 @@
     "Existing DealFactory was rewired to the new DealInfoNFT, DealCreditGraph, and DealNftGovernanceActivity.",
     "Domain tradeVolume now only counts deals that finish as Completed.",
     "DealFactory auto-closes domain deals through DCDomainRank.closeDealFromAutoCloser(domain, deal, completed).",
-    "DCDomain/DCDomainMarket/tokens/pairs/router/order book were reused; Factory, Rank, domain readers, Swap, and Hall were redeployed."
+    "DCDomain/DCDomainMarket/tokens/pairs/router/order book were reused; Factory, Rank, domain readers, Swap, and Hall were redeployed.",
+    "DC and AGI deal fees now produce credit by quoting through official DC pairs.",
+    "Factory reward config now enforces A+B+C minted reward rate <= protocol fee rate.",
+    "Existing tokens, pairs, router, order book, DealReader, and domain rank data were reused.",
+    "Existing official pair controllers were moved to the new DealPairManager for future fee and virtual-liquidity operations."
   ]
 }

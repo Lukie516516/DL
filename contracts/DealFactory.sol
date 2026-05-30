@@ -214,6 +214,7 @@ contract DealFactory is Ownable {
     error TitleTooLong();
     error DescriptionTooLong();
     error TimeoutTooLong();
+    error RewardExceedsFee();
 
     uint256 public constant MAX_TITLE_BYTES = 96;
     uint256 public constant MAX_DESCRIPTION_BYTES = 1500;
@@ -227,6 +228,12 @@ contract DealFactory is Ownable {
     }
     function _assertRatio(Ratio memory r) internal pure {
         if (r.den == 0 || r.num >= r.den) revert RatioInvalid();
+    }
+    function _assertRewardWithinFee(Ratio memory fee, Ratio memory reward) internal pure {
+        // Worst case mints A + B + C. Keep total configured reward rate <= protocol fee rate.
+        if (uint256(reward.num) * 3 * uint256(fee.den) > uint256(fee.num) * uint256(reward.den)) {
+            revert RewardExceedsFee();
+        }
     }
 
     /* ---------- 实现地址 ---------- */
@@ -530,6 +537,7 @@ contract DealFactory is Ownable {
         Ratio memory r2 = Ratio({num: mintOnFeesNum, den: mintOnFeesDen});
         _assertRatio(r1);
         _assertRatio(r2);
+        _assertRewardWithinFee(r1, r2);
         defaultFeeNonDL = r1;
         defaultMintOnFees = r2;
         emit FeesAndMintOnFeesUpdated(
@@ -549,6 +557,7 @@ contract DealFactory is Ownable {
         Ratio memory r2 = Ratio({num: mintOnFeesNum, den: 1000});
         _assertRatio(r1);
         _assertRatio(r2);
+        _assertRewardWithinFee(r1, r2);
         defaultFeeNonDL = r1;
         defaultMintOnFees = r2;
         emit FeesAndMintOnFeesUpdated(feeNonDLNum, 1000, mintOnFeesNum, 1000);
