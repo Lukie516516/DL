@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {DealError} from "./DealErrors.sol";
 
 /* 外提库：通过 external 函数让实现字节码落在独立部署地址，供 Deal 代理/克隆 delegatecall 使用。 */
@@ -34,6 +35,20 @@ interface IDealCreditGraphView {
 
 interface IFactoryTwapLib {
     function updateAndQuoteToDL(address pair, uint256 amountIn) external returns (uint256 dlOut);
+}
+
+interface IFactoryPairManagerViewLib {
+    function dealPairManager() external view returns (address);
+}
+
+interface IPairManagerPairLookupLib {
+    function pairForToken(address token) external view returns (address);
+}
+
+interface IDealPairCreditView {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getEffectiveReserves() external view returns (uint256 e0, uint256 e1, uint32 ts);
 }
 
 interface IWNATIVELib is IERC20 {
@@ -249,17 +264,30 @@ library DealLib {
     }
 
     function feeCreditU(
+        address factory_,
+        address dl,
+        address WNATIVE,
         address tokenNorm,
         uint256 fee,
         address recognizedToken0,
-        address recognizedToken1
+        address recognizedToken1,
+        address pair
     ) external view returns (uint256) {
         if (fee == 0) return 0;
-        if (tokenNorm != recognizedToken0 && tokenNorm != recognizedToken1) return 0;
-        uint8 dec = _tokenDecimals(tokenNorm);
-        if (dec == 18) return fee;
-        if (dec < 18) return fee * (10 ** (18 - dec));
-        if (dec <= 36) return fee / (10 ** (dec - 18));
+        if (tokenNorm == recognizedToken0 || tokenNorm == recognizedToken1) return _toU18(tokenNorm, fee);
+        if (tokenNorm == dl) return _dlToU(factory_, dl, fee, recognizedToken0, recognizedToken1);
+        if (tokenNorm == WNATIVE) {
+            uint256 dlValue = _token1ToDl(pair, dl, WNATIVE, fee);
+            return _dlToU(factory_, dl, dlValue, recognizedToken0, recognizedToken1);
+        }
+        return 0;
+    }
+
+    function _toU18(address token, uint256 amount) private view returns (uint256) {
+        uint8 dec = _tokenDecimals(token);
+        if (dec == 18) return amount;
+        if (dec < 18) return amount * (10 ** (18 - dec));
+        if (dec <= 36) return amount / (10 ** (dec - 18));
         return 0;
     }
 
@@ -270,6 +298,91 @@ library DealLib {
             if (d <= type(uint8).max) return uint8(d);
         }
         return 18;
+    }
+
+    function _pairForCreditToken(address factory_, address token) private view returns (address pair) {
+        if (factory_ == address(0) || token == address(0)) return address(0);
+        try IFactoryPairManagerViewLib(factory_).dealPairManager() returns (address manager) {
+            if (manager == address(0)) return address(0);
+            try IPairManagerPairLookupLib(manager).pairForToken(token) returns (address p) {
+                return p;
+            } catch {
+                return address(0);
+            }
+        } catch {
+            return address(0);
+        }
+    }
+
+    function _dlToU(
+        address factory_,
+        address dl,
+        uint256 amountDL,
+        address recognizedToken0,
+        address recognizedToken1
+    ) private view returns (uint256) {
+        if (amountDL == 0) return 0;
+        uint256 via1 = _dlToStableU(factory_, dl, amountDL, recognizedToken1);
+        if (via1 != 0) return via1;
+        return _dlToStableU(factory_, dl, amountDL, recognizedToken0);
+    }
+
+    function _dlToStableU(address factory_, address dl, uint256 amountDL, address stable)
+        private
+        view
+        returns (uint256)
+    {
+        address pair = _pairForCreditToken(factory_, stable);
+        uint256 stableValue = _token0ToToken1(pair, dl, stable, amountDL);
+        return stableValue == 0 ? 0 : _toU18(stable, stableValue);
+    }
+
+    function _token0ToToken1(address pair, address expectedToken0, address expectedToken1, uint256 amount0)
+        private
+        view
+        returns (uint256)
+    {
+        if (pair == address(0) || amount0 == 0) return 0;
+        try IDealPairCreditView(pair).token0() returns (address token0) {
+            if (token0 != expectedToken0) return 0;
+        } catch {
+            return 0;
+        }
+        try IDealPairCreditView(pair).token1() returns (address token1) {
+            if (token1 != expectedToken1) return 0;
+        } catch {
+            return 0;
+        }
+        try IDealPairCreditView(pair).getEffectiveReserves() returns (uint256 e0, uint256 e1, uint32) {
+            if (e0 == 0 || e1 == 0) return 0;
+            return Math.mulDiv(amount0, e1, e0);
+        } catch {
+            return 0;
+        }
+    }
+
+    function _token1ToDl(address pair, address dl, address token1Expected, uint256 amount1)
+        private
+        view
+        returns (uint256)
+    {
+        if (pair == address(0) || amount1 == 0) return 0;
+        try IDealPairCreditView(pair).token0() returns (address token0) {
+            if (token0 != dl) return 0;
+        } catch {
+            return 0;
+        }
+        try IDealPairCreditView(pair).token1() returns (address token1) {
+            if (token1 != token1Expected) return 0;
+        } catch {
+            return 0;
+        }
+        try IDealPairCreditView(pair).getEffectiveReserves() returns (uint256 e0, uint256 e1, uint32) {
+            if (e0 == 0 || e1 == 0) return 0;
+            return Math.mulDiv(amount1, e0, e1);
+        } catch {
+            return 0;
+        }
     }
 
     function _isRecognizedToken(

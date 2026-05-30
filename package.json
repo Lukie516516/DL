@@ -15,6 +15,7 @@
     "deploy:agiking:agi-swap": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-agiking-agi-swap.ts --network agiking",
     "deploy:agiking:current-update": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-agiking-current-update.ts --network agiking",
     "deploy:agiking:factory-slim": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-agiking-factory-slim.ts --network agiking",
+    "deploy:agiking:credit-pricing": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-agiking-credit-pricing.ts --network agiking",
     "deploy:agiking:info-nft-d18": "node node_modules/hardhat/dist/src/cli.js run scripts/deploy-info-nft-direct-burn-and-d18.ts --network agiking"
   },
   "keywords": [],

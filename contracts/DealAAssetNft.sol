@@ -627,8 +627,11 @@ contract DealAAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
 
     function _recordDealCredit(Fees memory f) internal {
         if (infoNft == address(0)) return;
-        uint256 baseCredit = DealLib.feeCreditU(aTokenNorm, f.aFee, recognizedToken0, recognizedToken1)
-            + DealLib.feeCreditU(bTokenNorm, f.bFee, recognizedToken0, recognizedToken1);
+        uint256 baseCredit = DealLib.feeCreditU(
+            factory, dl, WNATIVE, aTokenNorm, f.aFee, recognizedToken0, recognizedToken1, aPair
+        ) + DealLib.feeCreditU(
+            factory, dl, WNATIVE, bTokenNorm, f.bFee, recognizedToken0, recognizedToken1, bPair
+        );
         if (baseCredit == 0) return;
         IFactoryCredit(factory).recordDealCredit(a, b, aNftId, aNftLocked, bNftId, bNftLocked, baseCredit);
     }
