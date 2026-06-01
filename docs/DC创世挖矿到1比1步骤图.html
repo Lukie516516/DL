@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DC 创世挖矿到 1:1 启动方案</title>
+  <style>
+    :root {
+      --bg: #101318;
+      --panel: #181d25;
+      --panel-2: #202733;
+      --panel-3: #11161d;
+      --line: #2f3947;
+      --text: #ecf1f8;
+      --muted: #a5b0bf;
+      --accent: #e8b84f;
+      --accent-2: #63d297;
+      --danger: #e07171;
+      --blue: #77a7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      padding: 30px 24px;
+      background: #131820;
+      border-right: 1px solid var(--line);
+    }
+
+    main {
+      padding: 38px 42px 60px;
+    }
+
+    .doc {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      gap: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+
+    h1 { font-size: 30px; margin-bottom: 10px; }
+    h2 { font-size: 24px; margin-bottom: 14px; }
+    h3 { font-size: 17px; margin-bottom: 8px; }
+
+    p { margin: 0 0 12px; }
+
+    .muted { color: var(--muted); }
+
+    .nav {
+      display: grid;
+      gap: 9px;
+      margin-top: 28px;
+    }
+
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 9px 10px;
+    }
+
+    .nav a:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+      border-color: var(--line);
+    }
+
+    .hero, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .summary {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-item, .note, .metric, .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      padding: 15px 16px;
+    }
+
+    .summary-item strong, .note strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .note.ok {
+      border-color: rgba(99,210,151,0.42);
+      background: rgba(99,210,151,0.08);
+    }
+
+    .note.warn {
+      border-color: rgba(224,113,113,0.48);
+      background: rgba(224,113,113,0.08);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .metric .hint {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 176px;
+    }
+
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 31px;
+      right: -10px;
+      width: 10px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .step-no {
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #171717;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .formula {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-3);
+      color: #e5edf7;
+      overflow: auto;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    td strong { color: var(--accent); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(232,184,79,0.12);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+    }
+
+    .check span:first-child {
+      color: var(--accent-2);
+      font-weight: 900;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      aside {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      main { padding: 24px 16px 40px; }
+      .hero, .two-col { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { display: none; }
+    }
+
+    @media print {
+      body { background: #fff; color: #111; }
+      aside { display: none; }
+      .layout { display: block; }
+      main { padding: 0; }
+      .hero, section, .summary-item, .note, .metric, .step, .check {
+        background: #fff;
+        color: #111;
+        border-color: #d0d7de;
+      }
+      .muted, th, .footer { color: #555; }
+      pre { background: #f6f8fa; color: #111; border-color: #d0d7de; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <p class="eyebrow">DealCoin Genesis</p>
+      <h1>DC 创世挖矿到 1:1</h1>
+      <p class="muted">用 P2P 交易手续费把 U 注入 pair，再用虚拟流动性放大展示深度。</p>
+      <nav class="nav">
+        <a href="#summary">01 总体结论</a>
+        <a href="#flow">02 步骤图</a>
+        <a href="#math">03 计算公式</a>
+        <a href="#example">04 1000 DC 示例</a>
+        <a href="#depth">05 虚拟流动性</a>
+        <a href="#operations">06 每次操作步骤</a>
+        <a href="#risk">07 风险与控制</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="doc">
+        <div class="hero" id="summary">
+          <div>
+            <p class="eyebrow">目标</p>
+            <h2>从极低初始价，靠真实手续费注入，最后形成 1 DC = 1 U</h2>
+            <p class="muted">
+              当前合约里，USDT / AUSD / AGI 这类认可币的 P2P 手续费会进入对应的 DC pair。
+              因此创世阶段可以通过真实 P2P 成交，把 U 逐步注入 pair 的 U 侧。
+            </p>
+            <div class="metric-grid">
+              <div class="metric">
+                <div class="label">初始价格</div>
+                <div class="value">0.00000001 U</div>
+                <div class="hint">1 DC 的初始 U 价格</div>
+              </div>
+              <div class="metric">
+                <div class="label">目标价格</div>
+                <div class="value">1 U</div>
+                <div class="hint">1 DC = 1 U</div>
+              </div>
+              <div class="metric">
+                <div class="label">核心来源</div>
+                <div class="value">手续费</div>
+                <div class="hint">P2P 认可币手续费入池</div>
+              </div>
+              <div class="metric">
+                <div class="label">展示深度</div>
+                <div class="value">虚拟补足</div>
+                <div class="hint">少投真 U，后置放大深度</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary">
+            <div class="summary-item">
+              <strong>一句话方案</strong>
+              小真实池启动，P2P 挖 U 储备，达到 1:1 后再加双边虚拟流动性。
+            </div>
+            <div class="summary-item">
+              <strong>最省 U 的关键</strong>
+              初始真实 DC 不要放太多。真实 DC 越多，挖到 1:1 需要的 U 越多。
+            </div>
+            <div class="summary-item">
+              <strong>必须控制</strong>
+              创世低价阶段不要开放普通 swap，否则会被低价买走 DC。
+            </div>
+          </div>
+        </div>
+
+        <section id="flow">
+          <p class="eyebrow">Step Flow</p>
+          <h2>一步一步怎么做</h2>
+          <div class="flow">
+            <div class="step">
+              <div class="step-no">1</div>
+              <h3>创建 pair</h3>
+              <p class="muted">创建 DC / USDT 或 DC / AUSD pair。</p>
+            </div>
+            <div class="step">
+              <div class="step-no">2</div>
+              <h3>极低价初始化</h3>
+              <p class="muted">例如放入 1,000 DC + 0.00001 U，价格就是 1 DC = 0.00000001 U。</p>
+            </div>
+            <div class="step">
+              <div class="step-no">3</div>
+              <h3>P2P 挖矿</h3>
+              <p class="muted">用户做认可币 P2P 交易，双方手续费注入 pair 的 U 侧。</p>
+            </div>
+            <div class="step">
+              <div class="step-no">4</div>
+              <h3>储备追平</h3>
+              <p class="muted">当 U 储备接近 DC 储备时，价格接近 1 DC = 1 U。</p>
+            </div>
+            <div class="step">
+              <div class="step-no">5</div>
+              <h3>停止创世</h3>
+              <p class="muted">停止高倍率挖矿或切回正常返利参数。</p>
+            </div>
+            <div class="step">
+              <div class="step-no">6</div>
+              <h3>加虚拟深度</h3>
+              <p class="muted">双边等比例加虚拟 DC 和虚拟 U，价格保持 1:1。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="math">
+          <p class="eyebrow">Formula</p>
+          <h2>计算公式</h2>
+          <div class="formula">
+            <pre><code>DC 当前价格 = pair 里的 U 储备 / pair 里的 DC 储备</code></pre>
+            <pre><code>要达到 1 DC = 1 U：
+U 储备需要接近 DC 储备</code></pre>
+            <pre><code>需要注入 U ≈ 初始 DC 储备 - 初始 U 储备</code></pre>
+            <pre><code>每笔 P2P 注入 U = A 方交易额 × 0.3% + B 方交易额 × 0.3%</code></pre>
+            <pre><code>需要交易笔数 = 需要注入 U / 每笔 P2P 注入 U</code></pre>
+          </div>
+        </section>
+
+        <section id="example">
+          <p class="eyebrow">Example</p>
+          <h2>推荐最小投入示例：1,000 DC 起步</h2>
+          <div class="two-col">
+            <div class="note ok">
+              <strong>初始真实池</strong>
+              <p>1,000 DC + 0.00001 U</p>
+              <p class="muted">价格：0.00001 / 1,000 = 0.00000001 U / DC</p>
+            </div>
+            <div class="note ok">
+              <strong>目标真实池</strong>
+              <p>1,000 DC + 1,000 U</p>
+              <p class="muted">价格：1,000 / 1,000 = 1 U / DC</p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>初始真实 DC</th>
+                <th>初始 U</th>
+                <th>挖到 1:1 需要注入 U</th>
+                <th>需要交易笔数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1,000 DC</strong></td>
+                <td>0.00001 U</td>
+                <td>约 1,000 U</td>
+                <td>约 17 笔</td>
+              </tr>
+              <tr>
+                <td>5,000 DC</td>
+                <td>0.00005 U</td>
+                <td>约 5,000 U</td>
+                <td>约 84 笔</td>
+              </tr>
+              <tr>
+                <td>10,000 DC</td>
+                <td>0.0001 U</td>
+                <td>约 10,000 U</td>
+                <td>约 167 笔</td>
+              </tr>
+              <tr>
+                <td>50,000 DC</td>
+                <td>0.0005 U</td>
+                <td>约 50,000 U</td>
+                <td>约 834 笔</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="footer">上表按每笔双方各 10,000 U 交易计算：每笔注入 U = 10,000 × 0.3% × 2 = 60 U。</p>
+        </section>
+
+        <section id="depth">
+          <p class="eyebrow">Virtual Liquidity</p>
+          <h2>到 1:1 后，如何造出 5 万 / 10 万深度</h2>
+          <p class="muted">真实池只要完成价格锚定，不必真的放 5 万或 10 万 U。展示深度可以用双边虚拟流动性补足。</p>
+          <table>
+            <thead>
+              <tr>
+                <th>目标展示状态</th>
+                <th>真实储备</th>
+                <th>虚拟储备</th>
+                <th>有效储备</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>5 万深度</td>
+                <td>1,000 DC + 1,000 U</td>
+                <td>49,000 DC + 49,000 U</td>
+                <td><strong>50,000 DC + 50,000 U</strong></td>
+              </tr>
+              <tr>
+                <td>10 万深度</td>
+                <td>1,000 DC + 1,000 U</td>
+                <td>99,000 DC + 99,000 U</td>
+                <td><strong>100,000 DC + 100,000 U</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="note warn" style="margin-top: 14px;">
+            <strong>虚拟流动性必须双边等比例加</strong>
+            如果只加 DC 或只加 U，会改变价格；双边等比例加，价格仍然保持 1:1。
+          </div>
+        </section>
+
+        <section id="operations">
+          <p class="eyebrow">Operation Steps</p>
+          <h2>每次实际操作怎么走</h2>
+          <p class="muted">
+            下面按“从零启动一次创世池”的执行顺序写。执行时只需要替换目标 pair，例如 DC/USDT、DC/AUSD。
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>阶段</th>
+                <th>操作人</th>
+                <th>要做什么</th>
+                <th>检查标准</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. 准备</strong></td>
+                <td>Owner / 运营钱包</td>
+                <td>准备少量 DC 和极少 U。推荐示例：1,000 DC + 0.00001 U。</td>
+                <td>确认目标 token 是官方认可币，pair 还未对外开放普通 swap。</td>
+              </tr>
+              <tr>
+                <td><strong>2. 创建 pair</strong></td>
+                <td>Owner</td>
+                <td>创建 DC/USDT 或 DC/AUSD pair。</td>
+                <td>pair 地址存在，token0 是 DC，token1 是目标 U。</td>
+              </tr>
+              <tr>
+                <td><strong>3. 初始化低价池</strong></td>
+                <td>Owner / 运营钱包</td>
+                <td>向 pair 注入 1,000 DC + 0.00001 U，并初始化 pair。</td>
+                <td>真实价格约为 1 DC = 0.00000001 U。</td>
+              </tr>
+              <tr>
+                <td><strong>4. 创世 P2P 挖矿</strong></td>
+                <td>用户</td>
+                <td>用户做 USDT/AUSD 点对点交易。每一方支付自己交易额的 0.3% 手续费，这部分 U 会进入 pair 的 U 储备。</td>
+                <td>单边 10,000 U 会注入 30 U；如果双方都是 10,000 U，本笔合计注入 60 U。</td>
+              </tr>
+              <tr>
+                <td><strong>5. 监控价格</strong></td>
+                <td>运营 / 后台</td>
+                <td>持续读取 pair 的真实 DC 储备和真实 U 储备。目标不是看单笔交易，而是看累计注入后的真实储备比例。</td>
+                <td>当真实 U 储备 = 真实 DC 储备时，pair 的内在价格就是 1 DC = 1 U。</td>
+              </tr>
+              <tr>
+                <td><strong>6. 停止创世阶段</strong></td>
+                <td>Owner / 运营</td>
+                <td>停止高倍率挖矿，切回正常返利口径，准备开放正式交易。</td>
+                <td>真实池价格已接近 1:1，继续挖矿不会再明显改变定价。</td>
+              </tr>
+              <tr>
+                <td><strong>7. 设置虚拟流动性</strong></td>
+                <td>Owner</td>
+                <td>双边等比例设置虚拟 DC 和虚拟 U。例如真实 1,000:1,000，想显示 10 万深度，就加 99,000:99,000。</td>
+                <td>有效储备变大，但价格仍保持 1:1。</td>
+              </tr>
+              <tr>
+                <td><strong>8. 开放正常使用</strong></td>
+                <td>前端 / 运营</td>
+                <td>开放 swap、正常 P2P、正常信用分和返利展示。</td>
+                <td>前端显示 1:1 附近价格，pair 有足够展示深度。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="two-col" style="margin-top: 14px;">
+            <div class="note ok">
+              <strong>单边 10,000 U 的贡献</strong>
+              <pre><code>A 出 10,000 U
+A 手续费 = 10,000 × 0.3% = 30 U
+本笔至少给 pair 增加 30 U</code></pre>
+            </div>
+            <div class="note ok">
+              <strong>双方各 10,000 U 的贡献</strong>
+              <pre><code>A 手续费 30 U
+B 手续费 30 U
+本笔合计注入 pair：60 U</code></pre>
+            </div>
+          </div>
+
+          <div class="note ok" style="margin-top: 14px;">
+            <strong>1,000 DC 示例为什么约 17 笔</strong>
+            <pre><code>初始真实池：1,000 DC + 0.00001 U
+目标真实池：1,000 DC + 1,000 U
+还需要累计注入：约 1,000 U
+
+如果双方各 10,000 U：
+每笔注入 60 U
+需要笔数：1,000 / 60 ≈ 17 笔
+
+如果只有单边 10,000 U：
+每笔注入 30 U
+需要笔数：1,000 / 30 ≈ 34 笔</code></pre>
+          </div>
+
+          <div class="note warn" style="margin-top: 14px;">
+            <strong>这里说的 1:1 是真实 pair 储备价格</strong>
+            也就是 pair 里真实 U 储备追平真实 DC 储备。它不是说“单笔交易 30 U 立刻变成 30 DC 进池子”，
+            也不是说所有外部流通 DC 都已经被 U 完全兑付。要做到全流通量 1:1 背书，还需要控制创世期间 mint 出来的 DC 总量或做锁仓释放。
+          </div>
+
+          <div class="note warn" style="margin-top: 14px;">
+            <strong>操作红线</strong>
+            低价创世阶段不要开放普通 swap。这个阶段的目标是让 P2P 手续费慢慢把 U 注入 pair，
+            不是让用户用极低价格直接从 pair 买走 DC。
+          </div>
+        </section>
+
+        <section id="risk">
+          <p class="eyebrow">Risk Control</p>
+          <h2>必须配套的控制点</h2>
+          <div class="checklist">
+            <div class="check">
+              <span>✓</span>
+              <div>
+                <strong>创世低价阶段不要开放普通 swap</strong>
+                <div class="muted">否则用户可以绕过前端直接低价买走 DC。最好合约层有 pair 交易开关，或创世阶段不公开入口。</div>
+              </div>
+            </div>
+            <div class="check">
+              <span>✓</span>
+              <div>
+                <strong>控制初始真实 DC 数量</strong>
+                <div class="muted">真实 DC 越大，挖到 1:1 需要注入的 U 越多。想省 U，用 1,000 或 5,000 DC 级别启动。</div>
+              </div>
+            </div>
+            <div class="check">
+              <span>✓</span>
+              <div>
+                <strong>实时监控 pair 储备</strong>
+                <div class="muted">当 U 储备接近 DC 储备，价格接近 1:1 时，停止创世挖矿，切换正式参数。</div>
+              </div>
+            </div>
+            <div class="check">
+              <span>✓</span>
+              <div>
+                <strong>控制创世 DC 释放</strong>
+                <div class="muted">低价阶段会让矿工拿到较多 DC。建议配合总额度、单地址上限、单 NFT 上限或锁仓释放。</div>
+              </div>
+            </div>
+            <div class="check">
+              <span>✓</span>
+              <div>
+                <strong>虚拟流动性只在 1:1 后添加</strong>
+                <div class="muted">先让真实储备达到目标价格，再双边等比例增加虚拟储备，避免价格口径混乱。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <p class="eyebrow">Leader Summary</p>
+          <h2>给领导的一句话</h2>
+          <pre><code>我们可以先用小真实池建立极低初始价，
+让 P2P 真实交易手续费不断注入 U 储备，
+等真实储备被挖到 1 DC = 1 U 后，
+再用双边虚拟流动性把展示深度放大到 5 万或 10 万。
+
+这样真实 U 投入最少，但价格路径和后续 1:1 展示是自洽的。</code></pre>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
