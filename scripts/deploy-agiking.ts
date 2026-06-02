@@ -5,17 +5,51 @@
 import { copyFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { defineChain, zeroAddress, type Address } from "viem";
+import { defineChain, getAddress, zeroAddress, type Address } from "viem";
 
 const ONE = 10n ** 18n;
+const WEI = 1n;
+const GWEI = 10n ** 9n;
+const DEFAULT_GAS_PRICE = BigInt(process.env.AGIKING_GAS_PRICE_GWEI ?? "1") * GWEI;
 
 const AGIKING_CHAIN_ID = 31415926;
+const SATOSHI_ACCOUNT = requireAddress(
+  "SATOSHI_ACCOUNT",
+  process.env.SATOSHI_ACCOUNT ?? "0xa66BB85467AA820F294934D947a2630bb6761483",
+);
+const MARKET_MAKER_ACCOUNT = requireAddress(
+  "MARKET_MAKER_ACCOUNT",
+  process.env.MARKET_MAKER_ACCOUNT ?? "0xeB8B726a72aeCA86fbf3e1932f97834243f967Ef",
+);
+
+const SATOSHI_DC = 5_000_000_000n * ONE;
+const MARKET_MAKER_DC = 500_000_000n * ONE;
+
+const PAIR_USDT_REAL_DC = 500_000_000n * ONE;
+const PAIR_USDT_REAL_OTHER = WEI;
+const PAIR_USDT_VIRTUAL_OTHER = 50_000n * ONE;
+
+const PAIR_AUSD_REAL_DC = 500_000_000n * ONE;
+const PAIR_AUSD_REAL_OTHER = WEI;
+const PAIR_AUSD_VIRTUAL_OTHER = 200_000n * ONE;
+
+const PAIR_AGI_REAL_DC = 50_000_000n * ONE;
+const PAIR_AGI_REAL_OTHER = WEI;
+const PAIR_AGI_VIRTUAL_OTHER = 50_000n * ONE;
+
+function requireAddress(label: string, value: string): Address {
+  try {
+    return getAddress(value.trim()) as Address;
+  } catch {
+    throw new Error(`${label} is not a valid EVM address: ${value}`);
+  }
+}
 
 function agikingChain(rpcUrl: string) {
   return defineChain({
     id: AGIKING_CHAIN_ID,
     name: "Agiking",
-    nativeCurrency: { decimals: 18, name: "Native", symbol: "NATIVE" },
+    nativeCurrency: { decimals: 18, name: "AGI", symbol: "AGI" },
     rpcUrls: { default: { http: [rpcUrl] } },
   });
 }
@@ -30,7 +64,55 @@ async function waitFor(
   publicClient: Awaited<ReturnType<Awaited<ReturnType<typeof network.connect>>["viem"]["getPublicClient"]>>,
   hash: `0x${string}`,
 ) {
-  return publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`Transaction failed: ${hash}`);
+  return receipt;
+}
+
+async function deploy(viem: any, name: string, args: unknown[] = [], options: Record<string, unknown> = {}) {
+  const merged = { gasPrice: DEFAULT_GAS_PRICE, ...options };
+  try {
+    return withDefaultGas(await viem.deployContract(name, args, merged));
+  } catch (err: any) {
+    const details = [
+      err?.details,
+      err?.shortMessage,
+      err?.message,
+      err?.cause?.details,
+      err?.cause?.message,
+    ].filter(Boolean).join("\n");
+    const match = details.match(/insufficient gas for floor data gas cost: have \d+, want (\d+)/i);
+    if (!match) throw err;
+    const wanted = BigInt(match[1]);
+    const gas = (wanted * 120n) / 100n + 50_000n;
+    console.log(`  RETRY ${name} with gas ${gas.toString()}`);
+    return withDefaultGas(await viem.deployContract(name, args, { ...merged, gas }));
+  }
+}
+
+async function writeTx(publicClient: any, hashPromise: Promise<`0x${string}`>) {
+  await waitFor(publicClient, await hashPromise);
+}
+
+function withDefaultGas<T extends Record<string, any>>(contract: T): T {
+  return new Proxy(contract, {
+    get(target, prop, receiver) {
+      if (prop !== "write") return Reflect.get(target, prop, receiver);
+      const write = Reflect.get(target, prop, receiver);
+      return new Proxy(write, {
+        get(writeTarget, method, writeReceiver) {
+          const fn = Reflect.get(writeTarget, method, writeReceiver);
+          if (typeof fn !== "function") return fn;
+          return (first?: unknown, second?: Record<string, unknown>) => {
+            if (Array.isArray(first)) {
+              return fn(first, { gasPrice: DEFAULT_GAS_PRICE, ...(second ?? {}) });
+            }
+            return fn({ gasPrice: DEFAULT_GAS_PRICE, ...((first as Record<string, unknown>) ?? {}) });
+          };
+        },
+      });
+    },
+  });
 }
 
 function writeFrontendHandoff(file: string, deployedAt: string, deployer: Address, addresses: Record<string, Address>) {
@@ -42,7 +124,7 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 
 链：Agiking \`${AGIKING_CHAIN_ID}\`
 
-> 这次是整套测试环境重新部署。前端请以本文件和 \`deployments/agiking-31415926.json\` 为准，不要继续使用旧地址。
+> 这次是整套正式初始化重新部署。前端请以本文件和 \`deployments/agiking-31415926.json\` 为准，不要继续使用旧地址。
 
 ## 前端主接入地址
 
@@ -65,9 +147,10 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 | DCDomainListReader | \`${addresses.dcDomainListReader}\` | 域名列表分页、按成交额排序、按名称/ID/解析地址/当前持有人查询 |
 | DCDomainMarket | \`${addresses.dcDomainMarket}\` | 域名市场 |
 | DealCoin/DCToken | \`${addresses.dlToken}\` | DealCoin（DC）主代币 |
-| AUSD | \`${addresses.ausd}\` | 测试稳定币 |
-| USDT | \`${addresses.usdt}\` | 测试稳定币 |
-| WNATIVE | \`${addresses.wrappedNative}\` | 包装原生币 |
+| AUSD | \`${addresses.ausd}\` | 官方 AUSD |
+| USDT | \`${addresses.usdt}\` | 官方 USDT |
+| WAGI | \`${addresses.wrappedNative}\` | 包装原生 AGI |
+| DealSwapAssetRegistry | \`${addresses.dealSwapAssetRegistry}\` | 前端一次读取三组官方 swap pair |
 | DealRouter | \`${addresses.dealRouter}\` | swap/router |
 | DealSwapOrderBook | \`${addresses.dealSwapOrderBook}\` | swap order book |
 | D | \`${addresses.dToken}\` | DAO/分红权代币 |
@@ -84,7 +167,8 @@ function writeFrontendHandoff(file: string, deployedAt: string, deployer: Addres
 7. 域名广告充值仍调新的 \`DCDomainRank.deposit\`；终局后系统会自动结算退款，\`closeDeal\` 只作为兜底；域名收益领取调用 \`DCDomainRank.withdraw(domainName)\`。
 8. 创建 \`openTokenTokenFast = true\` 的 deal 时传 \`replaceTimeoutSeconds\`，范围 60 秒到 1 天；建议默认 120 秒。
 9. 创建 deal 不再传 \`timeStart/timeEnd\`；创建时间/结束时间读 \`createdAt/endedAt\`。
-10. 本次重新部署了测试 \`DealCoin(DC)/AUSD/USDT/WNATIVE/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统；需要重新领取/发放测试币。
+10. 本次重新部署了正式初始化 \`DealCoin(DC)/AUSD/USDT/WAGI/InfoNFT/DCDomain/D\`，旧测试币和旧 NFT 不进入新系统。
+11. DEX 初始流动性口径：DC 侧为真实储备；USDT/AUSD/WAGI 侧只放 1 wei 真实 dust 用于初始化，并设置虚拟储备参与报价。
 
 ## ABI
 
@@ -113,6 +197,8 @@ deployments/agiking-31415926.json
 - 新 DCDomainRank 已授权新的 Swap / Hall reporter。
 - 新 DCDomainRank 已设置自动结算入口：\`autoCloser = DealFactory\`。
 - 新 DCDomainRankReader 已指向新的 DCDomainRank。
+- 三个官方 pair 已创建：DC/USDT、DC/AUSD、DC/WAGI。
+- 初始账户已发放：中本聪账户 50 亿 DC，做市商账户 5 亿 DC。
 `;
   writeFileSync(file, md, "utf8");
 }
@@ -138,19 +224,19 @@ async function main() {
   console.log("Chain", chain.id, "deployer", dep);
 
   // —— Core AMM + Deal ——
-  const dealLib = await viem.deployContract("DealLib", [], { client });
+  const dealLib = await deploy(viem, "DealLib", [], { client });
   console.log("DealLib", dealLib.address);
-  const dealAssetNftLib = await viem.deployContract("DealAssetNftLib", [], { client });
+  const dealAssetNftLib = await deploy(viem, "DealAssetNftLib", [], { client });
   console.log("DealAssetNftLib", dealAssetNftLib.address);
 
-  const dealImpl = await viem.deployContract("Deal", [], { client });
+  const dealImpl = await deploy(viem, "Deal", [], { client });
   console.log("Deal impl", dealImpl.address);
-  const dealNoAssetImpl = await viem.deployContract("DealNoAsset", [], {
+  const dealNoAssetImpl = await deploy(viem, "DealNoAsset", [], {
     client,
     libraries: { DealLib: dealLib.address },
   });
   console.log("DealNoAsset impl", dealNoAssetImpl.address);
-  const dealAAssetNftImpl = await viem.deployContract("DealAAssetNft", [], {
+  const dealAAssetNftImpl = await deploy(viem, "DealAAssetNft", [], {
     client,
     libraries: {
       DealLib: dealLib.address,
@@ -158,7 +244,7 @@ async function main() {
     },
   });
   console.log("DealAAssetNft impl", dealAAssetNftImpl.address);
-  const dealBAssetNftImpl = await viem.deployContract("DealBAssetNft", [], {
+  const dealBAssetNftImpl = await deploy(viem, "DealBAssetNft", [], {
     client,
     libraries: {
       DealLib: dealLib.address,
@@ -166,69 +252,65 @@ async function main() {
     },
   });
   console.log("DealBAssetNft impl", dealBAssetNftImpl.address);
-  const dealAAssetNftOnlyImpl = await viem.deployContract("DealAAssetNftOnly", [], {
+  const dealAAssetNftOnlyImpl = await deploy(viem, "DealAAssetNftOnly", [], {
     client,
     libraries: { DealAssetNftLib: dealAssetNftLib.address },
   });
   console.log("DealAAssetNftOnly impl", dealAAssetNftOnlyImpl.address);
-  const dealBAssetNftOnlyImpl = await viem.deployContract("DealBAssetNftOnly", [], {
+  const dealBAssetNftOnlyImpl = await deploy(viem, "DealBAssetNftOnly", [], {
     client,
     libraries: { DealAssetNftLib: dealAssetNftLib.address },
   });
   console.log("DealBAssetNftOnly impl", dealBAssetNftOnlyImpl.address);
-  const dealOpenTokenTokenImpl = await viem.deployContract("DealOpenTokenToken", [], {
+  const dealOpenTokenTokenImpl = await deploy(viem, "DealOpenTokenToken", [], {
     client,
     libraries: { DealLib: dealLib.address },
   });
   console.log("DealOpenTokenToken impl", dealOpenTokenTokenImpl.address);
 
-  const pairImpl = await viem.deployContract("DealSwapTemplate", [], { client });
+  const pairImpl = await deploy(viem, "DealSwapTemplate", [], { client });
   console.log("DealSwapTemplate impl", pairImpl.address);
 
-  const dl = await viem.deployContract("DCToken", ["DealCoin", "DC", 0n, dep, dep], { client });
-  const ausd = await viem.deployContract("DCToken", ["AUSD", "AUSD", 0n, dep, dep], { client });
-  const usdt = await viem.deployContract("DCToken", ["USDT", "USDT", 0n, dep, dep], { client });
-  const wrappedNative = await viem.deployContract(
-    "DCToken",
-    ["Wrapped Native", "WNATIVE", 0n, dep, dep],
-    { client },
-  );
-  console.log("DealCoin/DC / AUSD / USDT / WNATIVE", dl.address, ausd.address, usdt.address, wrappedNative.address);
+  const dl = await deploy(viem, "DCToken", ["DealCoin", "DC", 0n, dep, dep], { client });
+  const ausd = await deploy(viem, "DCToken", ["AUSD", "AUSD", 0n, dep, dep], { client });
+  const usdt = await deploy(viem, "DCToken", ["USDT", "USDT", 0n, dep, dep], { client });
+  const wrappedNative = await deploy(viem, "WrappedAGI", [], { client });
+  console.log("DealCoin/DC / AUSD / USDT / WAGI", dl.address, ausd.address, usdt.address, wrappedNative.address);
 
-  const factory = await viem.deployContract("DealFactory", [dealImpl.address, pairImpl.address, 3600], {
+  const factory = await deploy(viem, "DealFactory", [dealImpl.address, pairImpl.address, 3600], {
     client,
   });
   console.log("DealFactory", factory.address);
-  const dealPairManager = await viem.deployContract("DealPairManager", [factory.address], { client });
+  const dealPairManager = await deploy(viem, "DealPairManager", [factory.address], { client });
   console.log("DealPairManager", dealPairManager.address);
-  const dealMessageHub = await viem.deployContract("DealMessageHub", [factory.address], { client });
+  const dealMessageHub = await deploy(viem, "DealMessageHub", [factory.address], { client });
   console.log("DealMessageHub", dealMessageHub.address);
-  const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address], { client });
+  const dealActivityIndex = await deploy(viem, "DealActivityIndex", [factory.address], { client });
   console.log("DealActivityIndex", dealActivityIndex.address);
-  const dealResultIndex = await viem.deployContract("DealResultIndex", [factory.address], { client });
+  const dealResultIndex = await deploy(viem, "DealResultIndex", [factory.address], { client });
   console.log("DealResultIndex", dealResultIndex.address);
-  const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry", [], { client });
+  const dealImplementationRegistry = await deploy(viem, "DealImplementationRegistry", [], { client });
   console.log("DealImplementationRegistry", dealImplementationRegistry.address);
 
-  const infoNft = await viem.deployContract("DealInfoNFT", [factory.address, zeroAddress, 0n], { client });
+  const infoNft = await deploy(viem, "DealInfoNFT", [factory.address, zeroAddress, 0n], { client });
   console.log("DealInfoNFT", infoNft.address);
-  const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer", [], { client });
+  const infoNftRenderer = await deploy(viem, "DealInfoNFTRenderer", [], { client });
   console.log("DealInfoNFTRenderer", infoNftRenderer.address);
-  await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
-  const creditGraph = await viem.deployContract("DealCreditGraph", [infoNft.address], { client });
+  await writeTx(publicClient, infoNft.write.setRenderer([infoNftRenderer.address]));
+  const creditGraph = await deploy(viem, "DealCreditGraph", [infoNft.address], { client });
   console.log("DealCreditGraph", creditGraph.address);
 
   const minterRole = await dl.read.MINTER_ROLE();
 
-  await waitFor(publicClient, await factory.write.setCoreGlobals([
+  await writeTx(publicClient, factory.write.setCoreGlobals([
     dl.address,
     infoNft.address,
     wrappedNative.address,
     dealPairManager.address,
   ]));
-  await waitFor(
+  await writeTx(
     publicClient,
-    await dealImplementationRegistry.write.setDealImplementations([
+    dealImplementationRegistry.write.setDealImplementations([
       dealImpl.address,
       dealNoAssetImpl.address,
       dealAAssetNftImpl.address,
@@ -238,119 +320,138 @@ async function main() {
       dealOpenTokenTokenImpl.address,
     ]),
   );
-  await waitFor(publicClient, await factory.write.setServiceGlobals([
+  await writeTx(publicClient, factory.write.setServiceGlobals([
     dealMessageHub.address,
     creditGraph.address,
     dealActivityIndex.address,
     dealResultIndex.address,
     dealImplementationRegistry.address,
   ]));
-  await waitFor(publicClient, await creditGraph.write.setRecorder([factory.address, true]));
-  await waitFor(publicClient, await factory.write.setRecognizedTokens([ausd.address, usdt.address]));
-  await waitFor(publicClient, await factory.write.setTreasuryByAdmin([dep]));
-  await waitFor(publicClient, await dl.write.grantRole([minterRole, factory.address]));
+  await writeTx(publicClient, creditGraph.write.setRecorder([factory.address, true]));
+  await writeTx(publicClient, factory.write.setRecognizedTokens([ausd.address, usdt.address]));
+  await writeTx(publicClient, factory.write.setAllowedMarginToken([wrappedNative.address, true]));
+  await writeTx(publicClient, factory.write.setTreasuryByAdmin([dep]));
+  await writeTx(publicClient, dl.write.grantRole([minterRole, factory.address]));
 
-  const mintAmount = 10_000_000n * ONE;
-  for (const token of [dl, ausd, usdt, wrappedNative]) {
-    await waitFor(publicClient, await token.write.mint([dep, mintAmount]));
-  }
+  const totalInitialDc =
+    SATOSHI_DC +
+    MARKET_MAKER_DC +
+    PAIR_USDT_REAL_DC +
+    PAIR_AUSD_REAL_DC +
+    PAIR_AGI_REAL_DC;
+  await writeTx(publicClient, dl.write.mint([dep, totalInitialDc]));
+  await writeTx(publicClient, ausd.write.mint([dep, PAIR_AUSD_REAL_OTHER]));
+  await writeTx(publicClient, usdt.write.mint([dep, PAIR_USDT_REAL_OTHER]));
+  await writeTx(publicClient, dl.write.transfer([SATOSHI_ACCOUNT, SATOSHI_DC]));
+  await writeTx(publicClient, dl.write.transfer([MARKET_MAKER_ACCOUNT, MARKET_MAKER_DC]));
 
-  async function createInitPair(tokenAddr: Address) {
-    await waitFor(publicClient, await dealPairManager.write.createPair([tokenAddr, 3, 1000]));
+  async function createInitPair(token: any, tokenAddr: Address, realDc: bigint, realOther: bigint, virtualOther: bigint) {
+    await writeTx(publicClient, dealPairManager.write.createPair([tokenAddr, 3, 1000]));
     const pair = await dealPairManager.read.pairForToken([tokenAddr]);
-    await waitFor(publicClient, await dl.write.transfer([pair, 1_000_000n * ONE]));
-    const t = await viem.getContractAt("DCToken", tokenAddr, { client });
-    await waitFor(publicClient, await t.write.transfer([pair, 1_000_000n * ONE]));
-    await waitFor(publicClient, await dealPairManager.write.initPair([pair, 0n]));
+    await writeTx(publicClient, dl.write.transfer([pair, realDc]));
+    await writeTx(publicClient, token.write.transfer([pair, realOther]));
+    await writeTx(publicClient, dealPairManager.write.initPair([pair, virtualOther]));
     return pair;
   }
 
-  const pairAusd = await createInitPair(ausd.address);
-  const pairUsdt = await createInitPair(usdt.address);
-  console.log("pair DC↔AUSD", pairAusd, "pair DC↔USDT", pairUsdt);
-  await waitFor(publicClient, await infoNft.write.setMintPriceU([zeroAddress, 88n * ONE]));
+  await writeTx(publicClient, wrappedNative.write.deposit({ value: PAIR_AGI_REAL_OTHER }));
+  const pairAusd = await createInitPair(ausd, ausd.address, PAIR_AUSD_REAL_DC, PAIR_AUSD_REAL_OTHER, PAIR_AUSD_VIRTUAL_OTHER);
+  const pairUsdt = await createInitPair(usdt, usdt.address, PAIR_USDT_REAL_DC, PAIR_USDT_REAL_OTHER, PAIR_USDT_VIRTUAL_OTHER);
+  const pairAgi = await createInitPair(wrappedNative, wrappedNative.address, PAIR_AGI_REAL_DC, PAIR_AGI_REAL_OTHER, PAIR_AGI_VIRTUAL_OTHER);
+  console.log("pair DC↔AUSD", pairAusd, "pair DC↔USDT", pairUsdt, "pair DC↔WAGI", pairAgi);
+  await writeTx(publicClient, infoNft.write.setMintPriceU([zeroAddress, 88n * ONE]));
   console.log("DealInfoNFT mint price set to direct burn of 88 DealCoin/DC");
 
   // —— Order book + router ——
-  const orderBook = await viem.deployContract("DealSwapOrderBook", [dep], { client });
+  const orderBook = await deploy(viem, "DealSwapOrderBook", [dep], { client });
   console.log("DealSwapOrderBook", orderBook.address);
 
-  await waitFor(publicClient, await factory.write.setOpsGlobals([orderBook.address, zeroAddress, zeroAddress]));
+  await writeTx(publicClient, factory.write.setOpsGlobals([orderBook.address, zeroAddress, zeroAddress]));
 
-  const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address], {
+  const router = await deploy(viem, "DealRouter", [wrappedNative.address, orderBook.address], {
     client,
   });
   console.log("DealRouter", router.address);
-  const routerQuoter = await viem.deployContract("DealRouterQuoter", [orderBook.address], { client });
+  const routerQuoter = await deploy(viem, "DealRouterQuoter", [orderBook.address], { client });
   console.log("DealRouterQuoter", routerQuoter.address);
 
-  await waitFor(publicClient, await orderBook.write.setRouter([router.address]));
+  await writeTx(publicClient, orderBook.write.setRouter([router.address]));
+  const swapAssetRegistry = await deploy(viem, "DealSwapAssetRegistry", [
+    dep,
+    dealPairManager.address,
+    router.address,
+    dl.address,
+    wrappedNative.address,
+    usdt.address,
+    ausd.address,
+  ], { client });
+  console.log("DealSwapAssetRegistry", swapAssetRegistry.address);
 
   // —— Reader (stateless) ——
-  const dealReader = await viem.deployContract("DealReader", [], { client });
+  const dealReader = await deploy(viem, "DealReader", [], { client });
   console.log("DealReader", dealReader.address);
 
   // —— DC domain stack (registration = DealCoin/DC, rank stake = AUSD) ——
-  const dcDomain = await viem.deployContract("DCDomain", [dl.address, dep], { client });
+  const dcDomain = await deploy(viem, "DCDomain", [dl.address, dep], { client });
   console.log("DCDomain", dcDomain.address);
 
-  const dcRank = await viem.deployContract("DCDomainRank", [dl.address, dcDomain.address, dep], { client });
+  const dcRank = await deploy(viem, "DCDomainRank", [dl.address, dcDomain.address, dep], { client });
   console.log("DCDomainRank", dcRank.address);
-  const dcRankReader = await viem.deployContract("DCDomainRankReader", [dcRank.address], { client });
+  const dcRankReader = await deploy(viem, "DCDomainRankReader", [dcRank.address], { client });
   console.log("DCDomainRankReader", dcRankReader.address);
-  const dcDomainListReader = await viem.deployContract("DCDomainListReader", [dcDomain.address, dcRank.address], { client });
+  const dcDomainListReader = await deploy(viem, "DCDomainListReader", [dcDomain.address, dcRank.address], { client });
   console.log("DCDomainListReader", dcDomainListReader.address);
-  await waitFor(publicClient, await factory.write.setOpsGlobals([zeroAddress, zeroAddress, dcRank.address]));
-  await waitFor(publicClient, await dcRank.write.setAutoCloser([factory.address]));
+  await writeTx(publicClient, factory.write.setOpsGlobals([zeroAddress, zeroAddress, dcRank.address]));
+  await writeTx(publicClient, dcRank.write.setAutoCloser([factory.address]));
 
-  const dcMarket = await viem.deployContract(
+  const dcMarket = await deploy(viem, 
     "DCDomainMarket",
     [dcDomain.address, dl.address, dep, 100n],
     { client },
   );
   console.log("DCDomainMarket", dcMarket.address);
 
-  await waitFor(publicClient, await dcDomain.write.setDomainMarket([dcMarket.address]));
+  await writeTx(publicClient, dcDomain.write.setDomainMarket([dcMarket.address]));
 
-  const dcSwap = await viem.deployContract("DCDomainSwap", [dcDomain.address, dcRank.address, factory.address], {
+  const dcSwap = await deploy(viem, "DCDomainSwap", [dcDomain.address, dcRank.address, factory.address], {
     client,
   });
   console.log("DCDomainSwap", dcSwap.address);
 
-  const dcHall = await viem.deployContract("DCDomainHall", [dcRank.address, dcDomain.address, factory.address], {
+  const dcHall = await deploy(viem, "DCDomainHall", [dcRank.address, dcDomain.address, factory.address], {
     client,
   });
   console.log("DCDomainHall", dcHall.address);
 
-  await waitFor(publicClient, await factory.write.setAllowedCreateFor([dcSwap.address, true]));
-  await waitFor(publicClient, await factory.write.setAllowedCreateFor([dcHall.address, true]));
-  await waitFor(publicClient, await dcRank.write.setDealReporter([dcSwap.address, true]));
-  await waitFor(publicClient, await dcRank.write.setDealReporter([dcHall.address, true]));
+  await writeTx(publicClient, factory.write.setAllowedCreateFor([dcSwap.address, true]));
+  await writeTx(publicClient, factory.write.setAllowedCreateFor([dcHall.address, true]));
+  await writeTx(publicClient, dcRank.write.setDealReporter([dcSwap.address, true]));
+  await writeTx(publicClient, dcRank.write.setDealReporter([dcHall.address, true]));
   console.log("Domain entry permissions OK");
 
   // —— Governance (D + seat-veto governor) ——
   const dInitialHolder = (process.env.D_INITIAL_HOLDER?.trim() || dep) as Address;
-  const dToken = await viem.deployContract("D", [dInitialHolder], { client });
+  const dToken = await deploy(viem, "D", [dInitialHolder], { client });
   console.log("D (votes)", dToken.address);
   console.log("D initial holder", dInitialHolder);
 
-  const nftActivity = await viem.deployContract("DealNftGovernanceActivity", [infoNft.address], { client });
+  const nftActivity = await deploy(viem, "DealNftGovernanceActivity", [infoNft.address], { client });
   console.log("DealNftGovernanceActivity", nftActivity.address);
-  await waitFor(publicClient, await factory.write.setOpsGlobals([zeroAddress, nftActivity.address, zeroAddress]));
+  await writeTx(publicClient, factory.write.setOpsGlobals([zeroAddress, nftActivity.address, zeroAddress]));
 
-  const nftVetoRegistry = await viem.deployContract("NftVetoRegistry", [infoNft.address, nftActivity.address], { client });
+  const nftVetoRegistry = await deploy(viem, "NftVetoRegistry", [infoNft.address, nftActivity.address], { client });
   console.log("NftVetoRegistry", nftVetoRegistry.address);
 
-  const seatVetoGovernor = await viem.deployContract("DealSeatVetoGovernor", [dToken.address, nftVetoRegistry.address], { client });
+  const seatVetoGovernor = await deploy(viem, "DealSeatVetoGovernor", [dToken.address, nftVetoRegistry.address], { client });
   console.log("DealSeatVetoGovernor", seatVetoGovernor.address);
-  await waitFor(publicClient, await nftVetoRegistry.write.setGovernor([seatVetoGovernor.address, true]));
-  await waitFor(publicClient, await nftActivity.write.setRecorder([factory.address, true]));
-  await waitFor(publicClient, await nftActivity.write.setRecorder([nftVetoRegistry.address, true]));
+  await writeTx(publicClient, nftVetoRegistry.write.setGovernor([seatVetoGovernor.address, true]));
+  await writeTx(publicClient, nftActivity.write.setRecorder([factory.address, true]));
+  await writeTx(publicClient, nftActivity.write.setRecorder([nftVetoRegistry.address, true]));
 
   // —— Vote dividend (DealCoin/DC as payout token) ——
   const dividendExecutor = (process.env.DIVIDEND_EXECUTOR?.trim() || dep) as Address;
   const dividendSource = (process.env.DIVIDEND_SOURCE?.trim() || dep) as Address;
-  const voteClaimer = await viem.deployContract(
+  const voteClaimer = await deploy(viem, 
     "VoteDividendClaimer",
     [dToken.address, dl.address, dividendExecutor, dividendSource],
     { client },
@@ -358,14 +459,15 @@ async function main() {
   console.log("VoteDividendClaimer", voteClaimer.address);
   console.log("Dividend executor", dividendExecutor);
   console.log("Dividend source", dividendSource);
-  await waitFor(publicClient, await nftActivity.write.setRecorder([voteClaimer.address, true]));
-  await waitFor(publicClient, await voteClaimer.write.setGovernanceActivity([infoNft.address, nftActivity.address]));
+  await writeTx(publicClient, nftActivity.write.setRecorder([voteClaimer.address, true]));
+  await writeTx(publicClient, voteClaimer.write.setGovernanceActivity([infoNft.address, nftActivity.address]));
 
   const addresses = {
     dlToken: dl.address,
     ausd: ausd.address,
     usdt: usdt.address,
     wrappedNative: wrappedNative.address,
+    agi: wrappedNative.address,
     dealLib: dealLib.address,
     dealAssetNftLib: dealAssetNftLib.address,
     dealImplementation: dealImpl.address,
@@ -387,9 +489,11 @@ async function main() {
     dealInfoNFTRenderer: infoNftRenderer.address,
     pairDlAusd: pairAusd,
     pairDlUsdt: pairUsdt,
+    pairDlAgi: pairAgi,
     dealSwapOrderBook: orderBook.address,
     dealRouter: router.address,
     dealRouterQuoter: routerQuoter.address,
+    dealSwapAssetRegistry: swapAssetRegistry.address,
     dealReader: dealReader.address,
     dcDomain: dcDomain.address,
     dcDomainRank: dcRank.address,
@@ -425,6 +529,7 @@ async function main() {
       DealImplementationRegistry: loadAbi("DealImplementationRegistry.sol/DealImplementationRegistry.json"),
       DealSwapTemplate: loadAbi("DealSwapTemplate.sol/DealSwapTemplate.json"),
       DCToken: loadAbi("DL.sol/DCToken.json"),
+      WrappedAGI: loadAbi("WrappedAGI.sol/WrappedAGI.json"),
       DealFactory: loadAbi("DealFactory.sol/DealFactory.json"),
       DealMessageHub: loadAbi("DealMessageHub.sol/DealMessageHub.json"),
       DealCreditGraph: loadAbi("DealCreditGraph.sol/DealCreditGraph.json"),
@@ -435,6 +540,7 @@ async function main() {
       DealSwapOrderBook: loadAbi("DealSwapOrderBook.sol/DealSwapOrderBook.json"),
       DealRouter: loadAbi("DealSwapRouter.sol/DealRouter.json"),
       DealRouterQuoter: loadAbi("DealRouterQuoter.sol/DealRouterQuoter.json"),
+      DealSwapAssetRegistry: loadAbi("DealSwapAssetRegistry.sol/DealSwapAssetRegistry.json"),
       DealReader: loadAbi("DealReader.sol/DealReader.json"),
       DCDomain: loadAbi("DCdomain.sol/DCDomain.json"),
       DCDomainRank: loadAbi("DCdomainrank.sol/DCDomainRank.json"),

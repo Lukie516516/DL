@@ -685,13 +685,86 @@ describe("Deal Rules", async function () {
 
     const credit = await fixture.dealResultIndex.read.creditOfDeal([dealAddress]);
     assert.equal(credit.exists, true);
-    assert.ok(credit.baseCredit > 0n);
-    assert.ok(credit.baseCredit <= expectedBaseCredit);
-    assert.ok(credit.baseCredit > (expectedBaseCredit * 999_999n) / 1_000_000n);
+    assert.equal(credit.baseCredit, expectedBaseCredit);
     assert.equal(credit.aDelta, credit.baseCredit);
     assert.equal(credit.bDelta, credit.baseCredit);
     assert.equal(await creditGraph.read.creditScore([aliceInfoId]), credit.baseCredit);
     assert.equal(await creditGraph.read.creditScore([bobInfoId]), credit.baseCredit);
+  });
+
+  it("falls back to recognizedToken0 when pricing DC credit and recognizedToken1 has no pair", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, dl, ausd } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+    await fixture.createAndInitPair(ausd.address);
+
+    const aliceInfoId = await fixture.mintInfoNft(alice);
+    const bobInfoId = await fixture.mintInfoNft(bob);
+    const amount = 100n * ONE;
+    const expectedBaseCredit = ((amount * 1n) / 1000n) * 2n;
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: dl.address,
+      aSwapAmount: amount,
+      bSwapToken: dl.address,
+      bSwapAmount: amount,
+      aNftId: aliceInfoId,
+    });
+
+    const dealAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+    const dlBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
+
+    await waitFor(publicClient, await dlAlice.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await dlBob.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await dealBob.write.join([bobInfoId, false]));
+    await waitFor(publicClient, await dealAlice.write.pay());
+    await waitFor(publicClient, await dealBob.write.pay());
+    await waitFor(publicClient, await dealAlice.write.setMyVote([ACCEPT]));
+    await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+
+    const credit = await fixture.dealResultIndex.read.creditOfDeal([dealAddress]);
+    assert.equal(credit.exists, true);
+    assert.equal(credit.baseCredit, expectedBaseCredit);
+    assert.equal(await creditGraph.read.creditScore([aliceInfoId]), expectedBaseCredit);
+    assert.equal(await creditGraph.read.creditScore([bobInfoId]), expectedBaseCredit);
+  });
+
+  it("records no DC credit when no stable pair can price DC into U value", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, dl } = fixture;
+    const creditGraph = await enableCreditGraph(fixture);
+
+    const aliceInfoId = await fixture.mintInfoNft(alice);
+    const bobInfoId = await fixture.mintInfoNft(bob);
+    const amount = 100n * ONE;
+
+    const dealAddress = await createDealAndGetAddress(fixture, {
+      aSwapToken: dl.address,
+      aSwapAmount: amount,
+      bSwapToken: dl.address,
+      bSwapAmount: amount,
+      aNftId: aliceInfoId,
+    });
+
+    const dealAlice = await viem.getContractAt("Deal", dealAddress, { client: { wallet: alice } });
+    const dealBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
+    const dlAlice = await viem.getContractAt("DCToken", dl.address, { client: { wallet: alice } });
+    const dlBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
+
+    await waitFor(publicClient, await dlAlice.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await dlBob.write.approve([dealAddress, amount]));
+    await waitFor(publicClient, await dealBob.write.join([bobInfoId, false]));
+    await waitFor(publicClient, await dealAlice.write.pay());
+    await waitFor(publicClient, await dealBob.write.pay());
+    await waitFor(publicClient, await dealAlice.write.setMyVote([ACCEPT]));
+    await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+
+    const credit = await fixture.dealResultIndex.read.creditOfDeal([dealAddress]);
+    assert.equal(credit.exists, false);
+    assert.equal(await creditGraph.read.creditScore([aliceInfoId]), 0n);
+    assert.equal(await creditGraph.read.creditScore([bobInfoId]), 0n);
   });
 
   it("prices AGI fees through AGI/DC and DC/stable pairs when recording credit", async function () {
@@ -746,6 +819,18 @@ describe("Deal Rules", async function () {
     await waitFor(
       fixture.publicClient,
       await fixture.factory.write.setFeesAndMintOnFees([6, 1000, 2, 1000]),
+    );
+  });
+
+  it("applies the same A/B/C reward cap on the admin parameter path", async function () {
+    const fixture = await deployFixture();
+
+    await assert.rejects(
+      fixture.factory.write.setFeesAndMintOnFeesByAdmin([3, 2]),
+    );
+    await waitFor(
+      fixture.publicClient,
+      await fixture.factory.write.setFeesAndMintOnFeesByAdmin([6, 2]),
     );
   });
 
@@ -867,6 +952,9 @@ describe("Deal Rules", async function () {
     assert.ok(reward.toA > 0n);
     assert.equal(reward.toA, reward.toB);
     assert.equal(reward.toA, reward.toC);
+    const totalReward = reward.toA + reward.toB + reward.toC;
+    assert.ok(totalReward <= 3n * ONE);
+    assert.ok(totalReward > (3n * ONE * 999_990n) / 1_000_000n);
     assert.equal((await dl.read.balanceOf([owner.account.address])) - ownerBefore, reward.toC);
     assert.equal((await dl.read.balanceOf([fixture.alice.account.address])) - aliceBefore, reward.toA);
     assert.equal((await dl.read.balanceOf([fixture.bob.account.address])) - bobBefore, reward.toB);
