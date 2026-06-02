@@ -5,8 +5,8 @@
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
   "addresses": {
     "dlToken": "0x802c43662c38aad9b4299c2f723a6b16f228217a",
-    "ausd": "0xa6f5539dab221a6d4506c88ef461f0b4fca13f35",
-    "usdt": "0xd4940de68d2ac09aabad8342dab845c0cb42efe5",
+    "ausd": "0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123",
+    "usdt": "0x1035F65fc63342F9878C4D03e4372718Dbb33d32",
     "wrappedNative": "0x391747e54d24aa8cef1388fe1c13f8fd57051153",
     "agi": "0x391747e54d24aa8cef1388fe1c13f8fd57051153",
     "dealLib": "0x855a5fd643dcfc60b9740f3fefba69dc5e20df0d",
@@ -28,8 +28,8 @@
     "dealInfoNFT": "0x7e4ed273fac90a87ea4c2205b7c37d4a31b08844",
     "dealInfoNFTRenderer": "0xa62eef802cb4b29d5d2300c024aff30d9a8a57ff",
     "dealCreditGraph": "0x186312887782596fbe83c964b734b485110da4ad",
-    "pairDlAusd": "0xa274e17A0b5b7c1ACC267eF6a132332a1c2DfC73",
-    "pairDlUsdt": "0x31c819797f4E960cB831dF4358Ea801A528F9Cf6",
+    "pairDlAusd": "0xEb92069fDDbD0435F194E3608D37B3D2E81286c9",
+    "pairDlUsdt": "0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc",
     "pairDlAgi": "0x5f0d88650d04EF434BB07a7162d329F87944E3E5",
     "dealSwapOrderBook": "0xfff9fe0a83520ec5455acf74948419b6770368e1",
     "dealRouter": "0x93bf524603cf975746d0761cce13e8610bb8b1e4",
@@ -47,7 +47,13 @@
     "dealNftGovernanceActivity": "0xfa02e68305da7e3370ce952a4d3167000d81ec37",
     "nftVetoRegistry": "0x236e97598d96491ab98d540d31da753a8a7e26b1",
     "dealSeatVetoGovernor": "0x9a83e5559776d4a07a068b08df4cd5f47d240b56",
-    "voteDividendClaimer": "0xa800fea4a0c96cbd0ffdd890fea1d86498b2d605"
+    "voteDividendClaimer": "0xa800fea4a0c96cbd0ffdd890fea1d86498b2d605",
+    "newAusdLocal": "0xa6f5539dab221a6d4506c88ef461f0b4fca13f35",
+    "newUsdtLocal": "0xd4940de68d2ac09aabad8342dab845c0cb42efe5",
+    "oldAusd": "0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123",
+    "oldUsdt": "0x1035F65fc63342F9878C4D03e4372718Dbb33d32",
+    "pairDlOldAusd": "0xEb92069fDDbD0435F194E3608D37B3D2E81286c9",
+    "pairDlOldUsdt": "0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc"
   },
   "abi": {
     "DealLib": [
@@ -33166,5 +33172,7 @@
         "type": "function"
       }
     ]
-  }
+  },
+  "updatedAt": "2026-06-02T03:04:59.562Z",
+  "note": "AUSD/USDT switched to existing chain tokens; DC/old stable pairs initialized with minted DC reserves, existing old stable deposits, and virtual reserves."
 }

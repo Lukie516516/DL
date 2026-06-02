@@ -1,0 +1,76 @@
+# Agiking 前端部署地址交接
+
+部署时间：2026-06-01T13:27:59.770Z
+
+最近更新：2026-06-02，AUSD/USDT 已切换为链上旧币地址，并重新初始化 DC/旧 AUSD、DC/旧 USDT pair。
+
+部署钱包：`0xe88c63d29ece76e3336b0db747e10876c3bf9893`
+
+链：Agiking `31415926`
+
+> 前端请以本文件和 `deployments/agiking-31415926.json` 为准，不要继续使用旧部署文件里的新 AUSD/新 USDT 地址。
+
+## 前端主接入地址
+
+| 模块 | 地址 | 前端用途 |
+| --- | --- | --- |
+| DealFactory | `0x4adaa0097cd4ba6f93b468d869072e2daa17bc2e` | 创建 deal、读取工厂配置、索引当前 deal |
+| DealMessageHub | `0x8170dd805d78d399542c30b922b2c2a5605b848e` | 留言上链入口 |
+| DealReader | `0x50dd6d028c15ba7969d13bedc165f5a6f4f8d67a` | 聚合读取 deal 列表/详情 |
+| DealActivityIndex | `0x299cb40f3395629d6cc8dfa0d3a413d0da9098c0` | 用户活动索引 |
+| DealResultIndex | `0x8947874ad9c28379ec35263ffbb4d862b9d9f154` | 奖励、信用增量、交易过程时间线 |
+| DealPairManager | `0x32af581d3a9f7e630aa2c8fccb6a559372b19c2a` | pair/TWAP/虚拟流动性管理 |
+| DealCreditGraph | `0x186312887782596fbe83c964b734b485110da4ad` | 官方 InfoNFT 信用分 |
+| DealInfoNFT | `0x7e4ed273fac90a87ea4c2205b7c37d4a31b08844` | 官方身份 NFT |
+| DealOpenTokenToken implementation | `0x09e457e3583c15fa3219716c60ca3c7ce1b542c4` | 公开币币单模板 ABI |
+| DCDomainSwap | `0xe03cc76dfd8c4469f48f4fc24a1398f19334400b` | 域名入口创建普通 deal |
+| DCDomainHall | `0x637f920dd32e71c7fd11b33a973cb6351aad832c` | 域名大厅/匹配入口 |
+| DCDomain | `0x6d5f43e98b3a2448aa20e2ac8384ac23e41bc8b0` | 域名 NFT |
+| DCDomainRank | `0x1c29c6b9befd454365859a712a0bcc425b0cdb6f` | 域名黑名单、广告充值/结算、域名收益 |
+| DCDomainRankReader | `0x4850192a67d9df4b030cf31499303e7a1c8c81a6` | 域名排行榜分页、deal 搜索/统计 |
+| DCDomainListReader | `0x36341944f4d744190a75336496d73116a41b2055` | 域名列表分页、排序、搜索、我的域名 |
+| DCDomainMarket | `0x1f1b5213743f56f92fa2ca6166f94899cca5b54a` | 域名市场 |
+| DealCoin/DC | `0x802c43662c38aad9b4299c2f723a6b16f228217a` | 主代币 DC |
+| AUSD | `0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123` | 链上旧 AUSD，当前 recognizedToken0 |
+| USDT | `0x1035F65fc63342F9878C4D03e4372718Dbb33d32` | 链上旧 USDT，当前 recognizedToken1 |
+| WAGI | `0x391747e54d24aa8cef1388fe1c13f8fd57051153` | 包装原生 AGI |
+| DealSwapAssetRegistry | `0xd9f9c2d41c14d3fa19ac83008bc372605888ec59` | 前端读取官方 swap pair；注意 AUSD/USDT pair 已切到下面旧币 pair |
+| DealRouter | `0x93bf524603cf975746d0761cce13e8610bb8b1e4` | swap/router |
+| DealRouterQuoter | `0x805566afb0a00597f28bfbaf6b8a86314c2eee0b` | swap 报价 |
+| DealSwapOrderBook | `0xfff9fe0a83520ec5455acf74948419b6770368e1` | swap order book |
+| D | `0xa5a9d71952ab2a5825fbd3c2527a71c7ac50b94e` | DAO/分红权代币 |
+| VoteDividendClaimer | `0xa800fea4a0c96cbd0ffdd890fea1d86498b2d605` | D 持有人分红领取 |
+
+## 当前官方 pair
+
+| Pair | 地址 | 状态 |
+| --- | --- | --- |
+| DC/旧 AUSD | `0xEb92069fDDbD0435F194E3608D37B3D2E81286c9` | 已初始化，已设置虚拟流动性 |
+| DC/旧 USDT | `0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc` | 已初始化，已设置虚拟流动性 |
+| DC/WAGI | `0x5f0d88650d04EF434BB07a7162d329F87944E3E5` | 已初始化，已设置虚拟流动性 |
+
+## 旧币切换说明
+
+| 项目 | 地址 |
+| --- | --- |
+| 旧 AUSD / recognizedToken0 | `0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123` |
+| 旧 USDT / recognizedToken1 | `0x1035F65fc63342F9878C4D03e4372718Dbb33d32` |
+| 本次部署的新 AUSD，已不作为系统识别币 | `0xa6f5539dab221a6d4506c88ef461f0b4fca13f35` |
+| 本次部署的新 USDT，已不作为系统识别币 | `0xd4940de68d2ac09aabad8342dab845c0cb42efe5` |
+
+## DEX 当前口径
+
+| Pair | 真实 DC | 真实另一侧 | 虚拟另一侧 |
+| --- | ---: | ---: | ---: |
+| DC/旧 USDT | 500,000,000 DC | 0.0056 USDT | 50,000 USDT |
+| DC/旧 AUSD | 500,000,000 DC | 1 AUSD | 200,000 AUSD |
+| DC/WAGI | 50,000,000 DC | 1 wei WAGI | 50,000 AGI |
+
+## 初始 DC 发放
+
+| 账户 | 地址 | 数量 |
+| --- | --- | ---: |
+| 中本聪账户 | `0xa66BB85467AA820F294934D947a2630bb6761483` | 5,000,000,000 DC |
+| 做市商账户 | `0xeB8B726a72aeCA86fbf3e1932f97834243f967Ef` | 500,000,000 DC |
+
+完整 ABI 在 `deployments/agiking-31415926.json`。
