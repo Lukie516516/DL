@@ -20,7 +20,7 @@
     "dealOpenTokenTokenImplementation": "0x09e457e3583c15fa3219716c60ca3c7ce1b542c4",
     "pairImplementation": "0x5555c709bcaf2423155b2c0f3da236351ccdb6c5",
     "dealFactory": "0x4adaa0097cd4ba6f93b468d869072e2daa17bc2e",
-    "dealPairManager": "0x32af581d3a9f7e630aa2c8fccb6a559372b19c2a",
+    "dealPairManager": "0x6eEC737af52A8100bC6234e59c94504715F79682",
     "dealMessageHub": "0x8170dd805d78d399542c30b922b2c2a5605b848e",
     "dealActivityIndex": "0x299cb40f3395629d6cc8dfa0d3a413d0da9098c0",
     "dealResultIndex": "0x8947874ad9c28379ec35263ffbb4d862b9d9f154",
@@ -30,7 +30,7 @@
     "dealCreditGraph": "0x186312887782596fbe83c964b734b485110da4ad",
     "pairDlAusd": "0xEb92069fDDbD0435F194E3608D37B3D2E81286c9",
     "pairDlUsdt": "0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc",
-    "pairDlAgi": "0x5f0d88650d04EF434BB07a7162d329F87944E3E5",
+    "pairDlAgi": "0x16FD32B9f1060392272F1145b28110C3A18fc7C5",
     "dealSwapOrderBook": "0xfff9fe0a83520ec5455acf74948419b6770368e1",
     "dealRouter": "0x93bf524603cf975746d0761cce13e8610bb8b1e4",
     "dealRouterQuoter": "0x805566afb0a00597f28bfbaf6b8a86314c2eee0b",
@@ -33173,6 +33173,6 @@
       }
     ]
   },
-  "updatedAt": "2026-06-02T03:04:59.562Z",
-  "note": "AUSD/USDT switched to existing chain tokens; DC/old stable pairs initialized with minted DC reserves, existing old stable deposits, and virtual reserves."
+  "updatedAt": "2026-06-03T09:09:43.200Z",
+  "note": "AGI pair replaced with real reserves: 500,000 DC + 50 AGI, no virtual AGI reserve."
 }
