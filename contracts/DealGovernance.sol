@@ -152,11 +152,13 @@ contract DealGovernance is ReentrancyGuard {
 
     constructor(address dToken_, address nftVetoRegistry_, address dcToken_, address treasury_) {
         require(dToken_ != address(0), "ZERO_D");
-        require(nftVetoRegistry_ != address(0), "ZERO_NFT_REGISTRY");
         require(dcToken_ != address(0), "ZERO_DC");
         require(treasury_ != address(0), "ZERO_TREASURY");
         dToken = IDTokenGov(dToken_);
-        nftVetoRegistry = INftVetoRegistryGov(nftVetoRegistry_);
+        // nftVetoRegistry defaults to address(0) — NFT veto is disabled until DAO enables it
+        if (nftVetoRegistry_ != address(0)) {
+            nftVetoRegistry = INftVetoRegistryGov(nftVetoRegistry_);
+        }
         dcToken  = IERC20(dcToken_);
         treasury = treasury_;
     }
