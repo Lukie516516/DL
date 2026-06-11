@@ -145,7 +145,7 @@ contract DealSeatVetoGovernor is ReentrancyGuard {
         Proposal storage p = _existingProposal(proposalId);
         if (p.executed) revert AlreadyExecuted();
         if (p.vetoed) revert AlreadyVetoed();
-        if (block.timestamp > p.vetoDeadline) revert VetoWindowClosed();
+        if (block.timestamp >= p.vetoDeadline) revert VetoWindowClosed();
 
         _requirePastSeat(msg.sender, p.snapshot);
         p.vetoed = true;

@@ -280,7 +280,7 @@ contract DealFactory is Ownable {
     address public msgPriceToken; // 0 原生
     uint256 public msgPriceAmountInToken;
 
-    uint32 public minWindowSec = 30;
+    uint32 public minWindowSec = 1800;
 
     /* ---------- 事件 ---------- */
     event DealImplUpdated(address indexed impl);
@@ -487,12 +487,12 @@ contract DealFactory is Ownable {
     }
 
     function setMinWindowSec(uint32 sec_) external onlyOwner {
-        require(sec_ >= 5);
+        require(sec_ >= 300);
         minWindowSec = sec_;
         emit MinWindowSet(sec_);
     }
     function setMinWindowSecByAdmin(uint32 sec_) external onlyAdmin {
-        require(sec_ >= 30);
+        require(sec_ >= 300);
         minWindowSec = sec_;
         emit MinWindowSet(sec_);
     }

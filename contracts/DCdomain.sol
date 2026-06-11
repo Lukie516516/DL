@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -14,6 +15,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  */
 contract DCDomain is ERC721, Ownable {
     using Strings for uint256;
+    using SafeERC20 for IERC20;
 
     // ─────────────────────────────────────────────
     // 常量 & 配置
@@ -97,7 +99,7 @@ contract DCDomain is ERC721, Ownable {
 
         uint256 price = getPrice(domainName);
 
-        require(paymentToken.transferFrom(msg.sender, treasury, price), "DCDomain: payment failed");
+        paymentToken.safeTransferFrom(msg.sender, treasury, price);
 
         _tokenIdCounter++;
         uint256 tokenId = _tokenIdCounter;
@@ -376,6 +378,22 @@ contract DCDomain is ERC721, Ownable {
         require(tokenId != 0 && ownerOf(tokenId) == newOwner, "DCDomain: bad sync");
         resolve[domainName] = newOwner;
         emit ResolveSet(domainName, newOwner);
+    }
+
+    /// @dev 任何 ERC721 转让（含直接 transferFrom、外部市场）时自动同步 resolve。
+    ///      mint (from==0) 和 burn (to==0) 不同步。
+    function _update(address to, uint256 tokenId, address auth)
+        internal override returns (address)
+    {
+        address from = super._update(to, tokenId, auth);
+        if (from != address(0) && to != address(0)) {
+            string memory domain = _tokenIdToDomain[tokenId];
+            if (bytes(domain).length > 0) {
+                resolve[domain] = to;
+                emit ResolveSet(domain, to);
+            }
+        }
+        return from;
     }
 
     // ─────────────────────────────────────────────

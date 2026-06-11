@@ -834,15 +834,14 @@ describe("Domain Flows", async function () {
     const rankAsAlicePolicy = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
       client: { wallet: alice },
     });
-    const AD_FEE_FIXED = 2;
     const fixedHourly = 600n * ONE;
     await waitFor(
       publicClient,
-      await rankAsAlicePolicy.write.setDomainAdFeePolicy(["rank11", AD_FEE_FIXED, 0n, fixedHourly]),
+      await rankAsAlicePolicy.write.setDomainHourlyRate(["rank11", fixedHourly]),
     );
     await waitFor(
       publicClient,
-      await rankAsAlicePolicy.write.setDomainAdFeePolicy(["rank22", AD_FEE_FIXED, 0n, fixedHourly]),
+      await rankAsAlicePolicy.write.setDomainHourlyRate(["rank22", fixedHourly]),
     );
 
     const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
@@ -922,8 +921,9 @@ describe("Domain Flows", async function () {
       deal1,
       bob.account.address,
     ]);
-    assert.ok(statusAfter[0] < depositAmount);
-    assert.ok(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]) < 100n);
+    // fee-on-completion model: no fee charged until deal reaches status=3 (Completed)
+    assert.equal(statusAfter[0], depositAmount);
+    assert.equal(await dcDomainRank.read.depositPercent(["rank11", deal1, bob.account.address]), 100n);
     assert.equal(await dcDomainRank.read.lastDepositAmount(["rank11", deal1, bob.account.address]), depositAmount);
 
     const rankedAfter = await dcDomainRankReader.read.getLeaderboard(["rank11", 10n]);
@@ -931,8 +931,7 @@ describe("Domain Flows", async function () {
     assert.ok(rankedAfter[0].score > 0n);
 
     const pendingBeforeWithdraw = await dcDomainRank.read.pendingHolderRewards(["rank11"]);
-    assert.ok(pendingBeforeWithdraw >= 600n * ONE);
-    assert.ok(pendingBeforeWithdraw <= 601n * ONE);
+    assert.equal(pendingBeforeWithdraw, 0n);
     await waitFor(publicClient, await rankAsBob.write.withdraw(["rank11", deal1]));
     const withdrawnStatus = await rankAsBob.read.myDealStatusOf([
       "rank11",
@@ -1045,7 +1044,7 @@ describe("Domain Flows", async function () {
     assert.equal(balanceAfterReward - balanceBeforeReward, pendingAfterTerminalWithdraw);
   });
 
-  it("rejects rank deposit until domain holder enables an ad fee policy", async function () {
+  it("allows rank deposit without ad fee policy (rate defaults to zero)", async function () {
     const fixture = await deployDomainFixture();
     const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
 
@@ -1080,39 +1079,27 @@ describe("Domain Flows", async function () {
     });
     const dlAsBob = await viem.getContractAt("DCToken", dl.address, { client: { wallet: bob } });
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainRank.address, 2000n * ONE]));
-    await assert.rejects(
-      rankAsBob.write.deposit(["pol000", dealAddr, 1000n * ONE]),
-      /ad fees disabled/,
-    );
-
-    const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
-      client: { wallet: alice },
-    });
-    await waitFor(
-      publicClient,
-      await rankAsAlice.write.setDomainAdFeePolicy(["pol000", 2, 0n, 500n * ONE]),
-    );
     await waitFor(publicClient, await rankAsBob.write.deposit(["pol000", dealAddr, 1000n * ONE]));
+    const st = await rankAsBob.read.myDealStatusOf(["pol000", dealAddr, bob.account.address]);
+    assert.equal(st[0], 1000n * ONE, "deposit credited");
   });
 
-  it("applies proportional ad fee as a fraction of balance per hour", async function () {
+  it("applies fixed hourly rate fee and captures rate at deposit time", async function () {
     const fixture = await deployDomainFixture();
     const { viem, publicClient, alice, bob, dl, dcDomainRank, dcDomainSwap, ausd, usdt } = fixture;
-    const testClient = await viem.getTestClient();
 
     await fixture.registerDomain(alice, "prop01");
 
     const rankAsAlice = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
       client: { wallet: alice },
     });
+    const fixedRate = 100n * ONE;
     await waitFor(
       publicClient,
-      await rankAsAlice.write.setDomainAdFeePolicy(["prop01", 1, 100n, 0n]),
+      await rankAsAlice.write.setDomainHourlyRate(["prop01", fixedRate]),
     );
-    const policy = await dcDomainRank.read.getDomainAdFeePolicy(["prop01"]);
-    assert.equal(Number(policy[0]), 1, "mode proportional");
-    assert.equal(policy[1], 100n);
-    assert.equal(policy[2], 0n);
+    const rateSet = await dcDomainRank.read.getDomainHourlyRate(["prop01"]);
+    assert.equal(rateSet, fixedRate, "hourly rate stored correctly");
 
     const swapAsBob = await viem.getContractAt("DCDomainSwap", dcDomainSwap.address, {
       client: { wallet: bob },
@@ -1152,19 +1139,7 @@ describe("Domain Flows", async function () {
       bob.account.address,
     ]);
     assert.equal(stRightAfter[0], depositAmount, "deposit should be credited for this deal");
-
-    const blockBefore = await publicClient.getBlock();
-    // One billing hour for proportional: H = floor((elapsed + 3599) / 3600) must be 1 → elapsed <= 3600
-    await testClient.setNextBlockTimestamp({ timestamp: blockBefore.timestamp + 3599n });
-    await testClient.mine({ blocks: 1 });
-
-    await waitFor(publicClient, await rankAsBob.write.settle(["prop01", dealAddr, bob.account.address]));
-    const after = await rankAsBob.read.myDealStatusOf([
-      "prop01",
-      dealAddr,
-      bob.account.address,
-    ]);
-    assert.equal(after[0], 9900n * ONE);
+    assert.equal(stRightAfter[5], fixedRate, "hourly rate captured at deposit time");
   });
 
   it("matches a visitor in DCDomainHall for token-to-token deals and settles end-to-end", async function () {

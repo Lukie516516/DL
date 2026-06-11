@@ -3,12 +3,8 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
-interface IERC20 {
-    function transfer(address to, uint256 value) external returns (bool);
-    function transferFrom(address from, address to, uint256 value) external returns (bool);
-    function balanceOf(address who) external view returns (uint256);
-}
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IDCDomain {
     function isRegistered(string calldata domainName) external view returns (bool);
@@ -28,19 +24,14 @@ interface IDealStatusView {
  *         充值可选：有充值才扣小时费，没充值则该条目分数为 0。
  *         访客入口保留兼容 ABI，但不再作为业务权限限制。
  *         小时费结算产生的广告费暂存本合约，域名 NFT 持有人调用 withdraw(domainName) 领取。
- *         广告费模式由域名 NFT 持有人配置：None（默认，禁止充值）/ Proportional（按余额比例）/ Fixed（固定速率）。
+ *         广告费由域名 NFT 持有人配置固定时费（wei/小时），0 表示关闭广告充值。
  */
 contract DCDomainRank is ReentrancyGuard {
+    using SafeERC20 for IERC20;
 
     uint256 public constant MAX_LEADERBOARD = 50;
 
     /// @dev 0=None 禁止广告充值；1=等比（每小时扣当前余额的 bps）；2=等差（固定每小时 wei）
-    enum AdFeeMode {
-        None,
-        Proportional,
-        Fixed
-    }
-
     IERC20    public immutable dcToken;
     IDCDomain public immutable dcDomain;
     address   public owner;
@@ -50,6 +41,9 @@ contract DCDomainRank is ReentrancyGuard {
     uint256 public minDeposit = 50 ether;
     uint256 public baseHourlyRate = 500 ether;
     uint256 public depositRateBps = 1000;
+
+    uint256 public constant MAX_PROTOCOL_FEE_BPS = 5000; // 50% hard cap
+    uint256 public protocolFeeBps = 0;                   // default: 100% to domain holder
 
     // ── 按 (域名, Deal, 商家) 粒度的充值记录 ──
     struct Player {
@@ -100,10 +94,11 @@ contract DCDomainRank is ReentrancyGuard {
     /// @dev 按域名累积、待域名 NFT 持有人提取的广告费（DC，与商家充值同一 token）
     mapping(string => uint256) private _holderRewardsPending;
 
-    /// @dev 域名级广告费策略（默认 None，映射为 0）
-    mapping(string => uint8) private _domainAdFeeMode;
-    mapping(string => uint256) private _domainProportionalBpsPerHour;
+    /// @dev 域名固定时费（wei/小时），0 = 关闭广告
     mapping(string => uint256) private _domainFixedHourlyRate;
+
+    /// @dev 域名最低充值金额（wei），由域名商自行设置
+    mapping(string => uint256) private _domainMinDeposit;
 
     // ── 事件 ──
     event DealReporterSet(address indexed reporter, bool allowed);
@@ -129,12 +124,9 @@ contract DCDomainRank is ReentrancyGuard {
     event BlacklistedSet(string indexed domain, address indexed account, bool banned);
     event KickInactivitySecondsSet(uint256 seconds_);
     event AutoCloserSet(address indexed closer);
-    event DomainAdFeePolicySet(
-        string domain,
-        uint8 mode,
-        uint256 proportionalBpsPerHour,
-        uint256 fixedHourlyRateWei
-    );
+    event ProtocolFeeBpsSet(uint256 oldBps, uint256 newBps);
+    event DomainHourlyRateSet(string domain, uint256 rateWei);
+    event DomainMinDepositSet(string domain, uint256 minDeposit);
 
     constructor(address _dcToken, address _dcDomain, address _treasury) {
         require(_dcToken   != address(0), "ZERO_TOKEN");
@@ -270,58 +262,41 @@ contract DCDomainRank is ReentrancyGuard {
         uint256 amount = _holderRewardsPending[domainName];
         require(amount > 0, "DCDomainRank: no rewards");
         _holderRewardsPending[domainName] = 0;
-        require(dcToken.transfer(msg.sender, amount), "DCDomainRank: reward transfer failed");
+
+        uint256 protocolCut = protocolFeeBps > 0 ? (amount * protocolFeeBps) / 10000 : 0;
+        uint256 holderGet = amount - protocolCut;
+
+        if (protocolCut > 0) dcToken.safeTransfer(treasury, protocolCut);
+        dcToken.safeTransfer(msg.sender, holderGet);
         emit HolderAdRewardsWithdrawn(msg.sender, domainName, amount);
     }
 
     // ═══════════════════════════════════════════
-    // 域名 NFT 持有人：广告费策略（默认 None）
+    // 域名 NFT 持有人：广告时费设置（0 = 关闭）
     // ═══════════════════════════════════════════
 
-    function getDomainAdFeePolicy(string calldata domainName)
-        external
-        view
-        returns (uint8 mode, uint256 proportionalBpsPerHour, uint256 fixedHourlyRateWei)
-    {
-        mode = _domainAdFeeMode[domainName];
-        proportionalBpsPerHour = _domainProportionalBpsPerHour[domainName];
-        fixedHourlyRateWei = _domainFixedHourlyRate[domainName];
+    function getDomainHourlyRate(string calldata domainName) external view returns (uint256 rateWei) {
+        return _domainFixedHourlyRate[domainName];
     }
 
-    /// @notice 设置本域名广告费模式；仅域名 NFT 持有人可调用
-    /// @param mode 0=None（禁止商家 deposit）1=等比 2=等差
-    /// @param proportionalBpsPerHour 等比：每小时从当前余额扣除的比例（万分比），须 1..9999
-    /// @param fixedHourlyRateWei 等差：每小时固定扣除的 DC（wei），mode=2 时须 >0
-    function setDomainAdFeePolicy(
-        string calldata domainName,
-        uint8 mode,
-        uint256 proportionalBpsPerHour,
-        uint256 fixedHourlyRateWei
-    ) external {
+    /// @notice 设置本域名每小时广告费（wei）；0 = 关闭广告充值。仅域名 NFT 持有人可调用。
+    function setDomainHourlyRate(string calldata domainName, uint256 rateWei) external {
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
         require(_domainOwner(domainName) == msg.sender, "DCDomainRank: not domain owner");
-        require(mode <= uint8(AdFeeMode.Fixed), "DCDomainRank: bad mode");
+        _domainFixedHourlyRate[domainName] = rateWei;
+        emit DomainHourlyRateSet(domainName, rateWei);
+    }
 
-        if (mode == uint8(AdFeeMode.None)) {
-            _domainAdFeeMode[domainName] = mode;
-            _domainProportionalBpsPerHour[domainName] = 0;
-            _domainFixedHourlyRate[domainName] = 0;
-        } else if (mode == uint8(AdFeeMode.Proportional)) {
-            require(
-                proportionalBpsPerHour > 0 && proportionalBpsPerHour < 10000,
-                "DCDomainRank: proportional bps"
-            );
-            _domainAdFeeMode[domainName] = mode;
-            _domainProportionalBpsPerHour[domainName] = proportionalBpsPerHour;
-            _domainFixedHourlyRate[domainName] = 0;
-        } else {
-            require(fixedHourlyRateWei > 0, "DCDomainRank: fixed rate");
-            _domainAdFeeMode[domainName] = mode;
-            _domainProportionalBpsPerHour[domainName] = 0;
-            _domainFixedHourlyRate[domainName] = fixedHourlyRateWei;
-        }
+    /// @notice 设置本域名最低充值金额（wei）；仅域名 NFT 持有人可调用。
+    function setDomainMinDeposit(string calldata domainName, uint256 minDepositWei) external {
+        require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
+        require(_domainOwner(domainName) == msg.sender, "DCDomainRank: not domain owner");
+        _domainMinDeposit[domainName] = minDepositWei;
+        emit DomainMinDepositSet(domainName, minDepositWei);
+    }
 
-        emit DomainAdFeePolicySet(domainName, mode, proportionalBpsPerHour, fixedHourlyRateWei);
+    function getDomainMinDeposit(string calldata domainName) external view returns (uint256) {
+        return _domainMinDeposit[domainName];
     }
 
     // ═══════════════════════════════════════════
@@ -332,56 +307,21 @@ contract DCDomainRank is ReentrancyGuard {
         return baseHourlyRate + (depositAmount * depositRateBps / 10000);
     }
 
-    /// @dev 连续 H 个计费小时后的余额：每小时末余额乘 (1 - bps/10000)
-    function _balanceAfterProportionalHours(uint256 balance, uint256 bpsPerHour, uint256 fullHours)
-        internal
-        pure
-        returns (uint256)
-    {
-        if (fullHours == 0 || balance == 0) return balance;
-        uint256 factor = 1e18;
-        uint256 base = Math.mulDiv(10_000 - bpsPerHour, 1e18, 10_000);
-        uint256 exp = fullHours;
-        while (exp > 0) {
-            if (exp & 1 == 1) {
-                factor = Math.mulDiv(factor, base, 1e18);
-            }
-            base = Math.mulDiv(base, base, 1e18);
-            exp >>= 1;
-        }
-        return Math.mulDiv(balance, factor, 1e18);
-    }
-
-    function _billingTimestamp(address deal) internal view returns (uint256) {
-        (bool ok, uint8 s, uint64 ended) = _dealStatus(deal);
-        if (ok && s >= 3 && ended != 0) return ended;
-        return block.timestamp;
-    }
-
-    function _pendingConsumeDeal(string memory domainName, address deal, Player storage p) internal view returns (uint256) {
+function _pendingConsumeDeal(string memory domainName, address deal, Player storage p) internal view returns (uint256) {
         if (!p.active || p.depositedDC == 0) return 0;
-        uint256 chargeUntil = _billingTimestamp(deal);
-        if (p.joinedAt == 0 || chargeUntil <= p.joinedAt) return 0;
 
-        uint8 mode = _domainAdFeeMode[domainName];
-        if (mode == uint8(AdFeeMode.None)) return 0;
+        // 只有 deal Completed（status == 3）才触发收费；取消/放弃全额退
+        (bool ok, uint8 s, uint64 ended) = _dealStatus(deal);
+        if (!ok || s != 3 || ended == 0) return 0;
 
-        uint256 elapsed = chargeUntil - p.joinedAt;
+        if (p.joinedAt == 0 || ended <= p.joinedAt) return 0;
 
-        if (mode == uint8(AdFeeMode.Fixed)) {
-            uint256 rate = _domainFixedHourlyRate[domainName];
-            if (rate == 0) return 0;
-            uint256 due = (elapsed * rate + 3599) / 3600;
-            return due > p.depositedDC ? p.depositedDC : due;
-        }
+        uint256 rate = p.hourlyRate;  // 进场时快照的费率，域名商后续改价不影响已在途订单
+        if (rate == 0) return 0;
 
-        uint256 H = (elapsed + 3599) / 3600;
-        if (H == 0) return 0;
-
-        uint256 bps = _domainProportionalBpsPerHour[domainName];
-        if (bps == 0 || bps >= 10_000) return 0;
-        uint256 afterB = _balanceAfterProportionalHours(p.depositedDC, bps, H);
-        return p.depositedDC - afterB;
+        uint256 elapsed = ended - uint256(p.joinedAt);
+        uint256 due = (elapsed * rate + 3599) / 3600;
+        return due > p.depositedDC ? p.depositedDC : due;
     }
 
     function _settleDeal(string memory domainName, address deal, address merchantAddr) internal returns (bool changed) {
@@ -436,9 +376,9 @@ contract DCDomainRank is ReentrancyGuard {
     function deposit(string calldata domainName, address deal, uint256 amount) external nonReentrant {
         require(deal != address(0), "DCDomainRank: zero deal");
         require(dcDomain.isRegistered(domainName), "DCDomainRank: domain not registered");
-        require(_domainAdFeeMode[domainName] != uint8(AdFeeMode.None), "DCDomainRank: ad fees disabled");
         require(!_blacklisted[domainName][msg.sender], "DCDomainRank: blacklisted");
-        require(amount >= minDeposit, "DCDomainRank: below minDeposit");
+        uint256 effectiveMin = _domainMinDeposit[domainName] > minDeposit ? _domainMinDeposit[domainName] : minDeposit;
+        require(amount >= effectiveMin, "DCDomainRank: below minDeposit");
         require(_entryInList[domainName][deal][msg.sender], "DCDomainRank: deal not reported");
         require(_isDealOpenForLeaderboard(deal), "DCDomainRank: deal closed");
 
@@ -446,20 +386,13 @@ contract DCDomainRank is ReentrancyGuard {
 
         Player storage p = _dealPlayers[domainName][deal][msg.sender];
 
-        require(dcToken.transferFrom(msg.sender, address(this), amount), "DCDomainRank: transfer failed");
+        dcToken.safeTransferFrom(msg.sender, address(this), amount);
 
         p.depositedDC += amount;
         p.active       = true;
-        p.joinedAt     = block.timestamp;
-
-        uint8 mode = _domainAdFeeMode[domainName];
-        if (mode == uint8(AdFeeMode.Fixed)) {
+        if (p.joinedAt == 0) {
+            p.joinedAt   = block.timestamp;
             p.hourlyRate = _domainFixedHourlyRate[domainName];
-        } else if (mode == uint8(AdFeeMode.Proportional)) {
-            uint256 bps = _domainProportionalBpsPerHour[domainName];
-            p.hourlyRate = Math.mulDiv(p.depositedDC, bps, 10_000);
-        } else {
-            p.hourlyRate = 0;
         }
 
         _lastDepositAt[domainName][deal][msg.sender] = block.timestamp;
@@ -482,7 +415,7 @@ contract DCDomainRank is ReentrancyGuard {
         p.active      = false;
 
         if (remaining > 0) {
-            require(dcToken.transfer(msg.sender, remaining), "DCDomainRank: refund failed");
+            dcToken.safeTransfer(msg.sender, remaining);
         }
 
         emit Withdrawn(msg.sender, domainName, deal, remaining, p.totalConsumed);
@@ -538,7 +471,7 @@ contract DCDomainRank is ReentrancyGuard {
         _dealAdClosed[domainName][deal] = true;
 
         if (refunded > 0) {
-            require(dcToken.transfer(merchantAddr, refunded), "DCDomainRank: refund failed");
+            dcToken.safeTransfer(merchantAddr, refunded);
         }
 
         emit Withdrawn(merchantAddr, domainName, deal, refunded, p.totalConsumed);
@@ -566,12 +499,12 @@ contract DCDomainRank is ReentrancyGuard {
     }
 
     // ═══════════════════════════════════════════
-    // 域名内排行榜：按每笔交易的 totalConsumed 排序
+    // 域名内排行榜：分数 = 已消耗 + 当前剩余余额（即总投入）
     // ═══════════════════════════════════════════
 
     function _getDealScore(string memory domainName, address deal, address merchantAddr) internal view returns (uint256) {
         Player storage p = _dealPlayers[domainName][deal][merchantAddr];
-        return p.totalConsumed + _pendingConsumeDeal(domainName, deal, p);
+        return p.totalConsumed + p.depositedDC;
     }
 
     function rawDomainEntryCount(string calldata domainName) external view returns (uint256) {
@@ -624,16 +557,7 @@ contract DCDomainRank is ReentrancyGuard {
         active = p.active && realBal > 0;
         hourlyRate = p.hourlyRate;
 
-        uint8 mode = _domainAdFeeMode[domainName];
-        if (mode == uint8(AdFeeMode.Fixed) && p.hourlyRate > 0) {
-            hoursRemaining = realBal / p.hourlyRate;
-        } else if (mode == uint8(AdFeeMode.Proportional)) {
-            uint256 bps = _domainProportionalBpsPerHour[domainName];
-            uint256 nominal = bps > 0 ? Math.mulDiv(realBal, bps, 10_000) : 0;
-            hoursRemaining = nominal > 0 ? realBal / nominal : type(uint256).max;
-        } else {
-            hoursRemaining = 0;
-        }
+        hoursRemaining = p.hourlyRate > 0 ? realBal / p.hourlyRate : 0;
         percent = base == 0 || realBal == 0 ? 0 : (realBal >= base ? 100 : (realBal * 100) / base);
         lastDepositAmount_ = _lastDepositAmount[domainName][deal][merchant];
     }
@@ -727,7 +651,7 @@ contract DCDomainRank is ReentrancyGuard {
         p.active = false;
 
         if (remaining > 0) {
-            require(dcToken.transfer(target, remaining), "DCDomainRank: kick refund failed");
+            dcToken.safeTransfer(target, remaining);
         }
 
         emit KickedInactiveDeal(domainName, deal, target, msg.sender);
@@ -868,6 +792,12 @@ contract DCDomainRank is ReentrancyGuard {
     function setDepositRateBps(uint256 newBps) external onlyOwner {
         require(newBps <= 10000, "DCDomainRank: bps > 100%");
         depositRateBps = newBps;
+    }
+
+    function setProtocolFeeBps(uint256 newBps) external onlyOwner {
+        require(newBps <= MAX_PROTOCOL_FEE_BPS, "DCDomainRank: exceeds 50% cap");
+        emit ProtocolFeeBpsSet(protocolFeeBps, newBps);
+        protocolFeeBps = newBps;
     }
 
     function transferOwnership(address newOwner) external onlyOwner {

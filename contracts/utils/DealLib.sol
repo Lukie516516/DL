@@ -715,13 +715,12 @@ library DealLib {
         );
         uint256 perRoleA = _dealRewardFromRecognizedSideA(p);
         uint256 perRoleB = _dealRewardFromRecognizedSideB(p);
-        uint256 perRole = perRoleA + perRoleB;
-        if (perRole == 0) return (0, 0, 0, address(0), 0);
+        if (perRoleA == 0 && perRoleB == 0) return (0, 0, 0, address(0), 0);
 
-        toA = perRole;
-        toB = perRole;
+        toA = perRoleA;
+        toB = perRoleB;
         if (cToken != 0) {
-            toC = perRole;
+            toC = perRoleA + perRoleB;
         }
     }
 

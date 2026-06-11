@@ -27,16 +27,23 @@ interface IDealSwapOrderBookHook {
     function settlePair(address pair, uint256 maxBuyOrders, uint256 maxSellOrders) external;
 }
 
+interface IDealPairManager {
+    function pairForToken(address tokenOther) external view returns (address);
+}
+
 contract DealRouter is ReentrancyGuard {
     using SafeTransfer for IERC20;
 
     /* ---------------- config ---------------- */
     address public immutable WNATIVE;
     address public immutable ORDER_BOOK;
-    constructor(address _wNative, address _orderBook) {
+    address public immutable PAIR_MANAGER;
+    constructor(address _wNative, address _orderBook, address _pairManager) {
         require(_wNative != address(0), "ZERO_WNATIVE");
+        require(_pairManager != address(0), "ZERO_PAIR_MANAGER");
         WNATIVE = _wNative;
         ORDER_BOOK = _orderBook;
+        PAIR_MANAGER = _pairManager;
     }
     receive() external payable { require(msg.sender == WNATIVE, "ETH_NOT_ALLOWED"); }
 
@@ -141,6 +148,10 @@ contract DealRouter is ReentrancyGuard {
         IERC20(WNATIVE).safeTransfer(pair, ethAmount);
     }
     function _deadline(uint256 d) internal view { require(block.timestamp <= d, "EXPIRED"); }
+    function _assertValidPair(address pair) internal view {
+        address token1 = IDealPair(pair).token1();
+        require(IDealPairManager(PAIR_MANAGER).pairForToken(token1) == pair, "INVALID_PAIR");
+    }
     function _maybeSettle(address pair) internal {
         if (ORDER_BOOK != address(0)) {
             IDealSwapOrderBookHook(ORDER_BOOK).settlePair(pair, 1, 1);
@@ -604,24 +615,28 @@ contract DealRouter is ReentrancyGuard {
     // —— 单跳（ERC20） —— //
     function swapExact1For0(address pair, uint256 amount1In, uint256 minOut0Net, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact1For0Hybrid(pair, amount1In, msg.sender, msg.sender, minOut0Net);
         emit SwapExact1For0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap1ForExact0Net(address pair, uint256 out0NetTarget, uint256 maxAmount1In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResSingle memory r = _exec1ForExact0Net(pair, msg.sender, msg.sender, out0NetTarget, maxAmount1In);
         _maybeSettle(pair);
         emit Swap1ForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, msg.sender);
     }
     function swapExact0For1(address pair, uint256 amount0In, uint256 minOut1, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact0For1Hybrid(pair, amount0In, msg.sender, msg.sender, minOut1);
         emit SwapExact0For1(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap0ForExact1(address pair, uint256 out1Target, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResSingle memory r = _exec0ForExact1(pair, msg.sender, msg.sender, out1Target, maxAmount0In);
         _maybeSettle(pair);
         emit Swap0ForExact1(pair, msg.sender, r.inAmt, out1Target, r.feeSide, msg.sender);
@@ -630,6 +645,7 @@ contract DealRouter is ReentrancyGuard {
     // —— 单跳（ETH/BNB via WNATIVE） —— //
     function swapExactETHFor0(address pair, uint256 minOut0Net, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         uint256 ethIn = msg.value;
         ResQueued memory r = _execExactETHFor0Hybrid(pair, msg.sender, ethIn, minOut0Net);
         emit SwapExactETHFor0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
@@ -637,6 +653,7 @@ contract DealRouter is ReentrancyGuard {
     }
     function swapETHForExact0Net(address pair, uint256 out0NetTarget, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         uint256 ethMax = msg.value;
         ResSingle memory r = _execETHForExact0Net(pair, msg.sender, out0NetTarget, ethMax);
         if (r.refund > 0) _sendETH(msg.sender, r.refund);
@@ -645,12 +662,14 @@ contract DealRouter is ReentrancyGuard {
     }
     function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact0ForETHHybrid(pair, amount0In, msg.sender, msg.sender, minOutETH);
         emit SwapExact0ForETH(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
     }
     function swap0ForExactETH(address pair, uint256 outETHTarget, uint256 maxAmount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResSingle memory r = _exec0ForExactETH(pair, outETHTarget, msg.sender, msg.sender, maxAmount0In);
         _maybeSettle(pair);
         emit Swap0ForExactETH(pair, msg.sender, r.inAmt, outETHTarget, r.feeSide, msg.sender);
@@ -659,6 +678,8 @@ contract DealRouter is ReentrancyGuard {
     // —— 双跳（A ↔ DC ↔ B，ERC20） —— //
     function swapExact1For1ViaDL(address pairA, address pairB, uint256 amountAIn, uint256 minOutB, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairA);
+        _assertValidPair(pairB);
         ResDouble memory r = _execExact1For1ViaDL(pairA, pairB, msg.sender, msg.sender, amountAIn, minOutB);
         _maybeSettle(pairA);
         _maybeSettle(pairB);
@@ -666,6 +687,8 @@ contract DealRouter is ReentrancyGuard {
     }
     function swap1ForExact1ViaDL(address pairA, address pairB, uint256 outBTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairA);
+        _assertValidPair(pairB);
         ResDouble memory r = _exec1ForExact1ViaDL(pairA, pairB, msg.sender, msg.sender, outBTarget, maxAmountAIn);
         _maybeSettle(pairA);
         _maybeSettle(pairB);
@@ -675,6 +698,8 @@ contract DealRouter is ReentrancyGuard {
     // —— 双跳便捷（ETH ↔ DC ↔ ERC20） —— //
     function swapExactETHFor1ViaDL(address pairWNATIVE, address pairB, uint256 minOutB, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairWNATIVE);
+        _assertValidPair(pairB);
         uint256 ethIn = msg.value;
         ResDouble memory r = _execExactETHFor1ViaDL(pairWNATIVE, pairB, msg.sender, ethIn, minOutB);
         _maybeSettle(pairWNATIVE);
@@ -683,6 +708,8 @@ contract DealRouter is ReentrancyGuard {
     }
     function swap1ForExactETHViaDL(address pairA, address pairWNATIVE, uint256 outETHTarget, uint256 maxAmountAIn, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairA);
+        _assertValidPair(pairWNATIVE);
         ResDouble memory r = _exec1ForExactETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, outETHTarget, maxAmountAIn);
         _maybeSettle(pairA);
         _maybeSettle(pairWNATIVE);
@@ -692,6 +719,8 @@ contract DealRouter is ReentrancyGuard {
     // u（A） exact-in -> ETH min-out
     function swapExact1ForETHViaDL(address pairA, address pairWNATIVE, uint256 amountAIn, uint256 minOutETH, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairA);
+        _assertValidPair(pairWNATIVE);
         ResDouble memory r = _execExact1ForETHViaDL(pairA, pairWNATIVE, msg.sender, msg.sender, amountAIn, minOutETH);
         _maybeSettle(pairA);
         _maybeSettle(pairWNATIVE);
@@ -700,6 +729,8 @@ contract DealRouter is ReentrancyGuard {
     // ETH max-in -> u exact-out（退回未用 ETH）
     function swapETHForExact1ViaDL(address pairWNATIVE, address pairB, uint256 outBTarget, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pairWNATIVE);
+        _assertValidPair(pairB);
         uint256 ethMax = msg.value;
         ResDouble memory r = _execETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, msg.sender, outBTarget, ethMax);
         uint256 ethRefund = ethMax - r.inAUsed;
@@ -711,6 +742,7 @@ contract DealRouter is ReentrancyGuard {
 
     function swapExact0For1OrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact0For1Hybrid(pair, amount0In, msg.sender, msg.sender, 0);
         emit SwapExact0For1(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
@@ -718,6 +750,7 @@ contract DealRouter is ReentrancyGuard {
 
     function swapExact1For0OrQueue(address pair, uint256 amount1In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact1For0Hybrid(pair, amount1In, msg.sender, msg.sender, 0);
         emit SwapExact1For0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
@@ -725,6 +758,7 @@ contract DealRouter is ReentrancyGuard {
 
     function swapExactETHFor0OrQueue(address pair, uint256 deadline) external payable nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExactETHFor0Hybrid(pair, msg.sender, msg.value, 0);
         emit SwapExactETHFor0(pair, msg.sender, r.immediateIn, r.immediateOut, r.outGross, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, false, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);
@@ -732,6 +766,7 @@ contract DealRouter is ReentrancyGuard {
 
     function swapExact0ForETHOrQueue(address pair, uint256 amount0In, uint256 deadline) external nonReentrant {
         _deadline(deadline);
+        _assertValidPair(pair);
         ResQueued memory r = _execExact0ForETHHybrid(pair, amount0In, msg.sender, msg.sender, 0);
         emit SwapExact0ForETH(pair, msg.sender, r.immediateIn, r.immediateOut, r.feeSide, msg.sender);
         if (r.queuedIn > 0) emit SwapQueuedRemainder(pair, msg.sender, true, r.immediateIn, r.immediateOut, r.queuedIn, r.orderId);

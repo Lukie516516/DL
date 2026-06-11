@@ -17,6 +17,11 @@ interface INftGovernanceActivityRecorder {
     function markActive(uint256 tokenId) external;
 }
 
+/// @dev Method-B: include D staked in DealGovernance in dividend calculations.
+interface IDealGovernanceStaked {
+    function getPastStakedOf(address account, uint256 timepoint) external view returns (uint256);
+}
+
 contract VoteDividendClaimer is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -32,6 +37,9 @@ contract VoteDividendClaimer is ReentrancyGuard {
     address public dividendSource;
     address public infoNft;
     address public governanceActivity;
+    /// @notice DealGovernance address for Method-B staked balance inclusion.
+    ///         If address(0), staked D is excluded (backward-compatible).
+    address public governanceContract;
 
     struct Round {
         uint48  snapshot;   // 快照 timepoint（与代币时钟一致：区块号或时间戳）
@@ -47,6 +55,7 @@ contract VoteDividendClaimer is ReentrancyGuard {
     event ExecutorUpdated(address indexed oldExec, address indexed newExec);
     event DividendSourceUpdated(address indexed oldSource, address indexed newSource);
     event GovernanceActivityUpdated(address indexed infoNft, address indexed activity);
+    event GovernanceContractUpdated(address indexed gov);
     event RoundCreated(uint256 indexed roundId, uint48 snapshot, uint256 total);
     event Claimed(uint256 indexed roundId, address indexed account, uint256 balance, uint256 payout);
 
@@ -92,6 +101,13 @@ contract VoteDividendClaimer is ReentrancyGuard {
         emit GovernanceActivityUpdated(infoNft_, activity_);
     }
 
+    /// @notice Wire DealGovernance for Method-B staked-D dividend inclusion.
+    ///         Pass address(0) to disable (removes staked D from balance calculations).
+    function setGovernanceContract(address gov) external onlyExecutor {
+        governanceContract = gov;
+        emit GovernanceContractUpdated(gov);
+    }
+
     /// DAO / executor：开新一轮（记录“过去”的快照，避免与本交易同一 timepoint）
     /// 本函数从 dividendSource 拉取本轮 DC，提案人/执行人不需要用自己的钱出资。
     /// dividendSource 需要提前 approve 本合约，或由治理提案先完成授权。
@@ -126,8 +142,12 @@ contract VoteDividendClaimer is ReentrancyGuard {
         require(!claimed[roundId][account], "already claimed");
         require(r.snapshot < votesClock.clock(), "round not active yet"); // 快照必须在过去
 
-        // 分子：快照持仓，不要求用户提前 delegate
+        // 分子：快照持仓（钱包余额）+ 快照时质押在 DealGovernance 的 D（Method B）
         uint256 balance = votesToken.getPastBalanceOf(account, r.snapshot);
+        address gov = governanceContract;
+        if (gov != address(0)) {
+            balance += IDealGovernanceStaked(gov).getPastStakedOf(account, r.snapshot);
+        }
         require(balance > 0, "no balance at snapshot");
 
         // 分母：快照总 D 供应量
@@ -157,6 +177,10 @@ contract VoteDividendClaimer is ReentrancyGuard {
         Round storage r = rounds[roundId];
         if (r.snapshot >= votesClock.clock()) return (0, 0); // 这轮尚未生效
         balance = votesToken.getPastBalanceOf(account, r.snapshot);
+        address gov = governanceContract;
+        if (gov != address(0)) {
+            balance += IDealGovernanceStaked(gov).getPastStakedOf(account, r.snapshot);
+        }
         if (balance == 0) return (0, 0);
         uint256 totalSupplyAt = votesToken.getPastTotalBalance(r.snapshot);
         if (totalSupplyAt == 0) return (balance, 0);

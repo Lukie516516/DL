@@ -857,7 +857,7 @@ describe("Deal Rules", async function () {
     const ausdReward = await fixture.dealResultIndex.read.rewardOfDeal([ausdDeal]);
     assert.equal(ausdReward.exists, true);
     assert.ok(ausdReward.toA > 0n);
-    assert.equal(ausdReward.toA, ausdReward.toB);
+    assert.ok(ausdReward.toB > 0n);
     assert.equal(
       (await dl.read.balanceOf([fixture.alice.account.address])) - aliceBeforeAusd,
       ausdReward.toA,
@@ -884,7 +884,7 @@ describe("Deal Rules", async function () {
     const usdtReward = await fixture.dealResultIndex.read.rewardOfDeal([usdtDeal]);
     assert.equal(usdtReward.exists, true);
     assert.ok(usdtReward.toA > 0n);
-    assert.equal(usdtReward.toA, usdtReward.toB);
+    assert.ok(usdtReward.toB > 0n);
     assert.equal(
       (await dl.read.balanceOf([fixture.alice.account.address])) - aliceBeforeUsdt,
       usdtReward.toA,
@@ -950,11 +950,11 @@ describe("Deal Rules", async function () {
     assert.equal(reward.exists, true);
     assert.equal(reward.cAddr, getAddress(owner.account.address));
     assert.ok(reward.toA > 0n);
-    assert.equal(reward.toA, reward.toB);
+    assert.equal(reward.toB, 0n);
     assert.equal(reward.toA, reward.toC);
     const totalReward = reward.toA + reward.toB + reward.toC;
-    assert.ok(totalReward <= 3n * ONE);
-    assert.ok(totalReward > (3n * ONE * 999_990n) / 1_000_000n);
+    assert.ok(totalReward <= 2n * ONE);
+    assert.ok(totalReward > (2n * ONE * 999_990n) / 1_000_000n);
     assert.equal((await dl.read.balanceOf([owner.account.address])) - ownerBefore, reward.toC);
     assert.equal((await dl.read.balanceOf([fixture.alice.account.address])) - aliceBefore, reward.toA);
     assert.equal((await dl.read.balanceOf([fixture.bob.account.address])) - bobBefore, reward.toB);

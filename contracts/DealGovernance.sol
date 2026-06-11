@@ -1,0 +1,532 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+interface IDTokenGov {
+    function balanceOf(address account) external view returns (uint256);
+    function clock() external view returns (uint48);
+}
+
+interface INftVetoRegistryGov {
+    /// @notice Called on Major proposal activation; snapshots active NFT supply.
+    function registerProposal(uint256 proposalId, uint64 vetoCutoff) external;
+    /// @notice Returns true when >= VETO_THRESHOLD_BPS of active NFTs cast veto votes.
+    function isProposalVetoed(uint256 proposalId) external view returns (bool);
+}
+
+/// @title DealGovernance
+/// @notice Stake-based governance for the Deal protocol.
+///
+/// Four proposal kinds:
+///   Parameter – D-only, 24h default-pass window. D seat veto within window → rejected.
+///   Treasury  – D-only, accumulation (70 D). No veto. Multi-chain.
+///   Major     – Anyone proposes; 120h default-pass window. D seat veto OR 10% NFT veto → rejected.
+///   Satoshi   – D seat only; accumulation (90 D); no time limit; free unstake; D seat veto.
+///
+/// All proposals require 2.5 D staked to activate (pre-proposal gate).
+/// D is physically transferred on stake; each staker calls claimBack() individually after end.
+/// DAO governance parameters are mutable via Major proposal (onlyGovernance setters).
+contract DealGovernance is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+    using Checkpoints for Checkpoints.Trace208;
+    using SafeCast for uint256;
+
+    // ─── Errors ───────────────────────────────────────────────────────────────
+
+    error BadArrayLength();
+    error ProposalMissing();
+    error AlreadyEnded();
+    error AlreadyExecuted();
+    error NotProposer();
+    error NotExecutable();
+    error CannotVetoTreasury();
+    error NotSeat();
+    error ZeroAmount();
+    error InsufficientStake();
+    error OnlyGovernance();
+    error NotSatoshiEligible();
+    error WindowNotOpen();
+    error WindowExpired();
+    error NothingToClaim();
+    error ParamOutOfRange();
+    error CallFailed(uint256 index, bytes returndata);
+
+    // ─── Types ────────────────────────────────────────────────────────────────
+
+    enum ProposalKind { Parameter, Treasury, Major, Satoshi }
+
+    /// Missing   : proposal id does not exist
+    /// Pending   : exists but totalStaked < activationThreshold
+    /// Active    : activated; within window (Parameter/Major) or below threshold (Treasury/Satoshi)
+    /// Succeeded : executable — window closed without veto (Parameter/Major) or threshold met (Treasury/Satoshi)
+    /// Vetoed    : D seat veto (Parameter/Major/Satoshi) or NFT veto threshold met (Major)
+    /// Canceled  : proposer canceled, or expired via expire()
+    /// Executed  : actions ran successfully
+    enum ProposalState { Missing, Pending, Active, Succeeded, Vetoed, Canceled, Executed }
+
+    // ─── Governance parameters (changeable via Major proposal) ────────────────
+
+    /// @notice Minimum D stake to activate any proposal. Default: 2.5 D.
+    uint256 public activationThreshold = 25 * 1e17;
+
+    /// @notice D required to pass Treasury proposals. Default: 70 D.
+    uint256 public treasuryPassThreshold = 70 * 1e18;
+
+    /// @notice D required to pass Satoshi proposals. Default: 90 D.
+    uint256 public satoshiPassThreshold = 90 * 1e18;
+
+    /// @notice Veto window for Parameter proposals. Default: 24 hours.
+    uint256 public paramWindowSeconds = 24 hours;
+
+    /// @notice Veto window for Major proposals. Default: 120 hours.
+    uint256 public majorWindowSeconds = 120 hours;
+
+    /// @notice NFT veto threshold for Major proposals in basis points. Default: 1000 (10%).
+    ///         Snapshotted into NftVetoRegistry at proposal activation; changes only affect future proposals.
+    uint256 public nftVetoThresholdBps = 1_000;
+
+    /// @notice DC fee charged to proposer when creating a Major proposal. Default: 1000 DC.
+    uint256 public majorProposalFee = 1000 * 1e18;
+
+    // ─── Immutables ───────────────────────────────────────────────────────────
+
+    IDTokenGov public immutable dToken;
+
+    // ─── State ────────────────────────────────────────────────────────────────
+
+    INftVetoRegistryGov public nftVetoRegistry;
+    /// @notice DC token used to collect Major proposal fees.
+    IERC20 public dcToken;
+    /// @notice Destination address for Major proposal fees.
+    address public treasury;
+    uint256 public proposalCount;
+
+    struct Proposal {
+        address proposer;
+        ProposalKind kind;
+        uint256 totalStaked;
+        uint256 windowEndsAt;     // Parameter/Major: veto window close timestamp; 0 = not activated
+        bool vetoed;
+        bool canceled;
+        bool executed;
+        bool nftRegistered;          // Major: registerProposal already called
+        bool satoshiSucceeded;       // Satoshi: set once totalStaked first crosses satoshiPassThreshold
+        bool activationReturnable;   // Major: set on activation; stakers may claimBack immediately
+        address vetoer;
+        bytes32 actionsHash;
+        string description;
+    }
+
+    mapping(uint256 => Proposal)                          private _proposals;
+    mapping(uint256 => address[])                         private _targets;
+    mapping(uint256 => uint256[])                         private _values;
+    mapping(uint256 => bytes[])                           private _calldatas;
+    mapping(uint256 => address[])                         private _stakerList;
+    mapping(uint256 => mapping(address => uint256))       public  stakeOf;
+
+    // Live cross-proposal staked total per address (dividend checkpointing).
+    mapping(address => uint256)                           private _currentStaked;
+    // Per-address checkpoint history — read by VoteDividendClaimer (Method B).
+    mapping(address => Checkpoints.Trace208)              private _stakedCheckpoints;
+
+    // ─── Events ───────────────────────────────────────────────────────────────
+
+    event ProposalCreated(uint256 indexed proposalId, address indexed proposer, ProposalKind indexed kind, string description);
+    event ProposalActivated(uint256 indexed proposalId, uint256 windowEndsAt);
+    event SatoshiSucceeded(uint256 indexed proposalId);
+    event Staked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 proposalTotal);
+    event Unstaked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 proposalTotal);
+    event StakeClaimed(uint256 indexed proposalId, address indexed staker, uint256 amount);
+    event ProposalVetoed(uint256 indexed proposalId, address indexed vetoer);
+    event ProposalCanceled(uint256 indexed proposalId);
+    event ProposalExecuted(uint256 indexed proposalId);
+    event NftVetoRegistryUpdated(address indexed registry);
+    event GovernanceParamUpdated(string indexed param, uint256 oldValue, uint256 newValue);
+
+    // ─── Constructor ──────────────────────────────────────────────────────────
+
+    constructor(address dToken_, address nftVetoRegistry_, address dcToken_, address treasury_) {
+        require(dToken_ != address(0), "ZERO_D");
+        require(nftVetoRegistry_ != address(0), "ZERO_NFT_REGISTRY");
+        require(dcToken_ != address(0), "ZERO_DC");
+        require(treasury_ != address(0), "ZERO_TREASURY");
+        dToken = IDTokenGov(dToken_);
+        nftVetoRegistry = INftVetoRegistryGov(nftVetoRegistry_);
+        dcToken  = IERC20(dcToken_);
+        treasury = treasury_;
+    }
+
+    receive() external payable {}
+
+    // ─── Governance self-config (only via a passed proposal) ─────────────────
+
+    modifier onlyGovernance() {
+        if (msg.sender != address(this)) revert OnlyGovernance();
+        _;
+    }
+
+    function setNftVetoRegistry(address registry) external onlyGovernance {
+        nftVetoRegistry = INftVetoRegistryGov(registry);
+        emit NftVetoRegistryUpdated(registry);
+    }
+
+    function setActivationThreshold(uint256 v) external onlyGovernance {
+        if (v == 0) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("activationThreshold", activationThreshold, v);
+        activationThreshold = v;
+    }
+
+    function setTreasuryPassThreshold(uint256 v) external onlyGovernance {
+        if (v == 0) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("treasuryPassThreshold", treasuryPassThreshold, v);
+        treasuryPassThreshold = v;
+    }
+
+    function setSatoshiPassThreshold(uint256 v) external onlyGovernance {
+        if (v == 0) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("satoshiPassThreshold", satoshiPassThreshold, v);
+        satoshiPassThreshold = v;
+    }
+
+    function setParamWindowSeconds(uint256 v) external onlyGovernance {
+        if (v < 1 hours) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("paramWindowSeconds", paramWindowSeconds, v);
+        paramWindowSeconds = v;
+    }
+
+    function setMajorWindowSeconds(uint256 v) external onlyGovernance {
+        if (v < 1 hours) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("majorWindowSeconds", majorWindowSeconds, v);
+        majorWindowSeconds = v;
+    }
+
+    function setMajorProposalFee(uint256 v) external onlyGovernance {
+        emit GovernanceParamUpdated("majorProposalFee", majorProposalFee, v);
+        majorProposalFee = v;
+    }
+
+    function setDcToken(address v) external onlyGovernance {
+        require(v != address(0), "ZERO_DC");
+        dcToken = IERC20(v);
+    }
+
+    function setTreasury(address v) external onlyGovernance {
+        require(v != address(0), "ZERO_TREASURY");
+        treasury = v;
+    }
+
+    function setNftVetoThresholdBps(uint256 v) external onlyGovernance {
+        if (v > 10_000) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("nftVetoThresholdBps", nftVetoThresholdBps, v);
+        nftVetoThresholdBps = v;
+    }
+
+    // ─── Proposal creation ────────────────────────────────────────────────────
+
+    /// @notice Create a proposal.
+    ///         Parameter / Satoshi: restricted to D seat holders (wallet balance >= activationThreshold).
+    ///         Treasury / Major: anyone may create.
+    function createProposal(
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[] calldata calldatas,
+        string  calldata description,
+        ProposalKind kind
+    ) external returns (uint256 proposalId) {
+        if (targets.length == 0 || targets.length != values.length || targets.length != calldatas.length)
+            revert BadArrayLength();
+
+        if (kind == ProposalKind.Parameter || kind == ProposalKind.Satoshi) {
+            if (IERC20(address(dToken)).balanceOf(msg.sender) < activationThreshold)
+                revert NotSatoshiEligible();
+        }
+
+        if (kind == ProposalKind.Major && majorProposalFee > 0) {
+            require(address(dcToken) != address(0) && treasury != address(0), "DealGovernance: fee not configured");
+            dcToken.safeTransferFrom(msg.sender, treasury, majorProposalFee);
+        }
+
+        proposalId = ++proposalCount;
+        Proposal storage p = _proposals[proposalId];
+        p.proposer    = msg.sender;
+        p.kind        = kind;
+        p.actionsHash = keccak256(abi.encode(targets, values, calldatas));
+        p.description = description;
+
+        _targets[proposalId]   = targets;
+        _values[proposalId]    = values;
+        _calldatas[proposalId] = calldatas;
+
+        emit ProposalCreated(proposalId, msg.sender, kind, description);
+    }
+
+    // ─── Staking ──────────────────────────────────────────────────────────────
+
+    /// @notice Stake D to support a proposal (= cast a vote).
+    ///         Crossing activationThreshold for the first time starts the veto window
+    ///         (Parameter/Major) or marks the proposal Active (Treasury/Satoshi).
+    ///         For Satoshi, crossing satoshiPassThreshold sets satoshiSucceeded permanently.
+    function stake(uint256 proposalId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        Proposal storage p = _existingProposal(proposalId);
+        _requireNotEnded(p);
+
+        // ── Effects ──────────────────────────────────────────────────────────
+        if (stakeOf[proposalId][msg.sender] == 0) {
+            _stakerList[proposalId].push(msg.sender);
+        }
+        stakeOf[proposalId][msg.sender] += amount;
+
+        uint256 prevTotal = p.totalStaked;
+        p.totalStaked += amount;
+
+        _currentStaked[msg.sender] += amount;
+        _checkpointStaked(msg.sender);
+
+        bool justActivated = false;
+        if (prevTotal < activationThreshold && p.totalStaked >= activationThreshold) {
+            uint256 window = _windowFor(p.kind);
+            if (window > 0) p.windowEndsAt = block.timestamp + window;
+            if (p.kind == ProposalKind.Major && !p.nftRegistered) p.nftRegistered = true;
+            justActivated = true;
+        }
+
+        bool justPassed = false;
+        if (p.kind == ProposalKind.Satoshi && !p.satoshiSucceeded && p.totalStaked >= satoshiPassThreshold) {
+            p.satoshiSucceeded = true;
+            justPassed = true;
+        }
+
+        // ── Interactions ─────────────────────────────────────────────────────
+        IERC20(address(dToken)).safeTransferFrom(msg.sender, address(this), amount);
+
+        if (justActivated) {
+            emit ProposalActivated(proposalId, p.windowEndsAt);
+            if (p.kind == ProposalKind.Major) {
+                p.activationReturnable = true;
+                if (address(nftVetoRegistry) != address(0)) {
+                    nftVetoRegistry.registerProposal(proposalId, uint64(p.windowEndsAt));
+                }
+            }
+        }
+        if (justPassed) emit SatoshiSucceeded(proposalId);
+
+        emit Staked(proposalId, msg.sender, amount, p.totalStaked);
+    }
+
+    /// @notice Retract your D stake (change of vote / change of mind).
+    ///
+    ///   Parameter / Major:  only while the veto window is still open
+    ///                       (or before activation, when windowEndsAt == 0).
+    ///                       Stake is locked once the window closes.
+    ///   Treasury:           any time while proposal not ended.
+    ///   Satoshi:            any time while proposal not ended (free unstake by design).
+    ///                       Note: satoshiSucceeded is irreversible once set; unstake
+    ///                       cannot un-pass a Satoshi proposal.
+    function unstake(uint256 proposalId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        Proposal storage p = _existingProposal(proposalId);
+        _requireNotEnded(p);
+        if (stakeOf[proposalId][msg.sender] < amount) revert InsufficientStake();
+
+        if (p.kind == ProposalKind.Parameter || p.kind == ProposalKind.Major) {
+            if (p.windowEndsAt > 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
+        }
+
+        stakeOf[proposalId][msg.sender] -= amount;
+        p.totalStaked -= amount;
+        _currentStaked[msg.sender] -= amount;
+        _checkpointStaked(msg.sender);
+
+        IERC20(address(dToken)).safeTransfer(msg.sender, amount);
+        emit Unstaked(proposalId, msg.sender, amount, p.totalStaked);
+    }
+
+    /// @notice Retrieve staked D after a proposal has ended (executed / vetoed / canceled).
+    ///         D is never auto-returned; each staker calls this individually.
+    function claimBack(uint256 proposalId) external nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        if (!_isEnded(p) && !p.activationReturnable) revert NotExecutable();
+        uint256 amount = stakeOf[proposalId][msg.sender];
+        if (amount == 0) revert NothingToClaim();
+
+        stakeOf[proposalId][msg.sender] = 0;
+        _currentStaked[msg.sender] -= amount;
+        _checkpointStaked(msg.sender);
+
+        IERC20(address(dToken)).safeTransfer(msg.sender, amount);
+        emit StakeClaimed(proposalId, msg.sender, amount);
+    }
+
+    // ─── Veto (D seat — Parameter / Major / Satoshi) ──────────────────────────
+
+    /// @notice D seat holder (wallet balance >= activationThreshold) exercises one-time veto.
+    ///         Treasury proposals cannot be vetoed.
+    ///         Parameter / Major: veto must be cast within the veto window.
+    ///         Satoshi: veto can be cast at any time before execution.
+    function veto(uint256 proposalId) external nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        if (p.kind == ProposalKind.Treasury) revert CannotVetoTreasury();
+        _requireNotEnded(p);
+        if (IERC20(address(dToken)).balanceOf(msg.sender) < activationThreshold) revert NotSeat();
+
+        if (p.kind == ProposalKind.Parameter || p.kind == ProposalKind.Major) {
+            if (p.windowEndsAt == 0) revert WindowNotOpen();
+            if (block.timestamp >= p.windowEndsAt) revert WindowExpired();
+        }
+
+        p.vetoed = true;
+        p.vetoer = msg.sender;
+        emit ProposalVetoed(proposalId, msg.sender);
+    }
+
+    // ─── Cancel (proposer only) ───────────────────────────────────────────────
+
+    /// @notice Proposer cancels their proposal before execution.
+    ///         Stakers call claimBack() to retrieve D afterward.
+    function cancel(uint256 proposalId) external nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        if (p.proposer != msg.sender) revert NotProposer();
+        _requireNotEnded(p);
+        p.canceled = true;
+        emit ProposalCanceled(proposalId);
+    }
+
+    // ─── Expire (public safety valve) ────────────────────────────────────────
+
+    /// @notice Anyone may expire a Parameter/Major proposal whose window closed more than
+    ///         7 days ago but was never executed (e.g. activationThreshold raised afterward).
+    ///         Marks as canceled so stakers can call claimBack().
+    function expire(uint256 proposalId) external nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        _requireNotEnded(p);
+        if (p.kind != ProposalKind.Parameter && p.kind != ProposalKind.Major) revert NotExecutable();
+        if (p.windowEndsAt == 0 || block.timestamp <= p.windowEndsAt + 7 days) revert NotExecutable();
+        p.canceled = true;
+        emit ProposalCanceled(proposalId);
+    }
+
+    // ─── Execute ──────────────────────────────────────────────────────────────
+
+    /// @notice Execute a Succeeded proposal. Anyone may call.
+    ///         If any action reverts the whole tx reverts (proposal stays Succeeded, retry allowed).
+    ///         After success, stakers call claimBack() to retrieve their D.
+    function execute(uint256 proposalId) external payable nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        _requireNotEnded(p);
+        if (!_canExecute(p, proposalId)) revert NotExecutable();
+
+        p.executed = true;
+
+        address[] storage targets   = _targets[proposalId];
+        uint256[] storage vals      = _values[proposalId];
+        bytes[]   storage calldatas = _calldatas[proposalId];
+        for (uint256 i = 0; i < targets.length; ++i) {
+            (bool ok, bytes memory ret) = targets[i].call{value: vals[i]}(calldatas[i]);
+            if (!ok) revert CallFailed(i, ret);
+        }
+
+        emit ProposalExecuted(proposalId);
+    }
+
+    // ─── Views ────────────────────────────────────────────────────────────────
+
+    function state(uint256 proposalId) public view returns (ProposalState) {
+        Proposal storage p = _proposals[proposalId];
+        if (p.proposer == address(0))            return ProposalState.Missing;
+        if (p.executed)                          return ProposalState.Executed;
+        if (p.vetoed)                            return ProposalState.Vetoed;
+        if (p.canceled)                          return ProposalState.Canceled;
+        if (p.totalStaked < activationThreshold) return ProposalState.Pending;
+        if (_canExecute(p, proposalId))          return ProposalState.Succeeded;
+        return ProposalState.Active;
+    }
+
+    function getProposal(uint256 proposalId) external view returns (Proposal memory) {
+        return _proposals[proposalId];
+    }
+
+    function getActions(uint256 proposalId)
+        external view
+        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+    {
+        return (_targets[proposalId], _values[proposalId], _calldatas[proposalId]);
+    }
+
+    function getStakerList(uint256 proposalId) external view returns (address[] memory) {
+        return _stakerList[proposalId];
+    }
+
+    /// @notice Total D currently staked by an address across all live proposals.
+    function currentStakedOf(address account) external view returns (uint256) {
+        return _currentStaked[account];
+    }
+
+    /// @notice Historical staked D at a past timepoint — called by VoteDividendClaimer (Method B).
+    function getPastStakedOf(address account, uint256 timepoint) external view returns (uint256) {
+        return _stakedCheckpoints[account].upperLookupRecent(uint48(timepoint));
+    }
+
+    // ─── Internal ─────────────────────────────────────────────────────────────
+
+    function _canExecute(Proposal storage p, uint256 proposalId) private view returns (bool) {
+        if (p.totalStaked < activationThreshold) return false;
+
+        if (p.kind == ProposalKind.Parameter) {
+            // Default-pass: window closed, no D veto
+            return p.windowEndsAt > 0 && block.timestamp >= p.windowEndsAt;
+        }
+
+        if (p.kind == ProposalKind.Treasury) {
+            // Accumulation: 70 D staked
+            return p.totalStaked >= treasuryPassThreshold;
+        }
+
+        if (p.kind == ProposalKind.Major) {
+            // Default-pass: window closed, no D veto, NFT veto threshold not reached
+            if (p.windowEndsAt == 0 || block.timestamp < p.windowEndsAt) return false;
+            if (address(nftVetoRegistry) != address(0) &&
+                nftVetoRegistry.isProposalVetoed(proposalId)) return false;
+            return true;
+        }
+
+        if (p.kind == ProposalKind.Satoshi) {
+            // satoshiSucceeded is set permanently on first threshold crossing;
+            // free-unstake cannot reverse execution eligibility.
+            return p.satoshiSucceeded;
+        }
+
+        return false;
+    }
+
+    function _windowFor(ProposalKind kind) private view returns (uint256) {
+        if (kind == ProposalKind.Parameter) return paramWindowSeconds;
+        if (kind == ProposalKind.Major)     return majorWindowSeconds;
+        return 0; // Treasury and Satoshi: no veto window
+    }
+
+    function _isEnded(Proposal storage p) private view returns (bool) {
+        return p.executed || p.vetoed || p.canceled;
+    }
+
+    function _requireNotEnded(Proposal storage p) private view {
+        if (p.executed) revert AlreadyExecuted();
+        if (p.vetoed)   revert AlreadyEnded();
+        if (p.canceled) revert AlreadyEnded();
+    }
+
+    function _checkpointStaked(address account) private {
+        uint48 ts = dToken.clock();
+        _stakedCheckpoints[account].push(ts, _currentStaked[account].toUint208());
+    }
+
+    function _existingProposal(uint256 proposalId) private view returns (Proposal storage p) {
+        p = _proposals[proposalId];
+        if (p.proposer == address(0)) revert ProposalMissing();
+    }
+}
