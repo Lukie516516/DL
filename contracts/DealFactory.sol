@@ -186,6 +186,22 @@ contract DealFactory is Ownable {
 
     address public admin;
 
+    /// @notice Cross-chain governance executor address (CrossChainExecutor on this chain).
+    ///         Set after deployment; allows ETH DAO to call all onlyOwner config functions.
+    address public crossChainGovernance;
+
+    event CrossChainGovernanceUpdated(address indexed addr);
+
+    modifier onlyOwnerOrGovernance() {
+        require(msg.sender == owner() || msg.sender == crossChainGovernance, "NOT_AUTHORIZED");
+        _;
+    }
+
+    function setCrossChainGovernance(address addr) external onlyOwner {
+        crossChainGovernance = addr;
+        emit CrossChainGovernanceUpdated(addr);
+    }
+
     /* ---------- 数学工具 ---------- */
     error RatioInvalid();
     error NotAdmin();
@@ -384,17 +400,17 @@ contract DealFactory is Ownable {
     }
 
     /* ========== Owner Admin 配置 ========== */
-    function setDealImplementation(address impl) external onlyOwner {
+    function setDealImplementation(address impl) external onlyOwnerOrGovernance {
         require(impl != address(0));
         dealImplementation = impl;
         emit DealImplUpdated(impl);
     }
-    function setPairImplementation(address impl) external onlyOwner {
+    function setPairImplementation(address impl) external onlyOwnerOrGovernance {
         require(impl != address(0));
         pairImplementation = impl;
         emit PairImplUpdated(impl);
     }
-    function setMinTimeoutSeconds(uint64 s) external onlyOwner {
+    function setMinTimeoutSeconds(uint64 s) external onlyOwnerOrGovernance {
         require(s >= 1800);
         if (s > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
         minTimeoutSeconds = s;
@@ -417,7 +433,7 @@ contract DealFactory is Ownable {
         address _infoNft,
         address _wrappedNative,
         address _dealPairManager
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (
             _dlToken == address(0) ||
             _infoNft == address(0) ||
@@ -444,7 +460,7 @@ contract DealFactory is Ownable {
         address _dealActivityIndex,
         address _dealResultIndex,
         address _dealImplementationRegistry
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (_dealMessageHub != address(0)) {
             dealMessageHub = _dealMessageHub;
             emit GlobalAddressSet("dealMessageHub", _dealMessageHub);
@@ -471,7 +487,7 @@ contract DealFactory is Ownable {
         address _swapOrderBook,
         address _dealNftGovernanceActivity,
         address _dcDomainRank
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (_swapOrderBook != address(0)) {
             swapOrderBook = _swapOrderBook;
             emit GlobalAddressSet("swapOrderBook", _swapOrderBook);
@@ -486,7 +502,7 @@ contract DealFactory is Ownable {
         }
     }
 
-    function setMinWindowSec(uint32 sec_) external onlyOwner {
+    function setMinWindowSec(uint32 sec_) external onlyOwnerOrGovernance {
         require(sec_ >= 300);
         minWindowSec = sec_;
         emit MinWindowSet(sec_);
@@ -500,7 +516,7 @@ contract DealFactory is Ownable {
     function setRecognizedTokens(
         address token0,
         address token1
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (token0 == address(0) || token1 == address(0)) revert ZeroAddress();
         recognizedToken0 = token0;
         recognizedToken1 = token1;
@@ -515,13 +531,13 @@ contract DealFactory is Ownable {
         emit RecognizedTokensUpdated(token0, token1);
     }
 
-    function setAllowedMarginToken(address token, bool allowed) external onlyOwner {
+    function setAllowedMarginToken(address token, bool allowed) external onlyOwnerOrGovernance {
         if (token == address(0)) revert ZeroAddress();
         allowedMarginToken[token] = allowed;
         emit MarginTokenAllowedUpdated(token, allowed);
     }
 
-    function setAllowedCreateFor(address caller, bool allowed) external onlyOwner {
+    function setAllowedCreateFor(address caller, bool allowed) external onlyOwnerOrGovernance {
         if (caller == address(0)) revert ZeroAddress();
         isAllowedCreateFor[caller] = allowed;
         emit AllowedCreateForSet(caller, allowed);
@@ -532,7 +548,7 @@ contract DealFactory is Ownable {
         uint32 feeNonDLDen,
         uint32 mintOnFeesNum,
         uint32 mintOnFeesDen
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         Ratio memory r1 = Ratio({num: feeNonDLNum, den: feeNonDLDen});
         Ratio memory r2 = Ratio({num: mintOnFeesNum, den: mintOnFeesDen});
         _assertRatio(r1);
@@ -576,7 +592,7 @@ contract DealFactory is Ownable {
         bool enabled,
         address pricingToken,
         uint256 amountInToken
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         msgPriceEnabled = enabled;
         msgPriceToken = pricingToken;
         msgPriceAmountInToken = amountInToken;
@@ -601,7 +617,7 @@ contract DealFactory is Ownable {
         bool enabled,
         address pricingToken,
         uint256 amountInToken
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         createBurnEnabled = enabled;
         createBurnPricingToken = pricingToken;
         createBurnAmountInToken = amountInToken;
