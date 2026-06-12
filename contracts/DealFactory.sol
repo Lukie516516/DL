@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 interface IDLMint {
@@ -177,7 +179,7 @@ interface IDCDomainRankAutoClose {
         returns (uint256 refunded, uint256 consumed);
 }
 /* ========================================================== */
-contract DealFactory is Ownable {
+contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     using Clones for address;
     address private constant DEFAULT_AUSD =
         0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123;
@@ -185,6 +187,22 @@ contract DealFactory is Ownable {
         0x1035F65fc63342F9878C4D03e4372718Dbb33d32;
 
     address public admin;
+
+    /// @notice Cross-chain governance executor address (CrossChainExecutor on this chain).
+    ///         Set after deployment; allows ETH DAO to call all onlyOwner config functions.
+    address public crossChainGovernance;
+
+    event CrossChainGovernanceUpdated(address indexed addr);
+
+    modifier onlyOwnerOrGovernance() {
+        require(msg.sender == owner() || msg.sender == crossChainGovernance, "NOT_AUTHORIZED");
+        _;
+    }
+
+    function setCrossChainGovernance(address addr) external onlyOwner {
+        crossChainGovernance = addr;
+        emit CrossChainGovernanceUpdated(addr);
+    }
 
     /* ---------- 数学工具 ---------- */
     error RatioInvalid();
@@ -280,7 +298,7 @@ contract DealFactory is Ownable {
     address public msgPriceToken; // 0 原生
     uint256 public msgPriceAmountInToken;
 
-    uint32 public minWindowSec = 30;
+    uint32 public minWindowSec = 1800;
 
     /* ---------- 事件 ---------- */
     event DealImplUpdated(address indexed impl);
@@ -362,17 +380,30 @@ contract DealFactory is Ownable {
         _;
     }
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         address _dealImpl,
         address _pairImpl,
         uint64 _minTimeoutSeconds
-    ) Ownable(msg.sender) {
+    ) external initializer {
         require(_dealImpl != address(0) && _pairImpl != address(0));
         require(_minTimeoutSeconds >= 3600);
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
         dealImplementation = _dealImpl;
         pairImplementation = _pairImpl;
         minTimeoutSeconds = _minTimeoutSeconds;
         admin = msg.sender;
+        // Storage defaults: state-variable initializers don't apply through proxy
+        recognizedToken0 = DEFAULT_AUSD;
+        recognizedToken1 = DEFAULT_USDT;
+        defaultFeeNonDL = Ratio({num: 3, den: 1000});
+        defaultMintOnFees = Ratio({num: 1, den: 1000});
+        minWindowSec = 1800;
         allowedMarginToken[recognizedToken0] = true;
         allowedMarginToken[recognizedToken1] = true;
         emit DealImplUpdated(_dealImpl);
@@ -383,18 +414,20 @@ contract DealFactory is Ownable {
         emit MarginTokenAllowedUpdated(recognizedToken1, true);
     }
 
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
     /* ========== Owner Admin 配置 ========== */
-    function setDealImplementation(address impl) external onlyOwner {
+    function setDealImplementation(address impl) external onlyOwnerOrGovernance {
         require(impl != address(0));
         dealImplementation = impl;
         emit DealImplUpdated(impl);
     }
-    function setPairImplementation(address impl) external onlyOwner {
+    function setPairImplementation(address impl) external onlyOwnerOrGovernance {
         require(impl != address(0));
         pairImplementation = impl;
         emit PairImplUpdated(impl);
     }
-    function setMinTimeoutSeconds(uint64 s) external onlyOwner {
+    function setMinTimeoutSeconds(uint64 s) external onlyOwnerOrGovernance {
         require(s >= 1800);
         if (s > MAX_TIMEOUT_SECONDS) revert TimeoutTooLong();
         minTimeoutSeconds = s;
@@ -417,7 +450,7 @@ contract DealFactory is Ownable {
         address _infoNft,
         address _wrappedNative,
         address _dealPairManager
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (
             _dlToken == address(0) ||
             _infoNft == address(0) ||
@@ -444,7 +477,7 @@ contract DealFactory is Ownable {
         address _dealActivityIndex,
         address _dealResultIndex,
         address _dealImplementationRegistry
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (_dealMessageHub != address(0)) {
             dealMessageHub = _dealMessageHub;
             emit GlobalAddressSet("dealMessageHub", _dealMessageHub);
@@ -471,7 +504,7 @@ contract DealFactory is Ownable {
         address _swapOrderBook,
         address _dealNftGovernanceActivity,
         address _dcDomainRank
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (_swapOrderBook != address(0)) {
             swapOrderBook = _swapOrderBook;
             emit GlobalAddressSet("swapOrderBook", _swapOrderBook);
@@ -486,13 +519,13 @@ contract DealFactory is Ownable {
         }
     }
 
-    function setMinWindowSec(uint32 sec_) external onlyOwner {
-        require(sec_ >= 5);
+    function setMinWindowSec(uint32 sec_) external onlyOwnerOrGovernance {
+        require(sec_ >= 300);
         minWindowSec = sec_;
         emit MinWindowSet(sec_);
     }
     function setMinWindowSecByAdmin(uint32 sec_) external onlyAdmin {
-        require(sec_ >= 30);
+        require(sec_ >= 300);
         minWindowSec = sec_;
         emit MinWindowSet(sec_);
     }
@@ -500,7 +533,7 @@ contract DealFactory is Ownable {
     function setRecognizedTokens(
         address token0,
         address token1
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         if (token0 == address(0) || token1 == address(0)) revert ZeroAddress();
         recognizedToken0 = token0;
         recognizedToken1 = token1;
@@ -515,13 +548,13 @@ contract DealFactory is Ownable {
         emit RecognizedTokensUpdated(token0, token1);
     }
 
-    function setAllowedMarginToken(address token, bool allowed) external onlyOwner {
+    function setAllowedMarginToken(address token, bool allowed) external onlyOwnerOrGovernance {
         if (token == address(0)) revert ZeroAddress();
         allowedMarginToken[token] = allowed;
         emit MarginTokenAllowedUpdated(token, allowed);
     }
 
-    function setAllowedCreateFor(address caller, bool allowed) external onlyOwner {
+    function setAllowedCreateFor(address caller, bool allowed) external onlyOwnerOrGovernance {
         if (caller == address(0)) revert ZeroAddress();
         isAllowedCreateFor[caller] = allowed;
         emit AllowedCreateForSet(caller, allowed);
@@ -532,7 +565,7 @@ contract DealFactory is Ownable {
         uint32 feeNonDLDen,
         uint32 mintOnFeesNum,
         uint32 mintOnFeesDen
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         Ratio memory r1 = Ratio({num: feeNonDLNum, den: feeNonDLDen});
         Ratio memory r2 = Ratio({num: mintOnFeesNum, den: mintOnFeesDen});
         _assertRatio(r1);
@@ -576,7 +609,7 @@ contract DealFactory is Ownable {
         bool enabled,
         address pricingToken,
         uint256 amountInToken
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         msgPriceEnabled = enabled;
         msgPriceToken = pricingToken;
         msgPriceAmountInToken = amountInToken;
@@ -601,7 +634,7 @@ contract DealFactory is Ownable {
         bool enabled,
         address pricingToken,
         uint256 amountInToken
-    ) external onlyOwner {
+    ) external onlyOwnerOrGovernance {
         createBurnEnabled = enabled;
         createBurnPricingToken = pricingToken;
         createBurnAmountInToken = amountInToken;

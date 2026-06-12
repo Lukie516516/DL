@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deal 协议 DAO 治理架构</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2333;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d29922;
+      --accent4: #f78166;
+      --purple: #bc8cff;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #0d1117 0%, #1a2340 50%, #0d1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 24px 48px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(88,166,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-label {
+      display: inline-block;
+      background: rgba(88,166,255,0.15); color: var(--accent);
+      border: 1px solid rgba(88,166,255,0.3); border-radius: 20px;
+      font-size: 12px; font-weight: 600; letter-spacing: 1.5px;
+      padding: 4px 14px; margin-bottom: 20px; text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: clamp(28px,5vw,44px); font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #e6edf3, #58a6ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-meta { color: var(--text-muted); font-size: 13px; }
+
+    /* Layout */
+    .container { max-width: 980px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    /* Section */
+    .section { margin-bottom: 56px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .section-num {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(88,166,255,0.15); color: var(--accent);
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .section-title { font-size: 20px; font-weight: 600; }
+
+    /* Cards */
+    .card-grid { display: grid; gap: 16px; }
+    .card-grid-3 { grid-template-columns: repeat(3,1fr); }
+    .card-grid-2 { grid-template-columns: repeat(2,1fr); }
+    .card-grid-4 { grid-template-columns: repeat(4,1fr); }
+    @media (max-width:760px) { .card-grid-3,.card-grid-2,.card-grid-4 { grid-template-columns:1fr; } }
+    @media (min-width:500px) and (max-width:760px) { .card-grid-4 { grid-template-columns:repeat(2,1fr); } }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 22px;
+    }
+    .card-icon { font-size: 22px; margin-bottom: 10px; }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .card-body { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+    .card.blue  { border-top: 3px solid var(--accent); }
+    .card.green { border-top: 3px solid var(--accent2); }
+    .card.gold  { border-top: 3px solid var(--accent3); }
+    .card.red   { border-top: 3px solid var(--accent4); }
+    .card.purple { border-top: 3px solid var(--purple); }
+
+    /* Table */
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead tr { background: var(--surface2); }
+    th { padding: 11px 16px; text-align: left; font-weight: 600; color: var(--text-muted); font-size: 12px; letter-spacing: .5px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* Proposal tier cards */
+    .tier-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    @media (max-width:900px) { .tier-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width:500px) { .tier-grid { grid-template-columns: 1fr; } }
+    .tier-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .tier-head { padding: 13px 16px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .tier-head.blue   { background: rgba(88,166,255,.12);  color: var(--accent); }
+    .tier-head.gold   { background: rgba(210,153,34,.12);  color: var(--accent3); }
+    .tier-head.red    { background: rgba(247,129,102,.12); color: var(--accent4); }
+    .tier-head.purple { background: rgba(188,140,255,.12); color: var(--purple); }
+    .tier-body { padding: 14px 16px; font-size: 12.5px; }
+    .tier-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+    .tier-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .tier-label { color: var(--text-muted); flex-shrink: 0; }
+    .tier-val { text-align: right; font-weight: 500; font-size: 12px; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-green  { background: rgba(63,185,80,.15);   color: var(--accent2); }
+    .badge-red    { background: rgba(247,129,102,.15); color: var(--accent4); }
+    .badge-blue   { background: rgba(88,166,255,.15);  color: var(--accent); }
+    .badge-gold   { background: rgba(210,153,34,.15);  color: var(--accent3); }
+    .badge-purple { background: rgba(188,140,255,.15); color: var(--purple); }
+
+    /* Stats */
+    .d-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+    @media (max-width:680px) { .d-stats { grid-template-columns: repeat(2,1fr); } }
+    .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: var(--text-muted); }
+    .stat-num.blue  { color: var(--accent); }
+    .stat-num.green { color: var(--accent2); }
+    .stat-num.gold  { color: var(--accent3); }
+    .stat-num.red   { color: var(--accent4); }
+    .stat-num.purple { color: var(--purple); }
+
+    /* Callout */
+    .callout { border-radius: var(--radius); padding: 16px 20px; font-size: 14px; display: flex; gap: 12px; align-items: flex-start; }
+    .callout.blue   { background: rgba(88,166,255,.08);  border-left: 3px solid var(--accent); }
+    .callout.green  { background: rgba(63,185,80,.08);   border-left: 3px solid var(--accent2); }
+    .callout.gold   { background: rgba(210,153,34,.08);  border-left: 3px solid var(--accent3); }
+    .callout.red    { background: rgba(247,129,102,.08); border-left: 3px solid var(--accent4); }
+    .callout.purple { background: rgba(188,140,255,.08); border-left: 3px solid var(--purple); }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout-text { color: var(--text-muted); line-height: 1.65; }
+    .callout-text strong { color: var(--text); }
+
+    /* Flow / timeline */
+    .flow { display: flex; flex-direction: column; }
+    .flow-step { display: flex; gap: 16px; align-items: flex-start; }
+    .flow-line { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .flow-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 3px; }
+    .flow-dot.orange { background: var(--accent3); }
+    .flow-dot.green  { background: var(--accent2); }
+    .flow-dot.red    { background: var(--accent4); }
+    .flow-connector { width: 2px; flex: 1; min-height: 28px; background: var(--border); margin: 4px 0; }
+    .flow-content { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 4px; flex: 1; }
+    .flow-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .flow-desc { font-size: 13px; color: var(--text-muted); }
+    .flow-branch { margin-left: 30px; border-left: 2px dashed var(--accent4); padding-left: 16px; margin-bottom: 8px; padding-top: 8px; padding-bottom: 4px; }
+    .flow-branch-label { font-size: 12px; color: var(--accent4); font-weight: 600; margin-bottom: 4px; }
+    .flow-branch-desc { font-size: 12px; color: var(--text-muted); }
+
+    /* Divider / misc */
+    hr { border: none; border-top: 1px solid var(--border); margin: 0 0 24px; }
+    .mono { font-family: "SFMono-Regular",Consolas,monospace; font-size: 12px; background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 4px; }
+    .summary-box {
+      background: linear-gradient(135deg, rgba(88,166,255,.08), rgba(63,185,80,.05));
+      border: 1px solid rgba(88,166,255,.2); border-radius: 12px; padding: 28px 32px; text-align: center;
+    }
+    .summary-box p { font-size: 15px; line-height: 1.9; color: var(--text-muted); }
+    .summary-box strong { color: var(--text); }
+    .chain-chip {
+      display: inline-block; border-radius: 12px; font-size: 11px; font-weight: 600; padding: 2px 8px;
+    }
+    .chip-eth { background: rgba(98,126,234,.2); color: #9aa8f5; border: 1px solid rgba(98,126,234,.3); }
+    .chip-all { background: rgba(63,185,80,.15); color: var(--accent2); border: 1px solid rgba(63,185,80,.25); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-label">治理架构汇报</div>
+  <h1>Deal 协议 DAO 治理架构</h1>
+  <p class="hero-meta">版本：2026-06-08 &nbsp;·&nbsp; 合约已完成 &nbsp;·&nbsp; 适用读者：产品 / 运营 / 管理层</p>
+</div>
+
+<div class="container">
+
+  <!-- 一、三类资产 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">三类资产的分工</div>
+    </div>
+    <div class="card-grid card-grid-3" style="margin-bottom:20px;">
+      <div class="card blue">
+        <div class="card-icon">🪙</div>
+        <div class="card-title">DC（DealCoin）</div>
+        <div class="card-body">协议流通代币。交易奖励、手续费、生态激励，可增发可销毁，驱动日常流通。</div>
+      </div>
+      <div class="card gold">
+        <div class="card-icon">⚖️</div>
+        <div class="card-title">D（权益代币）</div>
+        <div class="card-body">协议股权代币。固定总量 100，持有即拥有分红权、治理投票权和席位资格。<br/><span style="font-size:12px;color:var(--accent3);">仅以太坊主链</span></div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">🪪</div>
+        <div class="card-title">DealInfoNFT</div>
+        <div class="card-body">官方身份 NFT。交易信用载体，同时作为重大提案的第二院否决资格。</div>
+      </div>
+    </div>
+    <div class="callout blue">
+      <div class="callout-icon">💡</div>
+      <div class="callout-text"><strong>核心关系：</strong>DC 管流通，D 管权益，NFT 管身份与重大决策的用户侧参与。三者职责清晰不重叠。D 的治理与分红仅在 ETH 主链；国库跨所有链。</div>
+    </div>
+  </div>
+
+  <!-- 二、D 代币规则 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">D 代币的核心规则</div>
+    </div>
+    <div class="d-stats">
+      <div class="stat-box"><div class="stat-num gold">100 D</div><div class="stat-label">固定总量，永不增发</div></div>
+      <div class="stat-box"><div class="stat-num blue">1%</div><div class="stat-label">持 1 D = 1% 主网分红权</div></div>
+      <div class="stat-box"><div class="stat-num green">2.5 D</div><div class="stat-label">席位门槛 / 否决资格</div></div>
+      <div class="stat-box"><div class="stat-num red">40席</div><div class="stat-label">100 ÷ 2.5，最多 40 个席位</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>规则项</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>总量</td><td>固定 100 D，<strong>不可增发、不可销毁</strong></td></tr>
+          <tr><td>分红权</td><td>1 D = 1% 主网分红权，与持仓量线性对应</td></tr>
+          <tr><td>席位门槛</td><td>持有 ≥ 2.5 D 即获席位，可发起提案 + 行使一票否决</td></tr>
+          <tr><td>可转让</td><td>可自由转让，持仓变化实时影响后续分红和投票权</td></tr>
+          <tr><td>治理范围</td><td><span class="chain-chip chip-eth">ETH 主链</span>&nbsp; D 的治理、分红、中本聪账户仅在 ETH；其他链只有国库</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 三、四种提案 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">四种提案类型</div>
+    </div>
+
+    <div class="callout gold" style="margin-bottom:20px;">
+      <div class="callout-icon">🔑</div>
+      <div class="callout-text">
+        <strong>核心机制：默认通过模型（Parameter / Major）</strong><br/>
+        提案激活后进入否决窗口。窗口内无人否决 = 默认通过，任意账户均可触发执行。
+        不再需要累积到 70 D ——只要没有否决声音，提案即视为社区同意。
+      </div>
+    </div>
+
+    <div class="tier-grid">
+
+      <!-- 参数调整 -->
+      <div class="tier-card">
+        <div class="tier-head blue">⚡ 参数调整</div>
+        <div class="tier-body">
+          <div class="tier-row"><span class="tier-label">发起方</span><span class="tier-val">任何人</span></div>
+          <div class="tier-row"><span class="tier-label">激活条件</span><span class="tier-val">2.5 D 入场</span></div>
+          <div class="tier-row"><span class="tier-label">否决窗口</span><span class="tier-val" style="color:var(--accent);font-weight:700;">24 小时</span></div>
+          <div class="tier-row"><span class="tier-label">通过条件</span><span class="tier-val">窗口内无否决</span></div>
+          <div class="tier-row"><span class="tier-label">否决方式</span><span class="tier-val"><span class="badge badge-blue">D 席位</span></span></div>
+          <div class="tier-row"><span class="tier-label">链范围</span><span class="tier-val"><span class="chain-chip chip-all">所有链</span></span></div>
+          <div class="tier-row" style="border:none;padding-bottom:0;"><span class="tier-label">适用</span><span class="tier-val" style="color:var(--text-muted);font-size:11px;">参数范围内的日常运营调整</span></div>
+        </div>
+      </div>
+
+      <!-- 国库打款 -->
+      <div class="tier-card">
+        <div class="tier-head gold">🏦 国库打款</div>
+        <div class="tier-body">
+          <div class="tier-row"><span class="tier-label">发起方</span><span class="tier-val">任何人</span></div>
+          <div class="tier-row"><span class="tier-label">激活条件</span><span class="tier-val">2.5 D 入场</span></div>
+          <div class="tier-row"><span class="tier-label">时间窗口</span><span class="tier-val" style="color:var(--text-muted);">无（累积模型）</span></div>
+          <div class="tier-row"><span class="tier-label">通过条件</span><span class="tier-val" style="color:var(--accent3);font-weight:700;">累计 ≥ 70 D</span></div>
+          <div class="tier-row"><span class="tier-label">否决方式</span><span class="tier-val"><span class="badge badge-green">无否决</span></span></div>
+          <div class="tier-row"><span class="tier-label">链范围</span><span class="tier-val"><span class="chain-chip chip-all">所有链</span></span></div>
+          <div class="tier-row" style="border:none;padding-bottom:0;"><span class="tier-label">适用</span><span class="tier-val" style="color:var(--text-muted);font-size:11px;">合作拨款、审计、运营支出</span></div>
+        </div>
+      </div>
+
+      <!-- 重大提案 -->
+      <div class="tier-card">
+        <div class="tier-head red">🌐 重大提案</div>
+        <div class="tier-body">
+          <div class="tier-row"><span class="tier-label">发起方</span><span class="tier-val" style="color:var(--accent2);">任何人</span></div>
+          <div class="tier-row"><span class="tier-label">激活条件</span><span class="tier-val">2.5 D 入场</span></div>
+          <div class="tier-row"><span class="tier-label">否决窗口</span><span class="tier-val" style="color:var(--accent4);font-weight:700;">120 小时</span></div>
+          <div class="tier-row"><span class="tier-label">通过条件</span><span class="tier-val">窗口内无否决</span></div>
+          <div class="tier-row">
+            <span class="tier-label">否决方式</span>
+            <span class="tier-val"><span class="badge badge-red">D 席位</span><br/><span class="badge badge-blue" style="margin-top:3px;">NFT ≥ 10%</span></span>
+          </div>
+          <div class="tier-row"><span class="tier-label">链范围</span><span class="tier-val"><span class="chain-chip chip-all">所有链</span></span></div>
+          <div class="tier-row" style="border:none;padding-bottom:0;"><span class="tier-label">适用</span><span class="tier-val" style="color:var(--text-muted);font-size:11px;">超出参数范围、合约升级、规则变更</span></div>
+        </div>
+      </div>
+
+      <!-- 中本聪提案 -->
+      <div class="tier-card">
+        <div class="tier-head purple">₿ 中本聪提案</div>
+        <div class="tier-body">
+          <div class="tier-row"><span class="tier-label">发起方</span><span class="tier-val" style="color:var(--purple);">D 席位专属</span></div>
+          <div class="tier-row"><span class="tier-label">激活条件</span><span class="tier-val">2.5 D 入场</span></div>
+          <div class="tier-row"><span class="tier-label">时间窗口</span><span class="tier-val" style="color:var(--text-muted);">无时限</span></div>
+          <div class="tier-row"><span class="tier-label">通过条件</span><span class="tier-val" style="color:var(--purple);font-weight:700;">累计 ≥ 90 D</span></div>
+          <div class="tier-row"><span class="tier-label">否决方式</span><span class="tier-val"><span class="badge badge-purple">D 席位</span></span></div>
+          <div class="tier-row"><span class="tier-label">链范围</span><span class="tier-val"><span class="chain-chip chip-eth">ETH 主链</span></span></div>
+          <div class="tier-row" style="border:none;padding-bottom:0;"><span class="tier-label">适用</span><span class="tier-val" style="color:var(--text-muted);font-size:11px;">中本聪账户资金动用，协议最高级别决策</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <br/>
+    <!-- 两种否决机制说明 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="callout red" style="margin:0;">
+        <div class="callout-icon">🗡️</div>
+        <div class="callout-text">
+          <strong>D 席位否决（一票否决）</strong><br/>
+          持 ≥ 2.5 D 的地址可对 Parameter / Major / 中本聪提案随时发起一票否决，提案立即终止。
+        </div>
+      </div>
+      <div class="callout blue" style="margin:0;">
+        <div class="callout-icon">🪪</div>
+        <div class="callout-text">
+          <strong>NFT 否决（仅限重大提案）</strong><br/>
+          活跃 DealInfoNFT 持有者在 120h 窗口内投否决票。达到活跃快照的 <strong>10%</strong> 即触发否决，提案无法执行。
+        </div>
+      </div>
+    </div>
+    <div class="callout gold" style="margin:0;">
+      <div class="callout-icon">📌</div>
+      <div class="callout-text">
+        <strong>国库为何无否决权？</strong> 防止少数席位利用否决阻断合理支出。70 D 绝对多数已足够安全，且国库提案必须注明收款方与用途。
+      </div>
+    </div>
+  </div>
+
+  <!-- 四、投票机制 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">投票机制：物理质押</div>
+    </div>
+    <div class="card-grid card-grid-2" style="margin-bottom:20px;">
+      <div class="card blue">
+        <div class="card-title" style="margin-bottom:10px;">📥 如何投票</div>
+        <div class="card-body">
+          将 D 代币<strong style="color:var(--text)">物理转入</strong>治理合约，转入多少即代表多少支持票，实时累计。最低 2.5 D 激活提案，启动否决窗口。
+        </div>
+      </div>
+      <div class="card green">
+        <div class="card-title" style="margin-bottom:10px;">📤 如何取回</div>
+        <div class="card-body">
+          有两个时机：<br/><br/>
+          <strong style="color:var(--text)">① 提案进行中</strong>——随时调用 <span style="font-family:monospace;font-size:12px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;">unstake()</span> 撤回自己的支持票，D 立刻归还。国库打款、中本聪提案均支持，改变主意随时退出。<br/><br/>
+          <strong style="color:var(--text)">② 提案结束后</strong>——执行 / 被否决 / 被取消后，调用 <span style="font-family:monospace;font-size:12px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;">claimBack()</span> 取回剩余质押。<strong>每人各自操作，不会自动归还。</strong>
+        </div>
+      </div>
+      <div class="card gold">
+        <div class="card-title" style="margin-bottom:10px;">💰 分红补偿</div>
+        <div class="card-body">
+          质押期间 D 虽不在钱包，但治理合约有历史质押快照，<strong style="color:var(--text)">分红仍正常计入</strong>，参与治理不损失收益。
+        </div>
+      </div>
+      <div class="card red">
+        <div class="card-title" style="margin-bottom:10px;">❌ 如何发起否决</div>
+        <div class="card-body">
+          钱包中持 ≥ 2.5 D 即可调用 veto()，提案立即终止。否决无需质押，不影响持仓，随时可用。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 五、完整生命周期（通用） -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">提案完整生命周期</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+      <!-- 参数调整 / 重大提案（默认通过模型） -->
+      <div>
+        <p style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;">⚡ 参数调整（24h）&nbsp;&nbsp;🌐 重大提案（120h）</p>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">任何人发起提案</div>
+              <div class="flow-desc">填写内容和链上动作 → <span class="badge badge-blue">待激活</span></div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot orange"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">2.5 D 入场 → 激活，否决窗口开始</div>
+              <div class="flow-desc">参数 24h / 重大提案 120h。重大提案同时锁定活跃 NFT 快照。</div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot orange"></div><div class="flow-connector"></div></div>
+            <div>
+              <div class="flow-content">
+                <div class="flow-title">否决窗口进行中</div>
+                <div class="flow-desc">D 席位可随时发起 veto()；重大提案额外：NFT 否决票若达 10% 也会阻断。</div>
+              </div>
+              <div class="flow-branch">
+                <div class="flow-branch-label">⚡ 若任一否决触发</div>
+                <div class="flow-branch-desc">提案终止 → 各人调 claimBack() 取回 D</div>
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot green"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">窗口到期，无否决 → 可执行</div>
+              <div class="flow-desc"><span class="badge badge-green">Executable</span> 任意账户触发 execute()</div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot green"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">执行成功，各人 claimBack()</div>
+              <div class="flow-desc">链上动作生效，每位支持者自行取回自己的质押 D。</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 国库 / 中本聪（累积模型） -->
+      <div>
+        <p style="font-size:13px;font-weight:600;color:var(--accent3);margin-bottom:12px;">🏦 国库打款（70D）&nbsp;&nbsp;₿ 中本聪提案（90D）</p>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot" style="background:var(--accent3)"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">发起提案</div>
+              <div class="flow-desc">国库：任何人；中本聪：<strong style="color:var(--purple)">D 席位专属</strong>。</div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot orange"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">D 持续入场，无时间限制</div>
+              <div class="flow-desc">支持者随时质押。中本聪提案可随时取出（自由撤回），重新质押。</div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot orange"></div><div class="flow-connector"></div></div>
+            <div>
+              <div class="flow-content">
+                <div class="flow-title">国库：70D&nbsp;&nbsp;中本聪：90D</div>
+                <div class="flow-desc">累积达标 → <span class="badge badge-green">Executable</span>；未达标则持续等待或被取消。</div>
+              </div>
+              <div class="flow-branch">
+                <div class="flow-branch-label">⚡ 中本聪：D 席位可随时否决</div>
+                <div class="flow-branch-desc">提案终止 → 各人调 claimBack() 取回 D</div>
+              </div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot green"></div><div class="flow-connector"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">达标 → 任意账户触发 execute()</div>
+              <div class="flow-desc">链上动作生效。</div>
+            </div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line"><div class="flow-dot green"></div></div>
+            <div><div class="flow-content">
+              <div class="flow-title">执行完成，各人 claimBack()</div>
+              <div class="flow-desc">每位支持者自行取回自己的质押 D。</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 六、分红体系 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">分红体系</div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <table>
+        <thead><tr><th>项目</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>分红资产</td><td>统一使用 <strong>DC（DealCoin）</strong></td></tr>
+          <tr><td>分红权重</td><td>按快照时 D 持仓比例，1 D = 1% 权重</td></tr>
+          <tr><td>质押中的 D</td><td>即使 D 在治理合约中质押，<strong>仍计入分红快照</strong>，不损失收益</td></tr>
+          <tr><td>分红链</td><td><span class="chain-chip chip-eth">ETH 主链</span>&nbsp; 仅以太坊，其他链不开放</td></tr>
+          <tr><td>开轮权限</td><td>须经 D 提案通过后，由 executor 执行开轮</td></tr>
+          <tr><td>DC Swap 手续费</td><td>直接销毁（通缩机制），不进分红池</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout blue">
+      <div class="callout-icon">📊</div>
+      <div class="callout-text">
+        <strong>分红计算：</strong>个人可领 DC = （个人持仓 D ÷ 100）× 本轮分红池 DC<br/>
+        举例：本轮分红 10,000 DC，持有 3 D → 可领 <strong>300 DC</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- 七、安全设计 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">安全设计亮点</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>机制</th><th>设计意图</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>默认通过模型</strong><br/><span style="font-size:12px;color:var(--text-muted);">Parameter / Major</span></td>
+            <td>沉默的多数 = 同意。降低治理参与摩擦，无需强迫每个 D 持有人主动投票，只有真正反对才需行动。</td>
+          </tr>
+          <tr>
+            <td><strong>D 席位一票否决</strong><br/><span style="font-size:12px;color:var(--text-muted);">需持 ≥ 2.5 D</span></td>
+            <td>否决有真实利益绑定，防止零成本干扰治理。持有量越大，否决动作越慎重。</td>
+          </tr>
+          <tr>
+            <td><strong>NFT 双院机制（重大提案）</strong><br/><span style="font-size:12px;color:var(--text-muted);">10% 否决阈值</span></td>
+            <td>协议核心变更须能扛住用户侧的反对声音。10% 是低门槛但有效的安全阀，意味着少数活跃用户就可以阻止明显不合理的重大变更。</td>
+          </tr>
+          <tr>
+            <td><strong>国库无否决权</strong></td>
+            <td>防止少数席位绑架合理支出。70 D 绝对多数已足够，且国库提案必须注明用途。</td>
+          </tr>
+          <tr>
+            <td><strong>中本聪 90 D 门槛</strong></td>
+            <td>协议最高级别资产需要近全票通过，极难操控，极难意外触发。</td>
+          </tr>
+          <tr>
+            <td><strong>各自领回（非自动归还）</strong></td>
+            <td>提案结束后每人独立调用 claimBack()，避免单笔循环归还的 gas 集中开销；staker 对自己的 D 完全自主。</td>
+          </tr>
+          <tr>
+            <td><strong>质押期分红补偿</strong></td>
+            <td>质押的 D 仍计入分红快照，参与治理不损失收益，激励更积极的治理参与。</td>
+          </tr>
+          <tr>
+            <td><strong>NFT 活跃窗口 90 天</strong></td>
+            <td>排除长期不活跃 NFT，防止休眠账户被激活操控 NFT 院投票；动态活跃快照，快照在提案激活时锁定。</td>
+          </tr>
+          <tr>
+            <td><strong>参数范围强制执行</strong></td>
+            <td>B 类参数有上下限约束，超出范围的修改自动升级为重大提案（120h），不可绕过。</td>
+          </tr>
+          <tr>
+            <td><strong>新合约纯增量部署</strong></td>
+            <td>新治理合约不修改任何已有合约存储和逻辑，无需迁移，部署风险极低。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 总结 -->
+  <div class="summary-box">
+    <p>
+      <strong>D 是协议的股权</strong>，持 1 D 得 1% 分红，持 2.5 D 拥有席位与一票否决权。<br/>
+      <strong>四种提案，各司其职：</strong>参数调整默认 24h 通过，国库积累 70D 通过，<br/>
+      重大提案默认 120h 通过（NFT 双院守门），中本聪提案需全网 90% D 同意。<br/>
+      <strong>所有提案结束后，各人自取各人的 D，链上全程透明可查。</strong>
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

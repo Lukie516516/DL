@@ -87,6 +87,8 @@ contract DCDomainHall is ReentrancyGuard {
     mapping(bytes32 => MsgThread) private _threads;
     /// @dev 与 _threads 键空间隔离：keccak256(abi.encode(uint8(1), domainName, deal))
     mapping(bytes32 => MsgThread) private _dealHallThreads;
+    /// @dev deal address → keccak256(bytes(domainName)), set at creation for binding check
+    mapping(address => bytes32) private _dealDomainHash;
 
     event MessagePosted(
         string domain,
@@ -255,6 +257,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
+        _dealDomainHash[deal] = keccak256(bytes(domainName));
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount);
         emit HallDealCreatedDeferred(domainName, msg.sender, deal, templateType);
     }
@@ -392,6 +395,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
+        _dealDomainHash[deal] = keccak256(bytes(domainName));
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit HallDealWithPickedUser(
@@ -456,6 +460,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
+        _dealDomainHash[deal] = keccak256(bytes(domainName));
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit HallDealCreatedDeferred(
@@ -478,6 +483,11 @@ contract DCDomainHall is ReentrancyGuard {
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
 
+        require(
+            _dealDomainHash[deal] == keccak256(bytes(domainName)),
+            "DCDomainHall: deal not in domain"
+        );
+
         address dealA = IDealOpenJoinForHall(deal).a();
         require(dealA == msg.sender, "DCDomainHall: not deal A");
 
@@ -495,6 +505,10 @@ contract DCDomainHall is ReentrancyGuard {
         require(deal != address(0), "DCDomainHall: zero deal");
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
+        require(
+            _dealDomainHash[deal] == keccak256(bytes(domainName)),
+            "DCDomainHall: deal not in domain"
+        );
         require(!rank.isBlacklisted(domainName, msg.sender), "DCDomainHall: blacklisted");
         _limitMsg(content);
 

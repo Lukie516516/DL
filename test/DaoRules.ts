@@ -374,9 +374,8 @@ describe("DAO Rules", async function () {
       1,
     ]));
 
-    const vetoState = await nftVeto.read.proposalVeto([1n]);
+    const vetoState = await nftVeto.read.proposalInfo([1n]);
     assert.equal(vetoState.activeSupplySnapshot, 5n);
-    assert.equal(await nftVeto.read.thresholdVotes([1n]), 1n);
 
     const nftAsBob = await viem.getContractAt("TestERC721", nft.address, {
       client: { wallet: bob },
@@ -389,8 +388,8 @@ describe("DAO Rules", async function () {
     const nftVetoAsDave = await viem.getContractAt("NftVetoRegistry", nftVeto.address, {
       client: { wallet: dave },
     });
-    await assert.rejects(nftVetoAsDave.write.castVeto([1n, 1n]));
-    await waitFor(publicClient, await nftVetoAsBob.write.castVeto([1n, 1n]));
+    await assert.rejects(nftVetoAsBob.write.castVeto([1n, 1n]));
+    await waitFor(publicClient, await nftVetoAsDave.write.castVeto([1n, 1n]));
 
     assert.equal(await nftVeto.read.isProposalVetoed([1n]), true);
     assert.equal(await governor.read.state([1n]), 2);

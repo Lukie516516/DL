@@ -431,7 +431,8 @@ contract DealAAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {
         uint64 ts = uint64(block.timestamp);
         if (msg.sender == a && bVote == Vote.Unset) {
-            _check(block.timestamp >= uint256(aAt) + uint256(timeoutSeconds), 31);
+            uint256 aBase = aAt > lockedAt ? uint256(aAt) : uint256(lockedAt);
+            _check(block.timestamp >= aBase + uint256(timeoutSeconds), 31);
             if (aVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
                 _recordTimeline(5, msg.sender, true, 1);
@@ -439,16 +440,12 @@ contract DealAAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
                 return;
             }
         } else if (msg.sender == b && aVote == Vote.Unset) {
-            _check(block.timestamp >= uint256(bAt) + uint256(timeoutSeconds), 32);
+            uint256 bBase = bAt > lockedAt ? uint256(bAt) : uint256(lockedAt);
+            _check(block.timestamp >= bBase + uint256(timeoutSeconds), 32);
             if (bVote == Vote.Accept) {
                 emit ForcedAfterTimeout(msg.sender, true, ts);
                 _recordTimeline(5, msg.sender, false, 1);
                 _complete(CompletionReason.ForcedByB);
-                return;
-            } else if (bVote == Vote.Reject) {
-                emit ForcedAfterTimeout(msg.sender, false, ts);
-                _recordTimeline(5, msg.sender, false, 0);
-                _cancel();
                 return;
             }
         }

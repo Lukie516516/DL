@@ -89,6 +89,11 @@ contract DealSwapOrderBook is ReentrancyGuard {
 
     receive() external payable {}
 
+    function transferOwner(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "ZERO_OWNER");
+        owner = newOwner;
+    }
+
     function setRouter(address router_) external onlyOwner {
         router = router_;
         emit RouterUpdated(router_);

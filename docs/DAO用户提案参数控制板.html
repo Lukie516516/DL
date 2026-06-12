@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DAO 用户提案参数控制板</title>
+  <style>
+    :root {
+      --bg: #101318;
+      --panel: #171c24;
+      --panel2: #1f2631;
+      --line: #303846;
+      --text: #edf2f7;
+      --muted: #a8b2c1;
+      --accent: #f4b000;
+      --green: #60d394;
+      --blue: #7db7ff;
+      --red: #ee7777;
+      --purple: #b79cff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 36px 28px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+
+    .card, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+
+    h1 { font-size: 34px; margin-bottom: 12px; }
+    h2 { font-size: 24px; margin-bottom: 14px; }
+    h3 { font-size: 17px; margin-bottom: 8px; }
+
+    p { margin: 0 0 12px; color: var(--muted); }
+    strong { color: var(--text); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(244, 176, 0, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(244, 176, 0, 0.35);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 11px 12px;
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #111318;
+    }
+
+    .tag.low { background: var(--green); }
+    .tag.mid { background: var(--blue); }
+    .tag.high { background: var(--accent); }
+    .tag.critical { background: var(--red); }
+    .tag.major { background: var(--purple); color: #15111f; }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #131820;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 13px;
+      background: #1a202a;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    td:first-child {
+      color: var(--text);
+      font-weight: 700;
+      width: 190px;
+    }
+
+    .note {
+      padding: 16px;
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    .note.ok { border-color: rgba(96, 211, 148, 0.4); background: rgba(96, 211, 148, 0.08); }
+    .note.warn { border-color: rgba(244, 176, 0, 0.42); background: rgba(244, 176, 0, 0.08); }
+    .note.danger { border-color: rgba(238, 119, 119, 0.45); background: rgba(238, 119, 119, 0.08); }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    li { margin: 6px 0; }
+
+    .small { font-size: 13px; color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .hero, .two, .grid { grid-template-columns: 1fr; }
+      .wrap { padding: 22px 14px 40px; }
+      h1 { font-size: 28px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="hero">
+      <div class="card">
+        <p class="eyebrow">DAO Proposal Parameters</p>
+        <h1>DAO 用户提案参数控制板</h1>
+        <p>
+          这份文档面向 PM 和产品讨论，说明用户可以通过 DAO 提案调控哪些业务规则，以及每类规则的影响面大小。
+        </p>
+        <div class="grid">
+          <div class="note ok">
+            <strong>只展示普通提案</strong>
+            本页只放用户可理解、可讨论的日常运营参数。
+          </div>
+          <div class="note warn">
+            <strong>不展示底层权限</strong>
+            合约升级、权限迁移、国库、信用写入等不放在本页。
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>提案前提</h2>
+        <div class="legend">
+          <div class="legend-row">
+            <span class="tag high">发起</span>
+            <span>D 持仓达到席位门槛的用户，才有资格发起提案。</span>
+          </div>
+          <div class="legend-row">
+            <span class="tag mid">通过</span>
+            <span>普通参数按 D 投票通过，投票通过后进入执行。</span>
+          </div>
+          <div class="legend-row">
+            <span class="tag critical">执行</span>
+            <span>提案通过后，由 DAO executor / timelock 去调用链上函数。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>1. 用户可以提案调整的参数</h2>
+      <p>这一部分是建议开放给用户提案的业务规则。不是用户直接改，而是用户发提案，投票通过后由 DAO 执行。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>模块</th>
+            <th>可提案调整什么</th>
+            <th>影响面</th>
+            <th>业务影响</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Deal 交易</td>
+            <td>交易手续费比例、交易奖励比例。</td>
+            <td><span class="tag high">高</span></td>
+            <td>直接影响用户交易成本、协议收入和奖励发放。</td>
+          </tr>
+          <tr>
+            <td>留言收费</td>
+            <td>是否开启留言收费、每条留言收多少 DC、是否把留言作为 burn 行为。</td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响用户发消息成本，也会影响 DC 消耗速度。</td>
+          </tr>
+          <tr>
+            <td>创建合同收费</td>
+            <td>是否开启创建 deal 收费、创建 deal 收多少 DC。</td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响开单成本，过高会降低创建量，过低则没有消耗约束。</td>
+          </tr>
+          <tr>
+            <td>身份 NFT</td>
+            <td>身份 NFT 铸造价格。</td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响用户进入信用体系的成本。</td>
+          </tr>
+          <tr>
+            <td>OpenTokenToken</td>
+            <td>B 方占坑后多久可以被 C 顶替。</td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响开放币币交易的流畅度。太短容易误踢，太长容易卡单。</td>
+          </tr>
+          <tr>
+            <td>域名注册</td>
+            <td>域名注册价格、域名市场手续费比例。</td>
+            <td><span class="tag mid">中</span></td>
+            <td>影响域名系统收入、用户注册门槛和二级市场成本。</td>
+          </tr>
+          <tr>
+            <td>域名广告</td>
+            <td>最低广告充值、广告消耗速率、按比例扣费参数、未活跃踢出时间。</td>
+            <td><span class="tag high">高</span></td>
+            <td>影响域名持有人收益、广告展示排序、充值用户的资金消耗速度。</td>
+          </tr>
+          <tr>
+            <td>Swap 手续费</td>
+            <td>DC/AUSD、DC/USDT、DC/AGI 等官方 pair 的 swap 手续费。</td>
+            <td><span class="tag high">高</span></td>
+            <td>影响兑换成本、协议收入和做市体验。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>2. PM 可以怎么设计提案入口</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>提案类型</th>
+            <th>适合放哪些参数</th>
+            <th>页面提示</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>普通参数提案</td>
+            <td>手续费、留言收费、创建收费、域名注册价、广告费率、顶替时间、NFT 铸造价。</td>
+            <td>提示“会影响用户成本或收益，投票通过后生效”。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>3. 一句话版本</h2>
+      <div class="note ok">
+        用户普通提案只调日常运营规则：手续费、奖励比例、留言收费、创建收费、NFT 铸造价、域名价格、域名广告参数、B 方顶替时间和 swap 手续费。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

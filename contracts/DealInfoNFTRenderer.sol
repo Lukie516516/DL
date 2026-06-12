@@ -56,11 +56,24 @@ contract DealInfoNFTRenderer {
                     '{"trait_type":"Date Code","value":"', _toString(meta.dateCodeOf(tokenId)), '"},',
                     '{"trait_type":"Daily Serial","value":"', _toString(meta.dailySerialOf(tokenId)), '"},',
                     '{"trait_type":"Total DC Minted","value":"', _toString(meta.totalMintedOf(tokenId)), '"},',
-                    '{"trait_type":"Locked","value":"', meta.lockCount(tokenId) > 0 ? "true" : "false", '"}',
+                    '{"trait_type":"Locked","value":"', meta.lockCount(tokenId) > 0 ? "true" : "false", '"},',
+                    '{"trait_type":"Chain ID","value":"', _toString(block.chainid), '"},',
+                    '{"trait_type":"Contract","value":"', _toHexString(uint160(nft)), '"}',
                 ']',
             '}'
         );
         return string(abi.encodePacked("data:application/json;base64,", Base64.encode(json)));
+    }
+
+    function _toHexString(uint160 v) internal pure returns (string memory) {
+        bytes memory h = "0123456789abcdef";
+        bytes memory s = new bytes(42);
+        s[0] = "0"; s[1] = "x";
+        for (uint256 i = 0; i < 20; i++) {
+            s[2 + i * 2]     = h[(v >> (4 * (39 - 2 * i))) & 0xf];
+            s[3 + i * 2]     = h[(v >> (4 * (38 - 2 * i))) & 0xf];
+        }
+        return string(s);
     }
 
     function _toString(uint256 v) internal pure returns (string memory str) {

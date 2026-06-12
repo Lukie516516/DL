@@ -100,6 +100,12 @@ contract MockOpenTTFactory {
 
     function logDealRewards(address, uint256, address, uint256, address, uint256) external pure {}
 
+    struct DealRewardBatch {
+        address partyA; uint256 toA; address partyB; uint256 toB; address cAddr; uint256 toC;
+        uint256 aTokenId; uint256 aMinted; uint256 bTokenId; uint256 bMinted; uint256 cTokenId; uint256 cMinted;
+    }
+    function mintAndRecordDealRewards(DealRewardBatch calldata) external pure {}
+
     function recordDealCredit(
         address partyA,
         address partyB,
@@ -133,6 +139,8 @@ contract MockOpenTTFactory {
     function onParticipantRemoved(address) external pure {}
 
     function onAbandoned(address, address) external pure {}
+
+    function recordDealTimeline(uint8, address, bool, uint256) external pure {}
 
     function onClosedFor(address) external pure {}
 
