@@ -439,7 +439,7 @@ async function main() {
   ]);
 
   // CrossChainDispatcher: register executor on Agiking (self-referential for testing)
-  await writeTx("Dispatcher.registerExecutor", publicClient, dispatcher, "registerExecutor", [
+  await writeTx("Dispatcher.setExecutor", publicClient, dispatcher, "setExecutor", [
     AGIKING_CHAIN_ID, executor.address,
   ]);
 
