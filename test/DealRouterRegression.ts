@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
+import { encodeFunctionData } from "viem";
 
 const ONE = 10n ** 18n;
 
@@ -50,14 +51,21 @@ async function deployRouterFixture() {
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
   const dealImpl = await viem.deployContract("Deal");
   const pairImpl = await viem.deployContract("DealSwapTemplate");
-  const factory = await viem.deployContract("DealFactory", [
-    dealImpl.address,
-    pairImpl.address,
-    3600,
-  ]);
+  const factoryImpl = await viem.deployContract("DealFactory", []);
+  const factoryInitData = encodeFunctionData({
+    abi: [{ type: "function", name: "initialize", inputs: [
+      { name: "_dealImpl",          type: "address" },
+      { name: "_pairImpl",          type: "address" },
+      { name: "_minTimeoutSeconds", type: "uint64"  },
+    ]}],
+    functionName: "initialize",
+    args: [dealImpl.address, pairImpl.address, 3600n],
+  });
+  const factoryProxy = await viem.deployContract("ERC1967Proxy", [factoryImpl.address, factoryInitData]);
+  const factory = await viem.getContractAt("DealFactory", factoryProxy.address);
   const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const orderBook = await viem.deployContract("DealSwapOrderBook", [treasury.account.address]);
-  const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address]);
+  const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address, dealPairManager.address]);
 
   const mintAmount = 10_000_000n * ONE;
   for (const token of [dl, tokenA, tokenB]) {

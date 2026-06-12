@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { getAddress, zeroAddress } from "viem";
+import { encodeFunctionData, getAddress, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const DEADLINE = 2n ** 63n;
@@ -52,11 +52,19 @@ async function deployBusinessFixture() {
   const dealAssetNftLib = await viem.deployContract("DealAssetNftLib");
   const dealImpl = await viem.deployContract("Deal");
   const pairImpl = await viem.deployContract("DealSwapTemplate");
-  const factory = await viem.deployContract("DealFactory", [
-    dealImpl.address,
-    pairImpl.address,
-    3600,
-  ]);
+  // UUPS proxy: deploy implementation, then wrap in ERC1967Proxy
+  const factoryImpl = await viem.deployContract("DealFactory", []);
+  const factoryInitData = encodeFunctionData({
+    abi: [{ type: "function", name: "initialize", inputs: [
+      { name: "_dealImpl",           type: "address" },
+      { name: "_pairImpl",           type: "address" },
+      { name: "_minTimeoutSeconds",  type: "uint64"  },
+    ]}],
+    functionName: "initialize",
+    args: [dealImpl.address, pairImpl.address, 3600n],
+  });
+  const factoryProxy = await viem.deployContract("ERC1967Proxy", [factoryImpl.address, factoryInitData]);
+  const factory = await viem.getContractAt("DealFactory", factoryProxy.address);
   const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const infoNft = await viem.deployContract("DealInfoNFT", [
     factory.address,
@@ -66,7 +74,7 @@ async function deployBusinessFixture() {
   const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer");
   await waitFor(publicClient, await infoNft.write.setRenderer([infoNftRenderer.address]));
   const orderBook = await viem.deployContract("DealSwapOrderBook", [treasury.account.address]);
-  const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address]);
+  const router = await viem.deployContract("DealRouter", [wrappedNative.address, orderBook.address, dealPairManager.address]);
   const dcDomain = await viem.deployContract("DCDomain", [dl.address, treasury.account.address]);
   const dcDomainMarket = await viem.deployContract("DCDomainMarket", [
     dcDomain.address,

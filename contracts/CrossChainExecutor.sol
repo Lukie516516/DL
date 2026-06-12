@@ -23,6 +23,11 @@ contract CrossChainExecutor is Ownable {
     /// @notice The CrossChainDispatcher address on ETH — only source we trust.
     address public dispatcher;
 
+    /// @notice The bridge adapter contract allowed to call onMessageReceived.
+    ///         address(0) = only owner may call (safe default before bridge is wired).
+    ///         Set to LayerZero endpoint / Wormhole relayer once bridge is live.
+    address public bridgeAdapter;
+
     /// @notice Optional whitelist of callable contracts on this chain.
     ///         If empty, any target is allowed (less restrictive, simpler early on).
     mapping(address => bool) public allowedTarget;
@@ -31,6 +36,7 @@ contract CrossChainExecutor is Ownable {
     // ─── Events ───────────────────────────────────────────────────────────────
 
     event DispatcherUpdated(address indexed newDispatcher);
+    event BridgeAdapterUpdated(address indexed newAdapter);
     event CallExecuted(address indexed target, bool success);
     event TargetAllowed(address indexed target, bool allowed);
     event WhitelistToggled(bool enabled);
@@ -64,6 +70,14 @@ contract CrossChainExecutor is Ownable {
     function setWhitelistEnabled(bool enabled) external onlyOwner {
         whitelistEnabled = enabled;
         emit WhitelistToggled(enabled);
+    }
+
+    /// @notice Register the bridge adapter contract (e.g. LayerZero endpoint wrapper).
+    ///         Call this once the real bridge is deployed and ready.
+    ///         Set to address(0) to fall back to owner-only mode (emergency).
+    function setBridgeAdapter(address adapter) external onlyOwner {
+        bridgeAdapter = adapter;
+        emit BridgeAdapterUpdated(adapter);
     }
 
     // ─── Message reception (called by bridge adapter) ─────────────────────────
@@ -111,10 +125,18 @@ contract CrossChainExecutor is Ownable {
         }
     }
 
-    /// @dev Override this to restrict who can call onMessageReceived.
-    ///      Default: open (the bridge adapter is a separate contract that calls us).
-    ///      For LayerZero inline mode, check msg.sender == lzEndpoint.
-    function _checkCaller() internal virtual {}
+    /// @dev Called at the top of onMessageReceived to authenticate the caller.
+    ///      - If bridgeAdapter == address(0): only owner may call (safe pre-bridge default).
+    ///      - If bridgeAdapter is set: only that address may call (LayerZero endpoint, etc.).
+    ///      Override this function when integrating an inline bridge (e.g. OApp _lzReceive).
+    function _checkCaller() internal virtual {
+        if (bridgeAdapter == address(0)) {
+            // Bridge not yet wired — allow emergency owner calls only.
+            require(msg.sender == owner(), "CrossChainExecutor: bridge not configured");
+        } else {
+            require(msg.sender == bridgeAdapter, "CrossChainExecutor: unauthorized caller");
+        }
+    }
 
     receive() external payable {}
 }

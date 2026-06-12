@@ -428,10 +428,34 @@ contract DCDomain is ERC721, Ownable {
                 desc,
                 '","image":"',
                 imageField,
-                '"}'
+                '","attributes":[',
+                '{"trait_type":"Chain ID","value":"', _uint256ToString(block.chainid), '"},',
+                '{"trait_type":"Contract","value":"', _addressToHex(address(this)), '"}',
+                ']}'
             )
         );
         return string(abi.encodePacked("data:application/json;base64,", _base64Encode(bytes(json))));
+    }
+
+    function _uint256ToString(uint256 v) internal pure returns (string memory) {
+        if (v == 0) return "0";
+        uint256 tmp = v; uint256 len;
+        while (tmp != 0) { len++; tmp /= 10; }
+        bytes memory b = new bytes(len);
+        while (v != 0) { b[--len] = bytes1(uint8(48 + v % 10)); v /= 10; }
+        return string(b);
+    }
+
+    function _addressToHex(address a) internal pure returns (string memory) {
+        bytes memory h = "0123456789abcdef";
+        bytes memory s = new bytes(42);
+        s[0] = "0"; s[1] = "x";
+        uint160 v = uint160(a);
+        for (uint256 i = 0; i < 20; i++) {
+            s[2 + i * 2]     = h[(v >> (4 * (39 - 2 * i))) & 0xf];
+            s[3 + i * 2]     = h[(v >> (4 * (38 - 2 * i))) & 0xf];
+        }
+        return string(s);
     }
 
     // ─────────────────────────────────────────────

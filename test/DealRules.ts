@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { getAddress, toHex, zeroAddress } from "viem";
+import { encodeFunctionData, getAddress, toHex, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const ACCEPT = 1;
@@ -93,11 +93,18 @@ async function deployFixture() {
     },
   });
   const pairImpl = await viem.deployContract("DealSwapTemplate");
-  const factory = await viem.deployContract("DealFactory", [
-    dealImpl.address,
-    pairImpl.address,
-    3600,
-  ]);
+  const factoryImpl = await viem.deployContract("DealFactory", []);
+  const factoryInitData = encodeFunctionData({
+    abi: [{ type: "function", name: "initialize", inputs: [
+      { name: "_dealImpl",          type: "address" },
+      { name: "_pairImpl",          type: "address" },
+      { name: "_minTimeoutSeconds", type: "uint64"  },
+    ]}],
+    functionName: "initialize",
+    args: [dealImpl.address, pairImpl.address, 3600n],
+  });
+  const factoryProxy = await viem.deployContract("ERC1967Proxy", [factoryImpl.address, factoryInitData]);
+  const factory = await viem.getContractAt("DealFactory", factoryProxy.address);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
   const dealResultIndex = await viem.deployContract("DealResultIndex", [factory.address]);
   const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
@@ -378,15 +385,17 @@ async function createOpenTTDealAndSettle(
 
   const bobInfoId = await fixture.mintInfoNft(bob);
 
-  await waitFor(publicClient, await dealAlice.write.pay([]));
-  await waitFor(publicClient, await dealAlice.write.preAccept([]));
-  await waitFor(publicClient, await dealBob.write.join([bobInfoId, false]));
+  // gas overrides: factory.recordDealTimeline uses try/catch so eth_estimateGas omits
+  // the ~100k DealResultIndex cold-SSTORE cost from lighter transactions
+  await waitFor(publicClient, await dealAlice.write.pay([], { gas: 500_000n }));
+  await waitFor(publicClient, await dealAlice.write.preAccept([], { gas: 300_000n }));
+  await waitFor(publicClient, await dealBob.write.join([bobInfoId, false], { gas: 500_000n }));
   assert.equal(await dealAlice.read.bNftId(), bobInfoId);
   assert.equal(await dealAlice.read.bNftLocked(), true);
-  await waitFor(publicClient, await dealBob.write.pay([]));
+  await waitFor(publicClient, await dealBob.write.pay([], { gas: 500_000n }));
 
   assert.equal(Number(await dealAlice.read.status()), 2);
-  await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+  await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT], { gas: 1_500_000n }));
   assert.equal(Number(await dealAlice.read.status()), 3);
   return dealAddress;
 }
@@ -444,15 +453,17 @@ async function completeOpenDeal(
     await waitFor(publicClient, await infoNftBob.write.approve([dealAddress, tokenId]));
   }
 
-  await waitFor(publicClient, await dealBob.write.join([0n, false]));
-  await waitFor(publicClient, await dealAlice.write.pay());
+  // gas overrides: factory.recordDealTimeline uses try/catch so eth_estimateGas omits
+  // the ~100k DealResultIndex cold-SSTORE cost; pay() can trigger both action 2 and action 12
+  await waitFor(publicClient, await dealBob.write.join([0n, false], { gas: 500_000n }));
+  await waitFor(publicClient, await dealAlice.write.pay({ gas: 500_000n }));
   try {
-    await waitFor(publicClient, await dealBob.write.pay());
+    await waitFor(publicClient, await dealBob.write.pay({ gas: 500_000n }));
   } catch {
     // zero-amount side doesn't need to pay
   }
-  await waitFor(publicClient, await dealAlice.write.setMyVote([ACCEPT]));
-  await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT]));
+  await waitFor(publicClient, await dealAlice.write.setMyVote([ACCEPT], { gas: 500_000n }));
+  await waitFor(publicClient, await dealBob.write.setMyVote([ACCEPT], { gas: 1_500_000n }));
 }
 
 function inferTemplateType(

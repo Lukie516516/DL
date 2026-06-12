@@ -57,6 +57,15 @@ contract CrossChainDispatcher is CrossChainMessengerBase, Ownable {
         emit ExecutorRegistered(chainId, executorAddr);
     }
 
+    /// @notice Rescue ETH accidentally left in this contract (e.g., excess bridge fee overpayment).
+    function rescueETH(address payable to) external onlyOwner {
+        require(to != address(0), "ZERO_TO");
+        uint256 bal = address(this).balance;
+        require(bal > 0, "NOTHING");
+        (bool ok, ) = to.call{value: bal}("");
+        require(ok, "ETH_SEND_FAIL");
+    }
+
     /// @notice Point to a new DealGovernance contract.
     function setGovernance(address governance_) external onlyOwner {
         governance = governance_;

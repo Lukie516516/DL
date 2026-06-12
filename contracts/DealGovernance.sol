@@ -3,9 +3,11 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 interface IDTokenGov {
     function balanceOf(address account) external view returns (uint256);
@@ -31,7 +33,7 @@ interface INftVetoRegistryGov {
 /// All proposals require 2.5 D staked to activate (pre-proposal gate).
 /// D is physically transferred on stake; each staker calls claimBack() individually after end.
 /// DAO governance parameters are mutable via Major proposal (onlyGovernance setters).
-contract DealGovernance is ReentrancyGuard {
+contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Checkpoints for Checkpoints.Trace208;
     using SafeCast for uint256;
@@ -95,7 +97,7 @@ contract DealGovernance is ReentrancyGuard {
 
     // ─── Immutables ───────────────────────────────────────────────────────────
 
-    IDTokenGov public immutable dToken;
+    IDTokenGov public dToken;
 
     // ─── State ────────────────────────────────────────────────────────────────
 
@@ -127,6 +129,7 @@ contract DealGovernance is ReentrancyGuard {
     mapping(uint256 => uint256[])                         private _values;
     mapping(uint256 => bytes[])                           private _calldatas;
     mapping(uint256 => address[])                         private _stakerList;
+    mapping(uint256 => mapping(address => bool))          private _inStakerList;
     mapping(uint256 => mapping(address => uint256))       public  stakeOf;
 
     // Live cross-proposal staked total per address (dividend checkpointing).
@@ -150,10 +153,17 @@ contract DealGovernance is ReentrancyGuard {
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
-    constructor(address dToken_, address nftVetoRegistry_, address dcToken_, address treasury_) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address dToken_, address nftVetoRegistry_, address dcToken_, address treasury_) external initializer {
         require(dToken_ != address(0), "ZERO_D");
         require(dcToken_ != address(0), "ZERO_DC");
         require(treasury_ != address(0), "ZERO_TREASURY");
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         dToken = IDTokenGov(dToken_);
         // nftVetoRegistry defaults to address(0) — NFT veto is disabled until DAO enables it
         if (nftVetoRegistry_ != address(0)) {
@@ -161,6 +171,10 @@ contract DealGovernance is ReentrancyGuard {
         }
         dcToken  = IERC20(dcToken_);
         treasury = treasury_;
+    }
+
+    function _authorizeUpgrade(address) internal override {
+        if (msg.sender != address(this)) revert OnlyGovernance();
     }
 
     receive() external payable {}
@@ -279,8 +293,9 @@ contract DealGovernance is ReentrancyGuard {
         _requireNotEnded(p);
 
         // ── Effects ──────────────────────────────────────────────────────────
-        if (stakeOf[proposalId][msg.sender] == 0) {
+        if (!_inStakerList[proposalId][msg.sender]) {
             _stakerList[proposalId].push(msg.sender);
+            _inStakerList[proposalId][msg.sender] = true;
         }
         stakeOf[proposalId][msg.sender] += amount;
 
@@ -293,9 +308,18 @@ contract DealGovernance is ReentrancyGuard {
         bool justActivated = false;
         if (prevTotal < activationThreshold && p.totalStaked >= activationThreshold) {
             uint256 window = _windowFor(p.kind);
-            if (window > 0) p.windowEndsAt = block.timestamp + window;
+            if (window > 0) {
+                // Guard: only set windowEndsAt on FIRST threshold crossing.
+                // Without this, a staker could do 1-wei unstake/re-stake to reset
+                // the veto window indefinitely, preventing proposal execution.
+                if (p.windowEndsAt == 0) {
+                    p.windowEndsAt = block.timestamp + window;
+                    justActivated = true;
+                }
+            } else {
+                justActivated = true; // Treasury / Satoshi: no window
+            }
             if (p.kind == ProposalKind.Major && !p.nftRegistered) p.nftRegistered = true;
-            justActivated = true;
         }
 
         bool justPassed = false;

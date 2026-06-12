@@ -36,6 +36,16 @@ contract D is ERC20, ERC20Permit, ERC20Votes {
         return D_DECIMALS;
     }
 
+    /// @notice D tokens cannot be burned — supply is fixed at 100 D forever.
+    function burn(uint256) public pure {
+        revert BurnDisabled();
+    }
+
+    /// @notice D tokens cannot be burned — supply is fixed at 100 D forever.
+    function burnFrom(address, uint256) public pure {
+        revert BurnDisabled();
+    }
+
     function hasSeat(address account) external view returns (bool) {
         return balanceOf(account) >= SEAT_THRESHOLD;
     }

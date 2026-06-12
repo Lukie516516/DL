@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.26;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -26,15 +29,14 @@ interface IDealStatusView {
  *         小时费结算产生的广告费暂存本合约，域名 NFT 持有人调用 withdraw(domainName) 领取。
  *         广告费由域名 NFT 持有人配置固定时费（wei/小时），0 表示关闭广告充值。
  */
-contract DCDomainRank is ReentrancyGuard {
+contract DCDomainRank is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_LEADERBOARD = 50;
 
     /// @dev 0=None 禁止广告充值；1=等比（每小时扣当前余额的 bps）；2=等差（固定每小时 wei）
-    IERC20    public immutable dcToken;
-    IDCDomain public immutable dcDomain;
-    address   public owner;
+    IERC20    public dcToken;
+    IDCDomain public dcDomain;
     address   public treasury;
     address   public autoCloser;
 
@@ -128,20 +130,28 @@ contract DCDomainRank is ReentrancyGuard {
     event DomainHourlyRateSet(string domain, uint256 rateWei);
     event DomainMinDepositSet(string domain, uint256 minDeposit);
 
-    constructor(address _dcToken, address _dcDomain, address _treasury) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _dcToken, address _dcDomain, address _treasury) external initializer {
         require(_dcToken   != address(0), "ZERO_TOKEN");
         require(_dcDomain  != address(0), "ZERO_DOMAIN");
         require(_treasury  != address(0), "ZERO_TREASURY");
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         dcToken  = IERC20(_dcToken);
         dcDomain = IDCDomain(_dcDomain);
-        owner    = msg.sender;
         treasury = _treasury;
+        // Storage defaults: state-variable initializers don't apply through proxy
+        minDeposit      = 50 ether;
+        baseHourlyRate  = 500 ether;
+        depositRateBps  = 1000;
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "NOT_OWNER");
-        _;
-    }
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function _domainOwner(string memory domainName) internal view returns (address) {
         uint256 tokenId = dcDomain.tokenIdOf(domainName);
@@ -388,9 +398,10 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
 
         dcToken.safeTransferFrom(msg.sender, address(this), amount);
 
+        bool wasInactive = !p.active;
         p.depositedDC += amount;
         p.active       = true;
-        if (p.joinedAt == 0) {
+        if (p.joinedAt == 0 || wasInactive) {
             p.joinedAt   = block.timestamp;
             p.hourlyRate = _domainFixedHourlyRate[domainName];
         }
@@ -800,8 +811,5 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
         protocolFeeBps = newBps;
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "ZERO_OWNER");
-        owner = newOwner;
-    }
 }
+

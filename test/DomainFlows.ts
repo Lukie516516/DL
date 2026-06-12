@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { getAddress, zeroAddress } from "viem";
+import { encodeFunctionData, getAddress, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
 const ACCEPT = 1;
@@ -100,11 +100,18 @@ async function deployDomainFixture() {
     },
   });
   const pairImpl = await viem.deployContract("DealSwapTemplate");
-  const factory = await viem.deployContract("DealFactory", [
-    dealImpl.address,
-    pairImpl.address,
-    3600,
-  ]);
+  const factoryImpl = await viem.deployContract("DealFactory", []);
+  const factoryInitData = encodeFunctionData({
+    abi: [{ type: "function", name: "initialize", inputs: [
+      { name: "_dealImpl",          type: "address" },
+      { name: "_pairImpl",          type: "address" },
+      { name: "_minTimeoutSeconds", type: "uint64"  },
+    ]}],
+    functionName: "initialize",
+    args: [dealImpl.address, pairImpl.address, 3600n],
+  });
+  const factoryProxy = await viem.deployContract("ERC1967Proxy", [factoryImpl.address, factoryInitData]);
+  const factory = await viem.getContractAt("DealFactory", factoryProxy.address);
   const dealActivityIndex = await viem.deployContract("DealActivityIndex", [factory.address]);
   const dealPairManager = await viem.deployContract("DealPairManager", [factory.address]);
   const dealImplementationRegistry = await viem.deployContract("DealImplementationRegistry");
@@ -139,11 +146,18 @@ async function deployDomainFixture() {
     treasury.account.address,
     100n,
   ]);
-  const dcDomainRank = await viem.deployContract("DCDomainRank", [
-    dl.address,
-    dcDomain.address,
-    treasury.account.address,
-  ]);
+  const dcDomainRankImpl = await viem.deployContract("DCDomainRank", []);
+  const rankInitData = encodeFunctionData({
+    abi: [{ type: "function", name: "initialize", inputs: [
+      { name: "_dcToken",  type: "address" },
+      { name: "_dcDomain", type: "address" },
+      { name: "_treasury", type: "address" },
+    ]}],
+    functionName: "initialize",
+    args: [dl.address, dcDomain.address, treasury.account.address],
+  });
+  const rankProxy = await viem.deployContract("ERC1967Proxy", [dcDomainRankImpl.address, rankInitData]);
+  const dcDomainRank = await viem.getContractAt("DCDomainRank", rankProxy.address);
   const dcDomainRankReader = await viem.deployContract("DCDomainRankReader", [
     dcDomainRank.address,
   ]);
@@ -823,6 +837,7 @@ describe("Domain Flows", async function () {
       dcDomainRank,
       dcDomainRankReader,
       dcDomainSwap,
+      factory,
       ausd,
       usdt,
     } = fixture;
@@ -974,7 +989,9 @@ describe("Domain Flows", async function () {
     await waitFor(publicClient, await deal1AsCarol.write.pay());
     await waitFor(publicClient, await deal1AsBob.write.setMyVote([ACCEPT]));
     const bobBalanceBeforeComplete = await dl.read.balanceOf([bob.account.address]);
-    await waitFor(publicClient, await deal1AsCarol.write.setMyVote([ACCEPT]));
+    // gas: 1_500_000n — prevents silent OOG inside factory's try/catch for closeDealFromAutoCloser
+    const carolVoteHash = await deal1AsCarol.write.setMyVote([ACCEPT], { gas: 1_500_000n });
+    const carolVoteReceipt = await waitFor(publicClient, carolVoteHash);
 
     const completedStatus = await rankAsBob.read.myDealStatusOf([
       "rank11",

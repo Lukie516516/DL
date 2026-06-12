@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 interface IDLMint {
@@ -177,7 +179,7 @@ interface IDCDomainRankAutoClose {
         returns (uint256 refunded, uint256 consumed);
 }
 /* ========================================================== */
-contract DealFactory is Ownable {
+contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     using Clones for address;
     address private constant DEFAULT_AUSD =
         0x8fc6dB736Dce11233078EA6f6EBa4c9F44E4C123;
@@ -378,17 +380,30 @@ contract DealFactory is Ownable {
         _;
     }
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         address _dealImpl,
         address _pairImpl,
         uint64 _minTimeoutSeconds
-    ) Ownable(msg.sender) {
+    ) external initializer {
         require(_dealImpl != address(0) && _pairImpl != address(0));
         require(_minTimeoutSeconds >= 3600);
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
         dealImplementation = _dealImpl;
         pairImplementation = _pairImpl;
         minTimeoutSeconds = _minTimeoutSeconds;
         admin = msg.sender;
+        // Storage defaults: state-variable initializers don't apply through proxy
+        recognizedToken0 = DEFAULT_AUSD;
+        recognizedToken1 = DEFAULT_USDT;
+        defaultFeeNonDL = Ratio({num: 3, den: 1000});
+        defaultMintOnFees = Ratio({num: 1, den: 1000});
+        minWindowSec = 1800;
         allowedMarginToken[recognizedToken0] = true;
         allowedMarginToken[recognizedToken1] = true;
         emit DealImplUpdated(_dealImpl);
@@ -398,6 +413,8 @@ contract DealFactory is Ownable {
         emit MarginTokenAllowedUpdated(recognizedToken0, true);
         emit MarginTokenAllowedUpdated(recognizedToken1, true);
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /* ========== Owner Admin 配置 ========== */
     function setDealImplementation(address impl) external onlyOwnerOrGovernance {
