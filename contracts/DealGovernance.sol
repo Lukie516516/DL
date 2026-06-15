@@ -25,9 +25,11 @@ interface INftVetoRegistryGov {
 /// @notice Stake-based governance for the Deal protocol.
 ///
 /// Four proposal kinds:
-///   Parameter – D-only, 24h default-pass window. D seat veto within window → rejected.
+///   Parameter – D-only, 24h default-pass window. D seat veto (Pending or Active) → rejected.
+///               70 D fast-approve → immediate pass before window closes.
 ///   Treasury  – D-only, accumulation (70 D). No veto. Multi-chain.
-///   Major     – Anyone proposes; 120h default-pass window. D seat veto OR 10% NFT veto → rejected.
+///   Major     – Anyone proposes; 120h default-pass window. D seat veto (Pending or Active) OR 10% NFT veto → rejected.
+///               70 D fast-approve → immediate pass before window closes.
 ///   Satoshi   – D seat only; accumulation (90 D); no time limit; free unstake; D seat veto.
 ///
 /// All proposals require 2.5 D staked to activate (pre-proposal gate).
@@ -56,6 +58,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     error WindowExpired();
     error NothingToClaim();
     error ParamOutOfRange();
+    error AlreadyApproved();
     error CallFailed(uint256 index, bytes returndata);
 
     // ─── Types ────────────────────────────────────────────────────────────────
@@ -95,6 +98,9 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     /// @notice DC fee charged to proposer when creating a Major proposal. Default: 1000 DC.
     uint256 public majorProposalFee = 1000 * 1e18;
 
+    /// @notice D required for Parameter/Major fast-pass (bypass remaining veto window). Default: 70 D.
+    uint256 public fastPassThreshold = 70 * 1e18;
+
     // ─── Immutables ───────────────────────────────────────────────────────────
 
     IDTokenGov public dToken;
@@ -131,6 +137,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     mapping(uint256 => address[])                         private _stakerList;
     mapping(uint256 => mapping(address => bool))          private _inStakerList;
     mapping(uint256 => mapping(address => uint256))       public  stakeOf;
+    mapping(uint256 => uint256)                           public  approvalVotes;
+    mapping(uint256 => mapping(address => bool))          private _hasApproved;
 
     // Live cross-proposal staked total per address (dividend checkpointing).
     mapping(address => uint256)                           private _currentStaked;
@@ -146,6 +154,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     event Unstaked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 proposalTotal);
     event StakeClaimed(uint256 indexed proposalId, address indexed staker, uint256 amount);
     event ProposalVetoed(uint256 indexed proposalId, address indexed vetoer);
+    event ProposalApproved(uint256 indexed proposalId, address indexed approver, uint256 totalApproval);
     event ProposalCanceled(uint256 indexed proposalId);
     event ProposalExecuted(uint256 indexed proposalId);
     event NftVetoRegistryUpdated(address indexed registry);
@@ -171,6 +180,15 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         }
         dcToken  = IERC20(dcToken_);
         treasury = treasury_;
+        // Inline initializers don't apply through UUPS proxy storage — set all defaults here.
+        activationThreshold   = 25 * 1e17;      // 2.5 D
+        treasuryPassThreshold = 70 * 1e18;       // 70 D
+        satoshiPassThreshold  = 90 * 1e18;       // 90 D
+        paramWindowSeconds    = 24 hours;
+        majorWindowSeconds    = 120 hours;
+        nftVetoThresholdBps   = 1_000;           // 10%
+        majorProposalFee      = 1000 * 1e18;     // 1000 DC
+        fastPassThreshold     = 70 * 1e18;       // 70 D
     }
 
     function _authorizeUpgrade(address) internal override {
@@ -240,6 +258,12 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         if (v > 10_000) revert ParamOutOfRange();
         emit GovernanceParamUpdated("nftVetoThresholdBps", nftVetoThresholdBps, v);
         nftVetoThresholdBps = v;
+    }
+
+    function setFastPassThreshold(uint256 v) external onlyGovernance {
+        if (v == 0 || v > 100 * 1e18) revert ParamOutOfRange();
+        emit GovernanceParamUpdated("fastPassThreshold", fastPassThreshold, v);
+        fastPassThreshold = v;
     }
 
     // ─── Proposal creation ────────────────────────────────────────────────────
@@ -362,6 +386,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
 
         if (p.kind == ProposalKind.Parameter || p.kind == ProposalKind.Major) {
             if (p.windowEndsAt > 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
+            // Lock stakes once fast-pass threshold is reached; unstaking would de-activate execution.
+            if (approvalVotes[proposalId] >= fastPassThreshold) revert WindowExpired();
         }
 
         stakeOf[proposalId][msg.sender] -= amount;
@@ -393,7 +419,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
 
     /// @notice D seat holder (wallet balance >= activationThreshold) exercises one-time veto.
     ///         Treasury proposals cannot be vetoed.
-    ///         Parameter / Major: veto must be cast within the veto window.
+    ///         Parameter / Major: veto allowed during Pending OR while window is open.
     ///         Satoshi: veto can be cast at any time before execution.
     function veto(uint256 proposalId) external nonReentrant {
         Proposal storage p = _existingProposal(proposalId);
@@ -402,13 +428,36 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         if (IERC20(address(dToken)).balanceOf(msg.sender) < activationThreshold) revert NotSeat();
 
         if (p.kind == ProposalKind.Parameter || p.kind == ProposalKind.Major) {
-            if (p.windowEndsAt == 0) revert WindowNotOpen();
-            if (block.timestamp >= p.windowEndsAt) revert WindowExpired();
+            // Allow veto during Pending (windowEndsAt == 0) OR within the open window.
+            if (p.windowEndsAt != 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
         }
 
         p.vetoed = true;
         p.vetoer = msg.sender;
         emit ProposalVetoed(proposalId, msg.sender);
+    }
+
+    // ─── Fast-pass approval (Parameter / Major) ──────────────────────────────
+
+    /// @notice D seat holder explicitly approves a Parameter or Major proposal.
+    ///         Accumulates approval weight by caller's current D balance.
+    ///         Once total approval >= fastPassThreshold the proposal is immediately executable,
+    ///         bypassing the remaining veto window.
+    ///         Proposal must already be Active (activationThreshold reached).
+    function approve(uint256 proposalId) external nonReentrant {
+        Proposal storage p = _existingProposal(proposalId);
+        if (p.kind != ProposalKind.Parameter && p.kind != ProposalKind.Major) revert NotExecutable();
+        _requireNotEnded(p);
+        if (p.totalStaked < activationThreshold) revert WindowNotOpen();
+        if (p.windowEndsAt != 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
+        uint256 dBal = IERC20(address(dToken)).balanceOf(msg.sender);
+        if (dBal < activationThreshold) revert NotSeat();
+        if (_hasApproved[proposalId][msg.sender]) revert AlreadyApproved();
+        if (approvalVotes[proposalId] >= fastPassThreshold) revert AlreadyEnded();
+
+        _hasApproved[proposalId][msg.sender] = true;
+        approvalVotes[proposalId] += dBal;
+        emit ProposalApproved(proposalId, msg.sender, approvalVotes[proposalId]);
     }
 
     // ─── Cancel (proposer only) ───────────────────────────────────────────────
@@ -468,8 +517,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         if (p.executed)                          return ProposalState.Executed;
         if (p.vetoed)                            return ProposalState.Vetoed;
         if (p.canceled)                          return ProposalState.Canceled;
-        if (p.totalStaked < activationThreshold) return ProposalState.Pending;
         if (_canExecute(p, proposalId))          return ProposalState.Succeeded;
+        if (p.totalStaked < activationThreshold) return ProposalState.Pending;
         return ProposalState.Active;
     }
 
@@ -501,9 +550,14 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     // ─── Internal ─────────────────────────────────────────────────────────────
 
     function _canExecute(Proposal storage p, uint256 proposalId) private view returns (bool) {
+        // Satoshi: once satoshiSucceeded is set it is permanent; free-unstake cannot block execution.
+        if (p.kind == ProposalKind.Satoshi) return p.satoshiSucceeded;
+
         if (p.totalStaked < activationThreshold) return false;
 
         if (p.kind == ProposalKind.Parameter) {
+            // Fast-pass: enough D explicitly approved
+            if (approvalVotes[proposalId] >= fastPassThreshold) return true;
             // Default-pass: window closed, no D veto
             return p.windowEndsAt > 0 && block.timestamp >= p.windowEndsAt;
         }
@@ -514,17 +568,13 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         }
 
         if (p.kind == ProposalKind.Major) {
+            // Fast-pass: enough D explicitly approved (bypasses remaining window)
+            if (approvalVotes[proposalId] >= fastPassThreshold) return true;
             // Default-pass: window closed, no D veto, NFT veto threshold not reached
             if (p.windowEndsAt == 0 || block.timestamp < p.windowEndsAt) return false;
             if (address(nftVetoRegistry) != address(0) &&
                 nftVetoRegistry.isProposalVetoed(proposalId)) return false;
             return true;
-        }
-
-        if (p.kind == ProposalKind.Satoshi) {
-            // satoshiSucceeded is set permanently on first threshold crossing;
-            // free-unstake cannot reverse execution eligibility.
-            return p.satoshiSucceeded;
         }
 
         return false;
