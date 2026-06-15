@@ -1,9 +1,9 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-06-12T10:31:26.465Z",
+  "deployedAt": "2026-06-15T07:10:23.283Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "upgrade": "v2-full-uups",
+  "upgrade": "v3-governance",
   "addresses": {
     "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
     "dlToken": "0x802C43662C38aAd9b4299c2f723A6B16f228217A",
@@ -46,8 +46,8 @@
     "dcDomainMarket": "0x85CaC6b96FC473f4C57A26068500514D092fe48e",
     "dcDomainSwap": "0x79D16213e4AcdF1Fb9Cf471ffB8B812169095D34",
     "dcDomainHall": "0x3fE565C12fB8080d946BBC56D57641f9272D472C",
-    "dealGovernanceImpl": "0xC909b5752BaA0d8eBab511eF10bdd15Ad8fa564B",
-    "dealGovernance": "0x281B18d6755869A0552088ef190ED9BBcceAfA1C",
+    "dealGovernanceImpl": "0xe2203FA510F0f735ce98b9F24F45FC8050b35cDb",
+    "dealGovernance": "0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961",
     "dToken": "0xA57b99E48f2fc24282E8F263D24468a51C5242DB",
     "dealNftGovernanceActivity": "0x9FDA424449e52D2C38Fe19080a8D681A085D536a",
     "nftVetoRegistry": "0xD8Ed220604Fbf0F861D64CaEe2cAE88c1a7258a8",
@@ -32911,6 +32911,11 @@
       },
       {
         "inputs": [],
+        "name": "AlreadyApproved",
+        "type": "error"
+      },
+      {
+        "inputs": [],
         "name": "AlreadyEnded",
         "type": "error"
       },
@@ -33167,6 +33172,31 @@
             "internalType": "uint256",
             "name": "proposalId",
             "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "approver",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "totalApproval",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalApproved",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
           }
         ],
         "name": "ProposalCanceled",
@@ -33378,6 +33408,38 @@
         "inputs": [
           {
             "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "approvalVotes",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "approve",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
             "name": "proposalId",
             "type": "uint256"
           }
@@ -33508,6 +33570,19 @@
         "name": "expire",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "fastPassThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -33822,6 +33897,19 @@
           }
         ],
         "name": "setDcToken",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setFastPassThreshold",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -35211,6 +35299,8 @@
     "Existing swap pools (pairDlAusd/pairDlUsdt/pairDlAgi), dealInfoNFT, dealCreditGraph, tokens are reused.",
     "DealGovernance nftVetoRegistry defaults to address(0). Enable via setNftVetoRegistry proposal.",
     "CrossChainDispatcher/_Executor are bridge placeholders. Wire real bridge via setBridgeAdapter().",
-    "D token: 100 D minted to deployer. Distribute seats before enabling governance proposals."
+    "D token: 100 D minted to deployer. Distribute seats before enabling governance proposals.",
+    "[2026-06-15T07:10:23.283Z] DealGovernance redeployed (v3): proxy=0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961 impl=0xe2203FA510F0f735ce98b9F24F45FC8050b35cDb",
+    "v3 fixes: initialize() now sets all defaults; adds approve() fast-pass; Pending-stage veto; Satoshi unstake-after-pass."
   ]
 }

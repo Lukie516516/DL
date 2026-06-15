@@ -1,9 +1,12 @@
-# 前端交接文档 — v2 完整 UUPS 部署
+# 前端交接文档 — v2 完整 UUPS 部署 + v3 治理升级
 
 **链**：Agiking（chainId: 31415926）  
 **RPC**：`https://rpc.agikingrpc.shop`  
-**部署时间**：2026-06-12T10:31:26Z  
+**v2 部署时间**：2026-06-12T10:31:26Z  
+**v3 治理升级**：见第七节（DealGovernance 地址已变更）  
 **部署者**：`0xe88c63d29ece76e3336b0db747e10876c3bf9893`
+
+> **⚠️ v3 注意**：DealGovernance 已重新部署，代理地址变更。前端必须从 `deployments/agiking-31415926.json` 读取最新地址，旧地址 `0x281B...C` 已废弃。
 
 ---
 
@@ -64,11 +67,11 @@
 | DCDomainSwap | `0x79D16213e4AcdF1Fb9Cf471ffB8B812169095D34` | |
 | DCDomainHall | `0x3fE565C12fB8080d946BBC56D57641f9272D472C` | |
 
-### 治理层（全新）
+### 治理层（全新，v3 地址已更新）
 | 合约 | 地址 | 备注 |
 |---|---|---|
-| **DealGovernance（代理）** | `0x281B18d6755869A0552088ef190ED9BBcceAfA1C` | UUPS 代理，用这个 |
-| DealGovernance impl | `0xC909b5752BaA0d8eBab511eF10bdd15Ad8fa564B` | 实现合约，不要直接用 |
+| **DealGovernance（代理）** | `0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961` | UUPS 代理，用这个；v3 重部署，旧地址已废弃 |
+| DealGovernance impl | `0xe2203FA510F0f735ce98b9F24F45FC8050b35cDb` | 实现合约，不要直接用 |
 | DealNftGovernanceActivity | `0x9FDA424449e52D2C38Fe19080a8D681A085D536a` | 新增 |
 | NftVetoRegistry | `0xD8Ed220604Fbf0F861D64CaEe2cAE88c1a7258a8` | |
 | DealSeatVetoGovernor | `0x17406e466443da378817A8d69f212B4FC359e48C` | 新增 |
@@ -109,7 +112,7 @@ ABI 权威来源：`deployments/agiking-31415926.json` → `abi` 字段。
 | `DCDomainMarket` | `0x85Ca...e` | 仅地址变。 |
 | `DCDomainSwap` | `0x79D1...4` | 仅地址变。 |
 | `DCDomainHall` | `0x3fE5...C` | 仅地址变。 |
-| `DealGovernance` | `0x281B...C` | UUPS 代理，新增 `initialize`、`upgradeTo`。**质押窗口 BUG 已修复**（HIGH）。 |
+| `DealGovernance` | `0x8f4A...61` | **v3 重部署**，地址已变。新增 `approve()`、`setFastPassThreshold()`、`approvalVotes()`、`fastPassThreshold()`；`veto()` 支持 Pending 阶段；`state()` 逻辑更新。旧地址 `0x281B...C` 已废弃。 |
 | `D`（治理席位代币） | `0xA57b...B` | **新合约**，ERC-20，`burn`/`burnFrom` 已禁用（revert BurnDisabled）。ABI 与 DL Token 不同。 |
 | `DealNftGovernanceActivity` | `0x9FDA...a` | **新合约**，记录治理参与行为。 |
 | `NftVetoRegistry` | `0xD8Ed...8` | 新地址。 |
@@ -220,7 +223,7 @@ ABI 权威来源：`deployments/agiking-31415926.json` → `abi` 字段。
 - [ ] 从 `deployments/agiking-31415926.json → abi` 更新所有 ABI
 - [ ] **DealFactory**：指向代理地址 `0xd0Fc...5B`，不要用 Impl 地址
 - [ ] **DCDomainRank**：指向代理地址 `0x347F...1`，不要用 Impl 地址
-- [ ] **DealGovernance**：指向代理地址 `0x281B...C`，不要用 Impl 地址
+- [ ] **DealGovernance**：指向新代理地址 `0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961`，旧地址 `0x281B...C` 已废弃
 - [ ] 新增 D Token 余额展示（注意：D Token ≠ DL Token，是两个不同合约）
 - [ ] 更新 NFT metadata 解析，兼容新增的 `chainId` 和 `contractAddress` 字段
 - [ ] 接入 `DealImplementationRegistry`，用于 deal 类型查询
@@ -257,3 +260,82 @@ ABI 权威来源：`deployments/agiking-31415926.json` → `abi` 字段。
 | `VoteDividendClaimer.setGovernanceActivity` | 治理活动合约 |
 | `VoteDividendClaimer.setGovernanceContract` | 治理主合约 |
 | `CrossChainDispatcher.setExecutor` | Agiking chainId 31415926 执行器 |
+
+---
+
+## 七、v3 治理升级（DealGovernance 重部署）
+
+### 7.1 为什么要重部署
+
+旧版 `DealGovernance` proxy（`0x281B...C`）的 `initialize()` 没有显式设置参数默认值，导致链上所有治理参数（`activationThreshold`、`fastPassThreshold` 等）均为 0。提案无法激活，治理完全无法使用。v3 修复此问题并同时上线两个新功能。
+
+### 7.2 新增功能
+
+#### Pending 阶段否决（Pre-veto）
+
+提案刚发出、尚未获得足够质押激活时（状态 = `Pending`），D 席位持有者可以直接调 `veto()` 否决，不需要等待激活或等窗口打开。
+
+**前端接入**：
+- 在提案详情页判断 `state() == 1 (Pending)` 时，对 D 席位持有者（`balanceOf >= activationThreshold`）显示"立即否决"按钮
+- 调用：`DealGovernance.veto(proposalId)`
+- 否决成功后 `state()` 返回 `4 (Vetoed)`
+
+#### 快速通过（Fast-pass Approval）
+
+Parameter 和 Major 提案激活后，D 席位持有者可以主动点"赞成"。当累计赞成权重（按钱包余额计）达到 `fastPassThreshold`（默认 70D）时，提案立即可执行，不用等窗口关闭。
+
+**新增合约接口**：
+
+```solidity
+// 投赞成票（每个地址只能投一次）
+function approve(uint256 proposalId) external
+
+// 查看某提案的累计赞成权重
+function approvalVotes(uint256 proposalId) external view returns (uint256)
+
+// 快速通过门槛（默认 70D = 70 * 1e18）
+function fastPassThreshold() external view returns (uint256)
+```
+
+**新增事件**：
+```solidity
+event ProposalApproved(uint256 indexed proposalId, address indexed approver, uint256 totalApproval)
+```
+
+**前端接入**：
+- 提案详情页展示进度条：`approvalVotes(id) / fastPassThreshold()`
+- 对 Active 状态（`state() == 2`）的 Parameter/Major 提案，D 席位持有者显示"快速通过"按钮
+- 调用 `approve(proposalId)` 后监听 `ProposalApproved` 事件更新进度
+- 累计达到阈值后提案变为 `state() == 3 (Succeeded)`，可立即调 `execute()`
+- 每地址只能投一次，已投后按钮置灰（检查 `_hasApproved` 或捕获 `AlreadyApproved` error）
+
+### 7.3 状态机更新
+
+| 状态值 | 枚举 | 说明 |
+|---|---|---|
+| 0 | Missing | 不存在 |
+| 1 | Pending | 已创建，质押未达激活门槛（**此时 D 席位可否决**） |
+| 2 | Active | 已激活，窗口期中（**此时 D 席位可快速通过 / 否决**） |
+| 3 | Succeeded | 可执行（窗口到期默认通过，或快速通过，或 Treasury/Satoshi 累积达标） |
+| 4 | Vetoed | 已被否决 |
+| 5 | Canceled | 已取消（发起人撤回或超时 expire） |
+| 6 | Executed | 已执行 |
+
+### 7.4 v3 接线清单（部署脚本已自动完成）
+
+| 操作 | 说明 |
+|---|---|
+| `CrossChainDispatcher.setGovernance(新proxy)` | deployer 调用 |
+| `NftVetoRegistry.setGovernor(旧proxy, false)` | 撤销旧权限 |
+| `NftVetoRegistry.setGovernor(新proxy, true)` | 授权新地址 |
+| `VoteDividendClaimer.setGovernanceContract(新proxy)` | deployer 调用 |
+
+### 7.5 前端 v3 Checklist
+
+- [ ] 从 `deployments/agiking-31415926.json` 读取最新 `dealGovernance` 地址（v3 地址已变）
+- [ ] 更新 `DealGovernance` ABI（新增 `approve`、`setFastPassThreshold`、`approvalVotes`、`fastPassThreshold`；`ProposalApproved` 事件）
+- [ ] Pending 状态提案：对 D 席位持有者显示"立即否决"按钮
+- [ ] Active 状态 Parameter/Major 提案：显示快速通过进度条 + "快速通过"按钮
+- [ ] 监听 `ProposalApproved` 事件实时更新进度
+- [ ] 已投票地址按钮置灰（避免 `AlreadyApproved` revert）
+- [ ] Satoshi 提案：通过后质押者撤票不影响执行，前端 UI 提示"已通过，可随时取回质押"
