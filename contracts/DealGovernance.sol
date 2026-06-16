@@ -451,7 +451,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         if (p.totalStaked < activationThreshold) revert WindowNotOpen();
         if (p.windowEndsAt != 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
         uint256 dBal = IERC20(address(dToken)).balanceOf(msg.sender);
-        if (dBal < activationThreshold) revert NotSeat();
+        if (dBal == 0) revert ZeroAmount();
         if (_hasApproved[proposalId][msg.sender]) revert AlreadyApproved();
         if (approvalVotes[proposalId] >= fastPassThreshold) revert AlreadyEnded();
 
