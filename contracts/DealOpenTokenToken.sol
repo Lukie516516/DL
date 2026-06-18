@@ -64,7 +64,8 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
     }
     enum JoinMode {
         Open,
-        ExactAddress
+        ExactAddress,
+        InfoNftGated  // joiner must hold any DealInfoNFT (balanceOf > 0)
     }
     enum Vote {
         Unset,
@@ -245,7 +246,7 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
 
         // 本合约仅支持标准 TokenToToken 形状；禁止 gate / 商品交割 NFT；A/B 的 Info NFT 单独锁定用于奖励和信用。
         _check(p.templateType == 0, 9);
-        _check(p.joinMode <= uint8(JoinMode.ExactAddress), 10);
+        _check(p.joinMode <= uint8(JoinMode.InfoNftGated), 10);
         _check(
             p.aAssetNft == address(0) && p.aAssetNftId == 0 && p.bAssetNft == address(0) && p.bAssetNftId == 0,
             38
@@ -371,6 +372,10 @@ contract DealOpenTokenToken is Initializable, ReentrancyGuard {
         _check(b == address(0), 17);
         _check(a != msg.sender, 18);
         if (joinMode == JoinMode.ExactAddress) _check(msg.sender == expectedB, 21);
+        if (joinMode == JoinMode.InfoNftGated) {
+            _check(infoNft != address(0), 55);
+            _check(IERC721(infoNft).balanceOf(msg.sender) > 0, 55);
+        }
         _check(msg.sender != lastRemovedB || (joinMode == JoinMode.ExactAddress && expectedB == msg.sender), 59);
         _setJoinedB(msg.sender, optId, trackMe);
     }

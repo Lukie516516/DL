@@ -721,7 +721,7 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         if ((p.joinMode == 1 || p.joinMode == 3) && p.expectedB == address(0))
             revert ExpectedBZero();
-        if ((p.joinMode == 2 || p.joinMode == 3) && p.gateNftId == 0)
+        if ((p.joinMode == 2 || p.joinMode == 3) && p.gateNftId == 0 && !p.openTokenTokenFast)
             revert GateIdZero();
         if (p.templateType == uint8(IDeal.TemplateType.TokenToToken)) {
             if (!(aHasSwap && bHasSwap && !aHasAssetNft && !bHasAssetNft))

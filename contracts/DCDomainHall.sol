@@ -22,6 +22,10 @@ interface IDealOpenJoinForHall {
     function openJoinFor(address chosenB) external;
 }
 
+interface IERC721BalanceOf {
+    function balanceOf(address owner) external view returns (uint256);
+}
+
 interface IDealFactoryForHall {
     enum TemplateType {
         TokenToToken,
@@ -73,6 +77,7 @@ contract DCDomainHall is ReentrancyGuard {
     IDCDomainRankForHall public immutable rank;
     IDCDomainForHall public immutable dcDomain;
     IDealFactoryForHall public immutable dealFactory;
+    address public immutable infoNft;
 
     uint256 public constant MAX_MESSAGE_BYTES = 1500;
     uint256 public constant MAX_PAGE_SIZE = 100;
@@ -89,6 +94,7 @@ contract DCDomainHall is ReentrancyGuard {
     mapping(bytes32 => MsgThread) private _dealHallThreads;
     /// @dev deal address → keccak256(bytes(domainName)), set at creation for binding check
     mapping(address => bytes32) private _dealDomainHash;
+    mapping(address => bool)    private _dealRequiresInfoNft;
 
     event MessagePosted(
         string domain,
@@ -135,14 +141,15 @@ contract DCDomainHall is ReentrancyGuard {
         uint8 templateType
     );
 
-    constructor(address _rank, address _dcDomain, address _dealFactory) {
+    constructor(address _rank, address _dcDomain, address _dealFactory, address _infoNft) {
         require(
-            _rank != address(0) && _dcDomain != address(0) && _dealFactory != address(0),
+            _rank != address(0) && _dcDomain != address(0) && _dealFactory != address(0) && _infoNft != address(0),
             "DCDomainHall: zero"
         );
         rank = IDCDomainRankForHall(_rank);
         dcDomain = IDCDomainForHall(_dcDomain);
         dealFactory = IDealFactoryForHall(_dealFactory);
+        infoNft = _infoNft;
     }
 
     function _mustRegistered(string calldata domainName) internal view {
@@ -210,14 +217,13 @@ contract DCDomainHall is ReentrancyGuard {
         string calldata title,
         string calldata description,
         bool trackCreator,
-        address expectedB
+        bool requireInfoNft
     ) external nonReentrant returns (address deal) {
         trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);
         require(timeoutSeconds_ >= 3600, "DCDomainHall: timeout");
-        require(expectedB != msg.sender, "DCDomainHall: expectedB cannot be self");
 
         _assertTemplate2Or3(
             templateType,
@@ -241,8 +247,8 @@ contract DCDomainHall is ReentrancyGuard {
             bAssetNft: address(0),
             bAssetNftId: 0,
             templateType: templateType,
-            joinMode: expectedB != address(0) ? 1 : 0,
-            expectedB: expectedB,
+            joinMode: 1,
+            expectedB: msg.sender,
             gateNftId: 0,
             aNftId: aNftId,
             title: title,
@@ -260,6 +266,7 @@ contract DCDomainHall is ReentrancyGuard {
         );
 
         _dealDomainHash[deal] = keccak256(bytes(domainName));
+        _dealRequiresInfoNft[deal] = requireInfoNft;
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount);
         emit HallDealCreatedDeferred(domainName, msg.sender, deal, templateType);
     }
@@ -424,13 +431,12 @@ contract DCDomainHall is ReentrancyGuard {
         string calldata title,
         string calldata description,
         bool trackCreator,
-        address expectedB
+        bool requireInfoNft
     ) external nonReentrant returns (address deal) {
         trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);
-        require(expectedB != msg.sender, "DCDomainHall: expectedB cannot be self");
 
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
@@ -446,8 +452,8 @@ contract DCDomainHall is ReentrancyGuard {
             bAssetNft: address(0),
             bAssetNftId: 0,
             templateType: uint8(IDealFactoryForHall.TemplateType.TokenToToken),
-            joinMode: expectedB != address(0) ? 1 : 0,
-            expectedB: expectedB,
+            joinMode: 1,
+            expectedB: msg.sender,
             gateNftId: 0,
             aNftId: 0,
             title: title,
@@ -465,6 +471,7 @@ contract DCDomainHall is ReentrancyGuard {
         );
 
         _dealDomainHash[deal] = keccak256(bytes(domainName));
+        _dealRequiresInfoNft[deal] = requireInfoNft;
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
 
         emit HallDealCreatedDeferred(
@@ -497,6 +504,13 @@ contract DCDomainHall is ReentrancyGuard {
 
         _requireDomainUser(domainName, msg.sender);
         require(rank.isActive(domainName, pickedVisitor), "DCDomainHall: bad picked");
+
+        if (_dealRequiresInfoNft[deal]) {
+            require(
+                IERC721BalanceOf(infoNft).balanceOf(pickedVisitor) > 0,
+                "DCDomainHall: counterparty has no InfoNFT"
+            );
+        }
 
         IDealOpenJoinForHall(deal).openJoinFor(pickedVisitor);
     }
