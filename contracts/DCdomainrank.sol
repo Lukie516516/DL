@@ -102,6 +102,11 @@ contract DCDomainRank is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     /// @dev 域名最低充值金额（wei），由域名商自行设置
     mapping(string => uint256) private _domainMinDeposit;
 
+    // Top domains by trade volume — maintained incrementally in _updateTopDomains
+    uint256[] private _topDomainIds;                     // tokenIds sorted by domainTradeVolume desc, max MAX_LEADERBOARD
+    mapping(uint256 => uint256) private _topDomainIdPos; // tokenId → 1-based index in _topDomainIds, 0 = not in top
+    mapping(uint256 => uint256) private _topDomainVol;   // tokenId → cached domainTradeVolume (avoids string→name external call in hot loop)
+
     // ── 事件 ──
     event DealReporterSet(address indexed reporter, bool allowed);
     event DomainDealReported(string domain, address indexed deal, address indexed merchant, uint256 newCount);
@@ -278,7 +283,7 @@ contract DCDomainRank is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         if (protocolCut > 0) dcToken.safeTransfer(treasury, protocolCut);
         dcToken.safeTransfer(msg.sender, holderGet);
-        emit HolderAdRewardsWithdrawn(msg.sender, domainName, amount);
+        emit HolderAdRewardsWithdrawn(msg.sender, domainName, holderGet);
     }
 
     // ═══════════════════════════════════════════
@@ -687,10 +692,65 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
         }
     }
 
+    function _updateTopDomains(string memory domainName) internal {
+        uint256 tokenId = dcDomain.tokenIdOf(domainName);
+        uint256 newVol  = domainTradeVolume[domainName];
+
+        // Update cached volume for this token
+        _topDomainVol[tokenId] = newVol;
+
+        uint256 pos = _topDomainIdPos[tokenId]; // 1-based; 0 = not in list
+        uint256 len = _topDomainIds.length;
+
+        if (pos > 0) {
+            // Already in list — bubble up from current position
+            uint256 idx = pos - 1; // 0-based index
+            while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
+                uint256 neighborId = _topDomainIds[idx - 1];
+                _topDomainIds[idx] = neighborId;
+                _topDomainIdPos[neighborId] = idx + 1; // update neighbor's 1-based pos
+                idx--;
+            }
+            _topDomainIds[idx] = tokenId;
+            _topDomainIdPos[tokenId] = idx + 1;
+        } else if (len < MAX_LEADERBOARD) {
+            // Not in list and there is room — append then bubble up
+            _topDomainIds.push(tokenId);
+            uint256 idx = len; // 0-based index of the newly appended element
+            while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
+                uint256 neighborId = _topDomainIds[idx - 1];
+                _topDomainIds[idx] = neighborId;
+                _topDomainIdPos[neighborId] = idx + 1;
+                idx--;
+            }
+            _topDomainIds[idx] = tokenId;
+            _topDomainIdPos[tokenId] = idx + 1;
+        } else {
+            // List is full and token is not in it — check if it beats the last entry
+            uint256 lastTokenId = _topDomainIds[len - 1];
+            if (newVol > _topDomainVol[lastTokenId]) {
+                // Evict the last entry
+                _topDomainIdPos[lastTokenId] = 0;
+                // Place new token at last index then bubble up
+                uint256 idx = len - 1; // 0-based
+                while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
+                    uint256 neighborId = _topDomainIds[idx - 1];
+                    _topDomainIds[idx] = neighborId;
+                    _topDomainIdPos[neighborId] = idx + 1;
+                    idx--;
+                }
+                _topDomainIds[idx] = tokenId;
+                _topDomainIdPos[tokenId] = idx + 1;
+            }
+            // else: does not beat last — nothing to do
+        }
+    }
+
     function _addDomainTradeVolume(string memory domainName, address deal, uint256 volume) internal {
         if (volume == 0) return;
         domainTradeVolume[domainName] += volume;
         emit DomainTradeVolumeAdded(domainName, deal, volume, domainTradeVolume[domainName]);
+        _updateTopDomains(domainName);
     }
 
     function _accountCompletedTradeVolume(string memory domainName, address deal, bool completed) internal {
@@ -775,8 +835,8 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
     // 管理
     // ═══════════════════════════════════════════
 
-    function previewHourlyRate(uint256 depositAmount) external view returns (uint256) {
-        return _calcHourlyRate(depositAmount);
+    function previewHourlyRate(string calldata domainName) external view returns (uint256) {
+        return _domainFixedHourlyRate[domainName];
     }
 
     function setTreasury(address newTreasury) external onlyOwner {
@@ -810,6 +870,16 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
         emit ProtocolFeeBpsSet(protocolFeeBps, newBps);
         protocolFeeBps = newBps;
     }
+
+    // ═══════════════════════════════════════════
+    // Top-N 排行榜读取（按成交额降序，最多 MAX_LEADERBOARD 条）
+    // ═══════════════════════════════════════════
+
+    /// @notice 当前 top 榜中的域名数量（0 … MAX_LEADERBOARD）
+    function topDomainIdCount() external view returns (uint256) { return _topDomainIds.length; }
+
+    /// @notice 按排名顺序返回 tokenId（0 = 排名第一）
+    function topDomainIdAt(uint256 index) external view returns (uint256) { return _topDomainIds[index]; }
 
 }
 

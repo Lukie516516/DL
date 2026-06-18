@@ -39,6 +39,7 @@ contract NftVetoRegistry is Ownable {
         uint256 activeSupplySnapshot; // active NFT count at registration time
         bool    exists;
         uint64  vetoCutoff;           // veto window close timestamp; castVeto rejected after this
+        uint256 thresholdBps;         // veto threshold snapshotted from governance at registration
     }
 
     mapping(uint256 => ProposalVeto)                    private _proposals;
@@ -91,12 +92,13 @@ contract NftVetoRegistry is Ownable {
 
     /// @notice Called by DealGovernance when a Major proposal crosses the 2.5 D
     ///         activation threshold. Snapshots the current active NFT supply.
-    function registerProposal(uint256 proposalId, uint64 vetoCutoff) external onlyGovernor {
+    function registerProposal(uint256 proposalId, uint64 vetoCutoff, uint256 thresholdBps) external onlyGovernor {
         ProposalVeto storage pv = _proposals[proposalId];
         if (pv.exists) revert ProposalExists();
         pv.exists               = true;
         pv.activeSupplySnapshot = activity.activeGovernanceSupply();
         pv.vetoCutoff           = vetoCutoff;
+        pv.thresholdBps         = thresholdBps > 0 ? thresholdBps : VETO_THRESHOLD_BPS;
         emit ProposalRegistered(proposalId, pv.activeSupplySnapshot);
     }
 
@@ -142,7 +144,8 @@ contract NftVetoRegistry is Ownable {
         ProposalVeto storage pv = _proposals[proposalId];
         if (!pv.exists || pv.activeSupplySnapshot == 0) return false;
         uint256 valid = _countValidVetos(proposalId);
-        return valid * BPS >= pv.activeSupplySnapshot * VETO_THRESHOLD_BPS;
+        uint256 threshold = pv.thresholdBps > 0 ? pv.thresholdBps : VETO_THRESHOLD_BPS;
+        return valid * BPS >= pv.activeSupplySnapshot * threshold;
     }
 
     /// @notice Returns (validVetoCount, activeSupplySnapshot) for a proposal.

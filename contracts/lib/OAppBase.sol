@@ -43,36 +43,72 @@ interface ILZEndpointV2 {
  * @title OAppBase
  * @notice Minimal LayerZero V2 OApp base. Compatible with OpenZeppelin v5.
  *         Handles peer management, send, receive routing, and fee quoting.
- *         Options encoding for LzReceive is inlined to avoid external libs.
  */
 abstract contract OAppBase is Ownable {
-    // LZ endpoint on this chain
     ILZEndpointV2 public immutable endpoint;
 
     // srcEid → trusted peer OApp (bytes32-encoded address)
     mapping(uint32 eid => bytes32 peer) public peers;
 
     event PeerSet(uint32 eid, bytes32 peer);
+    event ETHRescued(address indexed to, uint256 amount);
 
     error NoPeer(uint32 eid);
     error NotEndpoint();
     error InvalidSender(uint32 eid, bytes32 sender);
     error NotEnoughNative(uint256 got);
+    error ZeroAddress();
+    error RescueFailed();
 
     constructor(address _endpoint, address _delegate) Ownable(_delegate) {
+        if (_endpoint == address(0)) revert ZeroAddress();
         endpoint = ILZEndpointV2(_endpoint);
         endpoint.setDelegate(_delegate);
     }
 
+    // Accept ETH (e.g. excess from fee buffers returned by LZ endpoint)
+    receive() external payable {}
+
     // ── Peer management ──────────────────────────────────────────────────────
 
     function setPeer(uint32 _eid, bytes32 _peer) external onlyOwner {
+        if (_peer == bytes32(0)) revert ZeroAddress();
+        // Enforce EVM address encoding: left 12 bytes must be zero (right-padded 20-byte address).
+        if (uint96(uint256(_peer) >> 160) != 0) revert ZeroAddress();
         peers[_eid] = _peer;
         emit PeerSet(_eid, _peer);
     }
 
     function setDelegate(address _delegate) external onlyOwner {
         endpoint.setDelegate(_delegate);
+    }
+
+    // ── Rescue ETH accidentally locked in this contract ──────────────────────
+
+    function rescueETH(address payable _to, uint256 _amount) external onlyOwner {
+        if (_to == address(0)) revert ZeroAddress();
+        (bool ok,) = _to.call{value: _amount}("");
+        if (!ok) revert RescueFailed();
+        emit ETHRescued(_to, _amount);
+    }
+
+    // ── LZ V2 receiver interface ─────────────────────────────────────────────
+
+    /**
+     * @notice Required by LZ V2 EndpointV2._initializable().
+     *         Called before the first message on any path to check if this OApp
+     *         accepts that sender. Without this, the first delivery silently fails.
+     */
+    function allowInitializePath(Origin calldata _origin) external view returns (bool) {
+        return peers[_origin.srcEid] != bytes32(0) && peers[_origin.srcEid] == _origin.sender;
+    }
+
+    /**
+     * @notice Returns 0 — unordered delivery. Governance proposals should be
+     *         designed to be independent (not depend on ordering guarantees).
+     */
+    function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) external pure returns (uint64) {
+        return 0;
     }
 
     // ── Send ─────────────────────────────────────────────────────────────────
@@ -94,8 +130,12 @@ abstract contract OAppBase is Ownable {
 
         MessagingReceipt memory receipt = endpoint.send{value: fee.nativeFee}(
             MessagingParams(_dstEid, peer, _message, options, false),
-            payable(tx.origin)
+            // FIX HIGH-1: use msg.sender (governance contract) not tx.origin.
+            // tx.origin fails with AA wallets and misdirects refunds to proposer EOA.
+            payable(msg.sender)
         );
+
+        // Any excess msg.value stays in contract; use rescueETH() to recover.
         return receipt.guid;
     }
 
@@ -115,9 +155,6 @@ abstract contract OAppBase is Ownable {
 
     // ── Receive ──────────────────────────────────────────────────────────────
 
-    /**
-     * @notice Called by the LayerZero endpoint after message verification.
-     */
     function lzReceive(
         Origin calldata _origin,
         bytes32 _guid,
@@ -133,9 +170,6 @@ abstract contract OAppBase is Ownable {
         _lzReceive(_origin, _guid, _message, _executor, _extraData);
     }
 
-    /**
-     * @dev Override in subcontracts to handle received messages.
-     */
     function _lzReceive(
         Origin calldata _origin,
         bytes32 _guid,
@@ -144,25 +178,20 @@ abstract contract OAppBase is Ownable {
         bytes calldata _extraData
     ) internal virtual;
 
-    // ── Option encoding ───────────────────────────────────────────────────────
+    // ── Options encoding ─────────────────────────────────────────────────────
 
     /**
-     * @dev Encodes a TYPE_3 options blob with a single LzReceive executor option.
-     *      Binary layout (per LZ V2 ExecutorOptions spec):
-     *        2 bytes: options type = 0x0003 (TYPE_3)
-     *        1 byte:  worker id  = 0x01 (Executor WORKER_ID is uint8)
-     *        2 bytes: option body length = 17 (1 optionType + 16 gas)
-     *        1 byte:  option type = 0x01 (OPTION_TYPE_LZRECEIVE)
-     *       16 bytes: gasLimit (uint128 big-endian)
-     * Total: 22 bytes
+     * @dev TYPE_3 options with a single LzReceive executor option.
+     *      Layout: 2B type | 1B workerId | 2B bodyLen | 1B optionType | 16B gasLimit
+     *      WORKER_ID must be uint8(1), NOT uint16(1).
      */
     function _lzReceiveOptions(uint128 _gasLimit) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            uint16(3),      // TYPE_3
-            uint8(1),       // WORKER_ID = Executor (uint8, NOT uint16)
-            uint16(17),     // body length: 1 (optionType) + 16 (uint128)
-            uint8(1),       // OPTION_TYPE_LZRECEIVE
-            _gasLimit       // uint128
+            uint16(3),   // TYPE_3
+            uint8(1),    // WORKER_ID = Executor
+            uint16(17),  // body length: 1 + 16
+            uint8(1),    // OPTION_TYPE_LZRECEIVE
+            _gasLimit
         );
     }
 }

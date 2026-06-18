@@ -2,11 +2,10 @@
 pragma solidity ^0.8.26;
 
 /// @title MirrorParams
-/// @notice 部署在 BSC Testnet。
-///         镜像 Sepolia 上 DealGovernance 的参数，
+/// @notice 部署在目标链。镜像主网 DealGovernance 的参数，
 ///         由 LZGovernanceExecutor 跨链调用写入。
 ///
-/// 这是 PoC 合约，生产环境可替换为真实的业务合约。
+/// 生产环境中此合约会被替换为真实业务合约（DealFactory 等）。
 contract MirrorParams {
     address public executor;
 
@@ -34,8 +33,12 @@ contract MirrorParams {
     }
 
     function setExecutor(address e) external onlyExecutor {
-        emit ExecutorUpdated(executor, e);
+        // FIX CRITICAL-2: address(0) 会永久锁死所有 onlyExecutor 函数，无恢复路径
+        if (e == address(0)) revert ZeroAddress();
+        // FIX LOW-5: 先更新状态，再发事件（符合 CEI 模式）
+        address old = executor;
         executor = e;
+        emit ExecutorUpdated(old, e);
     }
 
     function setActivationThreshold(uint256 v) external onlyExecutor {

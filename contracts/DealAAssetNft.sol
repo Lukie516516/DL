@@ -426,6 +426,11 @@ contract DealAAssetNft is Initializable, ReentrancyGuard, IERC721Receiver {
 
         if (aVote == Vote.Accept && bVote == Vote.Accept) _complete(CompletionReason.BothAccepted);
         else if (aVote == Vote.Reject && bVote == Vote.Reject) _cancel();
+        // Design tradeoff: mixed votes (Accept+Reject) have no automatic resolution.
+        // The rejecting party must wait for the other to change their vote to Reject to cancel,
+        // or the accepting party must change to Accept. If one party goes MIA after a mixed vote,
+        // the deal remains locked. This is intentional — neither party can unilaterally force
+        // an outcome when the other has already expressed a contrary intent.
     }
 
     function forceComplete() external nonReentrant inState(Status.Locked) onlyAB {

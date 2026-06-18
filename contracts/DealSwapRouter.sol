@@ -656,8 +656,8 @@ contract DealRouter is ReentrancyGuard {
         _assertValidPair(pair);
         uint256 ethMax = msg.value;
         ResSingle memory r = _execETHForExact0Net(pair, msg.sender, out0NetTarget, ethMax);
-        if (r.refund > 0) _sendETH(msg.sender, r.refund);
         _maybeSettle(pair);
+        if (r.refund > 0) _sendETH(msg.sender, r.refund);
         emit SwapETHForExact0Net(pair, msg.sender, r.inAmt, out0NetTarget, r.outGross, r.feeSide, r.refund, msg.sender);
     }
     function swapExact0ForETH(address pair, uint256 amount0In, uint256 minOutETH, uint256 deadline) external nonReentrant {
@@ -733,10 +733,10 @@ contract DealRouter is ReentrancyGuard {
         _assertValidPair(pairB);
         uint256 ethMax = msg.value;
         ResDouble memory r = _execETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, msg.sender, outBTarget, ethMax);
-        uint256 ethRefund = ethMax - r.inAUsed;
-        if (ethRefund > 0) _sendETH(msg.sender, ethRefund);
         _maybeSettle(pairWNATIVE);
         _maybeSettle(pairB);
+        uint256 ethRefund = ethMax - r.inAUsed;
+        if (ethRefund > 0) _sendETH(msg.sender, ethRefund);
         emit SwapETHForExact1ViaDL(pairWNATIVE, pairB, msg.sender, r.inAUsed, r.dlNetOrReq, outBTarget, r.feeOutDL, r.feeInDL, r.dlRefund, ethRefund, msg.sender);
     }
 

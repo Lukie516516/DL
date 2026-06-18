@@ -82,8 +82,8 @@ const config = {
       type: "http",
       chainType: "l1",
       chainId: 31415926,
-      url: configVariable("AGIKING_RPC_URL"),
-      accounts: [configVariable("AGIKING_PRIVATE_KEY")],
+      url: process.env.AGIKING_RPC_URL,
+      accounts: [process.env.AGIKING_PRIVATE_KEY],
     },
   },
 };

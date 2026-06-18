@@ -16,7 +16,7 @@ interface IDTokenGov {
 
 interface INftVetoRegistryGov {
     /// @notice Called on Major proposal activation; snapshots active NFT supply.
-    function registerProposal(uint256 proposalId, uint64 vetoCutoff) external;
+    function registerProposal(uint256 proposalId, uint64 vetoCutoff, uint256 thresholdBps) external;
     /// @notice Returns true when >= VETO_THRESHOLD_BPS of active NFTs cast veto votes.
     function isProposalVetoed(uint256 proposalId) external view returns (bool);
 }
@@ -113,6 +113,11 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     /// @notice Destination address for Major proposal fees.
     address public treasury;
     uint256 public proposalCount;
+    uint256 public activeProposalCount;
+    uint256 public executedProposalCount;
+    uint256 public todayProposalCount;
+    uint256 public currentDayBucket;
+    mapping(uint256 => bool) private _wasActivated;
 
     struct Proposal {
         address proposer;
@@ -147,7 +152,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
 
     // ─── Events ───────────────────────────────────────────────────────────────
 
-    event ProposalCreated(uint256 indexed proposalId, address indexed proposer, ProposalKind indexed kind, string description);
+    event ProposalCreated(uint256 indexed proposalId, address indexed proposer, ProposalKind indexed kind, string description, uint48 createdAt);
     event ProposalActivated(uint256 indexed proposalId, uint256 windowEndsAt);
     event SatoshiSucceeded(uint256 indexed proposalId);
     event Staked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 proposalTotal);
@@ -202,6 +207,11 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     modifier onlyGovernance() {
         if (msg.sender != address(this)) revert OnlyGovernance();
         _;
+    }
+
+    function rescueETH(address payable to, uint256 amount) external onlyGovernance {
+        (bool ok,) = to.call{value: amount}("");
+        require(ok, "ETH_SEND_FAIL");
     }
 
     function setNftVetoRegistry(address registry) external onlyGovernance {
@@ -302,7 +312,14 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         _values[proposalId]    = values;
         _calldatas[proposalId] = calldatas;
 
-        emit ProposalCreated(proposalId, msg.sender, kind, description);
+        uint256 dayBucket = block.timestamp / 86400;
+        if (dayBucket != currentDayBucket) {
+            currentDayBucket = dayBucket;
+            todayProposalCount = 0;
+        }
+        ++todayProposalCount;
+
+        emit ProposalCreated(proposalId, msg.sender, kind, description, uint48(block.timestamp));
     }
 
     // ─── Staking ──────────────────────────────────────────────────────────────
@@ -356,11 +373,13 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         IERC20(address(dToken)).safeTransferFrom(msg.sender, address(this), amount);
 
         if (justActivated) {
+            ++activeProposalCount;
+            _wasActivated[proposalId] = true;
             emit ProposalActivated(proposalId, p.windowEndsAt);
             if (p.kind == ProposalKind.Major) {
                 p.activationReturnable = true;
                 if (address(nftVetoRegistry) != address(0)) {
-                    nftVetoRegistry.registerProposal(proposalId, uint64(p.windowEndsAt));
+                    nftVetoRegistry.registerProposal(proposalId, uint64(p.windowEndsAt), nftVetoThresholdBps);
                 }
             }
         }
@@ -432,6 +451,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
             if (p.windowEndsAt != 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
         }
 
+        if (_wasActivated[proposalId]) --activeProposalCount;
         p.vetoed = true;
         p.vetoer = msg.sender;
         emit ProposalVetoed(proposalId, msg.sender);
@@ -468,6 +488,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         Proposal storage p = _existingProposal(proposalId);
         if (p.proposer != msg.sender) revert NotProposer();
         _requireNotEnded(p);
+        if (_canExecute(p, proposalId)) revert AlreadyEnded();
+        if (_wasActivated[proposalId]) --activeProposalCount;
         p.canceled = true;
         emit ProposalCanceled(proposalId);
     }
@@ -482,6 +504,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         _requireNotEnded(p);
         if (p.kind != ProposalKind.Parameter && p.kind != ProposalKind.Major) revert NotExecutable();
         if (p.windowEndsAt == 0 || block.timestamp <= p.windowEndsAt + 7 days) revert NotExecutable();
+        if (_wasActivated[proposalId]) --activeProposalCount;
         p.canceled = true;
         emit ProposalCanceled(proposalId);
     }
@@ -497,6 +520,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         if (!_canExecute(p, proposalId)) revert NotExecutable();
 
         p.executed = true;
+        if (_wasActivated[proposalId]) --activeProposalCount;
+        ++executedProposalCount;
 
         address[] storage targets   = _targets[proposalId];
         uint256[] storage vals      = _values[proposalId];
@@ -524,6 +549,19 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
 
     function getProposal(uint256 proposalId) external view returns (Proposal memory) {
         return _proposals[proposalId];
+    }
+
+    function getProposals(uint256 offset, uint256 limit)
+        external view returns (Proposal[] memory page, uint256 total)
+    {
+        total = proposalCount;
+        if (offset >= total) return (new Proposal[](0), total);
+        uint256 n = total - offset < limit ? total - offset : limit;
+        page = new Proposal[](n);
+        for (uint256 i; i < n; ) {
+            page[i] = _proposals[offset + 1 + i];
+            unchecked { ++i; }
+        }
     }
 
     function getActions(uint256 proposalId)

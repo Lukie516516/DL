@@ -209,13 +209,15 @@ contract DCDomainHall is ReentrancyGuard {
         uint64 timeoutSeconds_,
         string calldata title,
         string calldata description,
-        bool trackCreator
+        bool trackCreator,
+        address expectedB
     ) external nonReentrant returns (address deal) {
         trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);
         require(timeoutSeconds_ >= 3600, "DCDomainHall: timeout");
+        require(expectedB != msg.sender, "DCDomainHall: expectedB cannot be self");
 
         _assertTemplate2Or3(
             templateType,
@@ -239,8 +241,8 @@ contract DCDomainHall is ReentrancyGuard {
             bAssetNft: address(0),
             bAssetNftId: 0,
             templateType: templateType,
-            joinMode: 1,
-            expectedB: msg.sender,
+            joinMode: expectedB != address(0) ? 1 : 0,
+            expectedB: expectedB,
             gateNftId: 0,
             aNftId: aNftId,
             title: title,
@@ -421,12 +423,14 @@ contract DCDomainHall is ReentrancyGuard {
         uint256 bSwapAmount,
         string calldata title,
         string calldata description,
-        bool trackCreator
+        bool trackCreator,
+        address expectedB
     ) external nonReentrant returns (address deal) {
         trackCreator = true;
         _mustRegistered(domainName);
         require(dcDomain.resolve(domainName) != address(0), "DCDomainHall: domain not bound");
         _requireDomainUser(domainName, msg.sender);
+        require(expectedB != msg.sender, "DCDomainHall: expectedB cannot be self");
 
         IDealFactoryForHall.InitParams memory init = IDealFactoryForHall.InitParams({
             aSwapToken: aSwapToken,
@@ -442,8 +446,8 @@ contract DCDomainHall is ReentrancyGuard {
             bAssetNft: address(0),
             bAssetNftId: 0,
             templateType: uint8(IDealFactoryForHall.TemplateType.TokenToToken),
-            joinMode: 1,
-            expectedB: msg.sender,
+            joinMode: expectedB != address(0) ? 1 : 0,
+            expectedB: expectedB,
             gateNftId: 0,
             aNftId: 0,
             title: title,
