@@ -1,0 +1,18 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployedAt": "2026-06-16T07:13:16.062Z",
+  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
+  "lzEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "lzEidSepolia": 40161,
+  "lzEidBscTestnet": 40102,
+  "dToken": "0x8af16ec65e2bee3897a0d6de1350e8d74a61c410",
+  "dealGovernanceImpl": "0xb6f24d3ed15351b9bfd47b7ebb9ea5beda05728f",
+  "dealGovernance": "0xa952c195cadf2d148582e90612b6a40f7b99f508",
+  "lzDispatcher": "0x3058d9528f67351c20ad4c037f09e9e3495de9a6",
+  "lzExecutor": "0xacf74fd151de6ffe455ab862a7de9b77cfce82ed",
+  "mirrorParams": "0xa952c195cadf2d148582e90612b6a40f7b99f508",
+  "dealFactoryBsc": "0x20289f30c92e0bb36ca0b32741eccff2c95595ee",
+  "dealFactoryImplBsc": "0x591625be924b98accab7e2c8af698c858aa2608d",
+  "dealFactoryImplBscV2": "0x10fd064bb8cb9ec9372ff9e9e308c77f18e210a8"
+}

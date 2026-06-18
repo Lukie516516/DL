@@ -114,13 +114,14 @@ contract DCDomainMarket is Ownable, ReentrancyGuard {
     /**
      * @notice 买断：买家需先 approve 本合约 `price` 的 paymentToken
      */
-    function buy(uint256 tokenId) external nonReentrant {
+    function buy(uint256 tokenId, uint256 maxPrice) external nonReentrant {
         Listing memory L = listings[tokenId];
         require(L.active, "DCDomainMarket: no listing");
         require(L.buyer == address(0) || L.buyer == msg.sender, "DCDomainMarket: not designated buyer");
 
         address seller = L.seller;
         uint256 price  = L.price;
+        require(price <= maxPrice, "DCDomainMarket: price exceeds maxPrice");
         require(dcDomain.ownerOf(tokenId) == seller, "DCDomainMarket: stale listing");
 
         uint256 fee     = (price * feeBps) / 10000;

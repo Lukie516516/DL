@@ -18,6 +18,7 @@ contract DealMessageHub {
     error ZeroAddress();
     error NotDeal();
     error NotParticipant();
+    error InvalidSender();
     error EmptyMessage();
     error MessageTooLong();
 
@@ -54,6 +55,9 @@ contract DealMessageHub {
         string calldata content
     ) external returns (uint256 index) {
         if (!IDealFactoryDealAuth(factory).isDeal(msg.sender)) revert NotDeal();
+        address dealA = IDealMessagePeerView(msg.sender).a();
+        address dealB = IDealMessagePeerView(msg.sender).b();
+        if (sender != dealA && sender != dealB) revert InvalidSender();
         return _store(msg.sender, sender, content);
     }
 

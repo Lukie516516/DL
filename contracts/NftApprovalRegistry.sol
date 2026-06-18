@@ -46,8 +46,10 @@ contract NftApprovalRegistry is Ownable {
     mapping(uint256 => ProposalVeto)                         private _proposals;
     // proposalId => tokenId => address that cast the veto (address(0) = not voted / retracted)
     mapping(uint256 => mapping(uint256 => address))          public  vetoOwner;
-    // Full list of tokenIds that have ever voted on a proposal (for counting)
+    // Full list of tokenIds that have ever voted on a proposal (for off-chain enumeration)
     mapping(uint256 => uint256[])                            private _votedTokenIds;
+    // Running count of active veto votes per proposal — avoids O(N) loop in isProposalVetoed
+    mapping(uint256 => uint256)                              private _validVetoCount;
 
     // ─── Events ───────────────────────────────────────────────────────────────
 
@@ -119,6 +121,7 @@ contract NftApprovalRegistry is Ownable {
             if (existing == msg.sender) revert AlreadyVoted();
             // NFT transferred since original vote — override stale entry.
             // tokenId is already in _votedTokenIds; no duplicate push needed.
+            // Counter unchanged: one vote replaced by one vote, net zero.
             emit VetoRetracted(proposalId, tokenId, existing);
             vetoOwner[proposalId][tokenId] = msg.sender;
             activity.markActive(tokenId);
@@ -128,6 +131,7 @@ contract NftApprovalRegistry is Ownable {
 
         vetoOwner[proposalId][tokenId] = msg.sender;
         _votedTokenIds[proposalId].push(tokenId);
+        _validVetoCount[proposalId]++;
         activity.markActive(tokenId);
         emit VetoCast(proposalId, tokenId, msg.sender);
     }
@@ -142,6 +146,7 @@ contract NftApprovalRegistry is Ownable {
         if (voter != msg.sender) revert NotTokenOwner();
 
         vetoOwner[proposalId][tokenId] = address(0);
+        _validVetoCount[proposalId]--;
         emit VetoRetracted(proposalId, tokenId, msg.sender);
     }
 
@@ -170,16 +175,8 @@ contract NftApprovalRegistry is Ownable {
     // ─── Internal ─────────────────────────────────────────────────────────────
 
     /// @dev Count veto votes where the original voter still owns the tokenId.
-    function _countValidVetos(uint256 proposalId) private view returns (uint256 count) {
-        uint256[] storage tokenIds = _votedTokenIds[proposalId];
-        for (uint256 i = 0; i < tokenIds.length; ++i) {
-            uint256 tid   = tokenIds[i];
-            address voter = vetoOwner[proposalId][tid];
-            if (voter == address(0)) continue; // retracted
-            try infoNft.ownerOf(tid) returns (address current) {
-                if (current == voter) ++count;
-            } catch {}
-        }
+    function _countValidVetos(uint256 proposalId) private view returns (uint256) {
+        return _validVetoCount[proposalId];
     }
 
     function _existingProposal(uint256 proposalId) private view returns (ProposalVeto storage p) {

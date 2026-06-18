@@ -33,6 +33,9 @@ contract CrossChainExecutor is Ownable {
     mapping(address => bool) public allowedTarget;
     bool public whitelistEnabled;
 
+    /// @notice Replay protection: tracks message IDs already executed.
+    mapping(bytes32 => bool) public executedMessages;
+
     // ─── Events ───────────────────────────────────────────────────────────────
 
     event DispatcherUpdated(address indexed newDispatcher);
@@ -47,6 +50,7 @@ contract CrossChainExecutor is Ownable {
     error WrongSourceChain();
     error TargetNotAllowed(address target);
     error CallFailed(uint256 index, bytes returndata);
+    error MessageAlreadyExecuted(bytes32 msgId);
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
@@ -102,6 +106,10 @@ contract CrossChainExecutor is Ownable {
 
         if (srcChainId != ethChainId)   revert WrongSourceChain();
         if (srcAddress  != dispatcher)  revert NotDispatcher();
+
+        bytes32 msgId = keccak256(abi.encode(srcChainId, srcAddress, payload));
+        if (executedMessages[msgId]) revert MessageAlreadyExecuted(msgId);
+        executedMessages[msgId] = true;
 
         _execute(payload);
     }

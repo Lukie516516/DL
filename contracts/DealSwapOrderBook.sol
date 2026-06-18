@@ -8,6 +8,7 @@ import "./utils/ReentrancyGuard.sol";
 
 interface IWNativeOrderBook is IERC20 {
     function withdraw(uint256 amount) external;
+    function deposit() external payable;
 }
 
 interface IDealPairReserves is IDealPair {
@@ -128,14 +129,15 @@ contract DealSwapOrderBook is ReentrancyGuard {
     {
         require(pair != address(0) && amount0In > 0, "BAD_ORDER");
         address token0 = IDealPair(pair).token0();
-        IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0In);
+        uint256 actualIn = _pullToSelfAndGetIn(token0, msg.sender, amount0In);
+        require(actualIn > 0, "NO_IN");
 
-        (filledIn, filledOut) = _executeSellDL(pair, msg.sender, amount0In, false);
-        uint256 remainingIn = amount0In - filledIn;
+        (filledIn, filledOut) = _executeSellDL(pair, msg.sender, actualIn, false);
+        uint256 remainingIn = actualIn - filledIn;
         if (remainingIn == 0) return (0, filledIn, filledOut);
 
         orderId = _enqueue(pair, true, msg.sender, remainingIn, false, false);
-        emit OrderPlaced(orderId, msg.sender, pair, true, amount0In, filledIn, filledOut, remainingIn);
+        emit OrderPlaced(orderId, msg.sender, pair, true, actualIn, filledIn, filledOut, remainingIn);
     }
 
     function placeBuyDL(address pair, uint256 amount1In)
@@ -170,10 +172,11 @@ contract DealSwapOrderBook is ReentrancyGuard {
         uint256 refund = refundTokenAmount - fee;
 
         if (o.refundNativeIn) {
-            IWNativeOrderBook(refundToken).withdraw(refundTokenAmount);
+            address wnative = refundToken;
+            IWNativeOrderBook(wnative).withdraw(refundTokenAmount);
             refundToken = address(0);
             if (fee > 0) _sendNative(treasury, fee);
-            if (refund > 0) _sendNative(o.owner, refund);
+            if (refund > 0) _sendNativeOrWrap(wnative, o.owner, refund);
         } else {
             if (fee > 0) IERC20(refundToken).safeTransfer(treasury, fee);
             if (refund > 0) IERC20(refundToken).safeTransfer(o.owner, refund);
@@ -238,8 +241,9 @@ contract DealSwapOrderBook is ReentrancyGuard {
     {
         require(amount0In > 0 && owner_ != address(0), "BAD_QUEUE");
         if (unwrapNativeOut) require(IDealPair(pair).token1() != address(0), "BAD_NATIVE_PAIR");
-        IERC20(IDealPair(pair).token0()).safeTransferFrom(msg.sender, address(this), amount0In);
-        orderId = _enqueue(pair, true, owner_, amount0In, unwrapNativeOut, false);
+        uint256 actualIn = _pullToSelfAndGetIn(IDealPair(pair).token0(), msg.sender, amount0In);
+        require(actualIn > 0, "NO_IN");
+        orderId = _enqueue(pair, true, owner_, actualIn, unwrapNativeOut, false);
         emit OrderPlaced(orderId, owner_, pair, true, amount0In, 0, 0, amount0In);
     }
 
@@ -325,12 +329,22 @@ contract DealSwapOrderBook is ReentrancyGuard {
         require(ok, "NATIVE_SEND_FAIL");
     }
 
+    // Soft-fail ETH send: if recipient reverts, wrap back to WNATIVE and send that instead.
+    // Prevents a single malicious order owner from permanently blocking the settlement queue.
+    function _sendNativeOrWrap(address wnative, address to, uint256 amount) internal {
+        (bool ok,) = to.call{value: amount}("");
+        if (!ok) {
+            IWNativeOrderBook(wnative).deposit{value: amount}();
+            IERC20(wnative).safeTransfer(to, amount);
+        }
+    }
+
     function _settleSellOut(address pair, address to, uint256 out1, bool unwrapNativeOut) internal {
         if (unwrapNativeOut) {
             address token1 = IDealPair(pair).token1();
             IDealPair(pair).swap(0, out1, address(this));
             IWNativeOrderBook(token1).withdraw(out1);
-            _sendNative(to, out1);
+            _sendNativeOrWrap(token1, to, out1);
         } else {
             IDealPair(pair).swap(0, out1, to);
         }

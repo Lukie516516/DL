@@ -70,8 +70,8 @@
 ### 治理层（全新，v3 地址已更新）
 | 合约 | 地址 | 备注 |
 |---|---|---|
-| **DealGovernance（代理）** | `0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961` | UUPS 代理，用这个；v3 重部署，旧地址已废弃 |
-| DealGovernance impl | `0xe2203FA510F0f735ce98b9F24F45FC8050b35cDb` | 实现合约，不要直接用 |
+| **DealGovernance（代理）** | `0xa56dEC8Ec251dF5Dc9E1E8f35B38827FF0DaF190` | UUPS 代理，用这个；v3 重部署，旧地址已废弃 |
+| DealGovernance impl | `0x9757D67b39Fcd9e7c176A9Af90a263808e5D3a24` | 实现合约，不要直接用 |
 | DealNftGovernanceActivity | `0x9FDA424449e52D2C38Fe19080a8D681A085D536a` | 新增 |
 | NftVetoRegistry | `0xD8Ed220604Fbf0F861D64CaEe2cAE88c1a7258a8` | |
 | DealSeatVetoGovernor | `0x17406e466443da378817A8d69f212B4FC359e48C` | 新增 |
@@ -112,7 +112,7 @@ ABI 权威来源：`deployments/agiking-31415926.json` → `abi` 字段。
 | `DCDomainMarket` | `0x85Ca...e` | 仅地址变。 |
 | `DCDomainSwap` | `0x79D1...4` | 仅地址变。 |
 | `DCDomainHall` | `0x3fE5...C` | 仅地址变。 |
-| `DealGovernance` | `0x8f4A...61` | **v3 重部署**，地址已变。新增 `approve()`、`setFastPassThreshold()`、`approvalVotes()`、`fastPassThreshold()`；`veto()` 支持 Pending 阶段；`state()` 逻辑更新。旧地址 `0x281B...C` 已废弃。 |
+| `DealGovernance` | `0xa56d...90` | **v3 重部署**，地址已变。新增 `approve()`、`setFastPassThreshold()`、`approvalVotes()`、`fastPassThreshold()`；`veto()` 支持 Pending 阶段；`state()` 逻辑更新。旧地址已废弃。 |
 | `D`（治理席位代币） | `0xA57b...B` | **新合约**，ERC-20，`burn`/`burnFrom` 已禁用（revert BurnDisabled）。ABI 与 DL Token 不同。 |
 | `DealNftGovernanceActivity` | `0x9FDA...a` | **新合约**，记录治理参与行为。 |
 | `NftVetoRegistry` | `0xD8Ed...8` | 新地址。 |
@@ -223,7 +223,7 @@ ABI 权威来源：`deployments/agiking-31415926.json` → `abi` 字段。
 - [ ] 从 `deployments/agiking-31415926.json → abi` 更新所有 ABI
 - [ ] **DealFactory**：指向代理地址 `0xd0Fc...5B`，不要用 Impl 地址
 - [ ] **DCDomainRank**：指向代理地址 `0x347F...1`，不要用 Impl 地址
-- [ ] **DealGovernance**：指向新代理地址 `0x8f4A698395D77aBd2eB71881E2AFb2C1cF539961`，旧地址 `0x281B...C` 已废弃
+- [ ] **DealGovernance**：指向新代理地址 `0xa56dEC8Ec251dF5Dc9E1E8f35B38827FF0DaF190`，旧地址已废弃
 - [ ] 新增 D Token 余额展示（注意：D Token ≠ DL Token，是两个不同合约）
 - [ ] 更新 NFT metadata 解析，兼容新增的 `chainId` 和 `contractAddress` 字段
 - [ ] 接入 `DealImplementationRegistry`，用于 deal 类型查询

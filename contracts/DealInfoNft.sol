@@ -79,6 +79,8 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
         for (uint256 i = 0; i < n; ++i) tokens[i] = arr[offset + i];
     }
 
+    /// @notice Returns address(0) if the token did not exist at blockNumber (not minted yet or burned).
+    ///         Callers must check for address(0) before use.
     function ownerOfAt(uint256 tokenId, uint256 blockNumber) external view returns (address) {
         require(blockNumber < block.number, "FUTURE_BLOCK");
         OwnerCheckpoint[] storage ckpts = _ownerCheckpoints[tokenId];
