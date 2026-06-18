@@ -171,9 +171,10 @@ contract DCDomainSwap {
         uint256 bSwapAmount,
         string  calldata title,
         string  calldata description,
-        address expectedB
+        address expectedB,
+        bool    requireInfoNft
     ) external returns (address deal) {
-        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, 0);
+        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, 0, requireInfoNft);
     }
 
     function createDealWithInfoNft(
@@ -185,9 +186,10 @@ contract DCDomainSwap {
         string  calldata title,
         string  calldata description,
         address expectedB,
-        uint256 aNftId
+        uint256 aNftId,
+        bool    requireInfoNft
     ) external returns (address deal) {
-        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, aNftId);
+        return _createDeal(domainName, aSwapToken, aSwapAmount, bSwapToken, bSwapAmount, title, description, expectedB, aNftId, requireInfoNft);
     }
 
     function _createDeal(
@@ -199,7 +201,8 @@ contract DCDomainSwap {
         string  calldata title,
         string  calldata description,
         address expectedB,
-        uint256 aNftId
+        uint256 aNftId,
+        bool    requireInfoNft
     ) internal returns (address deal) {
         // 检查域名存在
         _resolveDomain(domainName);
@@ -210,7 +213,8 @@ contract DCDomainSwap {
             "DCDomainSwap: not active in domain"
         );
 
-        uint8 joinMode = expectedB == address(0) ? 0 : 1; // Open / ExactAddress
+        // requireInfoNft=true → joinMode 2 (InfoNftGated)；否则 Open/ExactAddress
+        uint8 joinMode = requireInfoNft ? 2 : (expectedB == address(0) ? 0 : 1);
 
         IDealFactory.InitParams memory init = IDealFactory.InitParams({
             aSwapToken:     aSwapToken,

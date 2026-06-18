@@ -24,9 +24,9 @@
     "dealBAssetNftImplementation": "0xD8d59d9E8CB8d7972003e3Ed6AA99F37Da4401d3",
     "dealAAssetNftOnlyImplementation": "0xAd0Dc2C46C0D02ab456A05F4f03C11c22980b79a",
     "dealBAssetNftOnlyImplementation": "0xaAACda6CFF9B91306aB0D31DD607D7237851dE45",
-    "dealOpenTokenTokenImplementation": "0xF194c4c69352f22d60489bDA063979A120796608",
+    "dealOpenTokenTokenImplementation": "0xBE23091d460E57fb494024340E23c7008e79dA60",
     "dealImplementationRegistry": "0x8bB59bb5269EE46F56fddD7BDbCC498c17B84DE3",
-    "dealFactoryImpl": "0x9c0e10155bdFE97451fcD1D159fA4B89bC8E669C",
+    "dealFactoryImpl": "0xFfBC806725E33bf08284892D352C187a65296d29",
     "dealFactory": "0xd0Fc2685945790df25bDdeaA69426a348D05775B",
     "dealPairManager": "0x66Ae5a605a566B59cFB33dbCf1DDC0cFB853A8a5",
     "dealMessageHub": "0xf2C6C565D74340B6cD9EDb0C233ccBC960737ab4",
@@ -44,8 +44,8 @@
     "dcDomainRankReader": "0x9a70B45342e7056Dd912F035b2f3275b55AE74c2",
     "dcDomainListReader": "0x1c9BB38aE595D7F16CECf1d7EDaCDD051A8Ac86F",
     "dcDomainMarket": "0x79A708bCc27e942d35D83C6933aD506000b369D8",
-    "dcDomainSwap": "0x3BddfeC5bAcAC7cfF2dbB7Ae896CBEEdc7374250",
-    "dcDomainHall": "0x1849e96CAB80B672357bAeab165A670a1638F0bf",
+    "dcDomainSwap": "0xA100c230F2c856dD37c3D5c4466163d0E0a1e66C",
+    "dcDomainHall": "0x3DF8652268bE0AF78F28E8DA0d7F8651c63db7bA",
     "dealGovernanceImpl": "0x20790CE2C362c6D3a6Ba788a9c02e2f21a460562",
     "dealGovernance": "0xd74b24e657ed9a93fBd9774bB75324cb5FDc660e",
     "dToken": "0xA57b99E48f2fc24282E8F263D24468a51C5242DB",
@@ -69,7 +69,11 @@
     "oldDcDomainHall": "0x3fE565C12fB8080d946BBC56D57641f9272D472C",
     "oldDealMessageHub": "0x84E1940E1a5Ad8100f41248254881fb6015926df",
     "oldDcDomainMarket": "0x85CaC6b96FC473f4C57A26068500514D092fe48e",
-    "oldCrossChainExecutor": "0x1ABC100Ca6eaB03Ca9a0a75f65239ca9e3FE9A7e"
+    "oldCrossChainExecutor": "0x1ABC100Ca6eaB03Ca9a0a75f65239ca9e3FE9A7e",
+    "oldDcDomainSwap2": "0x3BddfeC5bAcAC7cfF2dbB7Ae896CBEEdc7374250",
+    "oldDcDomainHall2": "0x1849e96CAB80B672357bAeab165A670a1638F0bf",
+    "oldDealFactoryImpl2": "0x9c0e10155bdFE97451fcD1D159fA4B89bC8E669C",
+    "oldDealOpenTokenTokenImpl": "0xF194c4c69352f22d60489bDA063979A120796608"
   },
   "abi": {
     "DealLib": [
