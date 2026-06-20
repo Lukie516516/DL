@@ -11,7 +11,7 @@ interface IDSeatToken is IERC6372 {
 }
 
 interface INftVetoRegistry {
-    function registerProposal(uint256 proposalId, uint64 vetoDeadline) external;
+    function registerProposal(uint256 proposalId, uint64 vetoDeadline, uint256 thresholdBps) external;
     function isProposalVetoed(uint256 proposalId) external view returns (bool);
 }
 
@@ -135,7 +135,7 @@ contract DealSeatVetoGovernor is ReentrancyGuard {
         _calldatas[proposalId] = calldatas;
 
         if (kind == ProposalKind.Major && address(nftVetoRegistry) != address(0)) {
-            nftVetoRegistry.registerProposal(proposalId, vetoDeadline);
+            nftVetoRegistry.registerProposal(proposalId, vetoDeadline, 0);
         }
 
         emit ProposalCreated(proposalId, msg.sender, kind, snapshot, vetoDeadline, actionsHash, description);
