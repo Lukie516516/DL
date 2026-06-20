@@ -169,6 +169,7 @@ async function deployDomainFixture() {
     dcDomainRank.address,
     dcDomain.address,
     factory.address,
+    zeroAddress, // infoNft: zero = InfoNftGated 功能未启用
   ]);
   const dcDomainSwap = await viem.deployContract("DCDomainSwap", [
     dcDomain.address,
@@ -445,7 +446,7 @@ describe("Domain Flows", async function () {
     assert.equal(publicListings[0].buyer, zeroAddress);
 
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainMarket.address, price]));
-    await waitFor(publicClient, await marketAsBob.write.buy([tokenId]));
+    await waitFor(publicClient, await marketAsBob.write.buy([tokenId, 2n**256n - 1n]));
 
     const fee = price / 100n;
     assert.equal(getAddress(await dcDomain.read.ownerOf([tokenId])), getAddress(bob.account.address));
@@ -495,12 +496,12 @@ describe("Domain Flows", async function () {
     assert.equal(p2pListings[0].tokenId, tokenId);
 
     await assert.rejects(
-      marketAsCarol.write.buy([tokenId]),
+      marketAsCarol.write.buy([tokenId, 2n**256n - 1n]),
       /not designated buyer/,
     );
 
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainMarket.address, price]));
-    await waitFor(publicClient, await marketAsBob.write.buy([tokenId]));
+    await waitFor(publicClient, await marketAsBob.write.buy([tokenId, 2n**256n - 1n]));
 
     assert.equal(getAddress(await dcDomain.read.ownerOf([tokenId])), getAddress(bob.account.address));
     assert.equal(getAddress(await dcDomain.read.resolve(["p2p123"])), getAddress(bob.account.address));
@@ -605,6 +606,7 @@ describe("Domain Flows", async function () {
       "",
       "",
       zeroAddress,
+      false,
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     const events = await publicClient.getContractEvents({
@@ -632,6 +634,7 @@ describe("Domain Flows", async function () {
     const {
       viem,
       publicClient,
+      owner,
       alice,
       bob,
       carol,
@@ -642,6 +645,12 @@ describe("Domain Flows", async function () {
       dcDomainListReader,
       dcDomainSwap,
     } = fixture;
+
+    // Let owner act as autoCloser so we can manually trigger volume accounting after deal completion
+    const rankAsOwner = await viem.getContractAt("DCDomainRank", dcDomainRank.address, {
+      client: { wallet: owner },
+    });
+    await waitFor(publicClient, await rankAsOwner.write.setAutoCloser([owner.account.address]));
 
     const id1 = await fixture.registerDomain(alice, "dmn111");
     const id2 = await fixture.registerDomain(bob, "dmn222");
@@ -673,6 +682,7 @@ describe("Domain Flows", async function () {
         "",
         "",
         zeroAddress,
+        false,
       ]);
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       const events = await publicClient.getContractEvents({
@@ -722,7 +732,9 @@ describe("Domain Flows", async function () {
     assert.equal(await dcDomainRank.read.domainTradeVolume(["dmn222"]), 0n);
 
     await completeDeal(deal111, alice, bob, 10n * ONE, 20n * ONE);
+    await waitFor(publicClient, await rankAsOwner.write.closeDealFromAutoCloser(["dmn111", deal111 as Address, true]));
     await completeDeal(deal222, bob, alice, 40n * ONE, 50n * ONE);
+    await waitFor(publicClient, await rankAsOwner.write.closeDealFromAutoCloser(["dmn222", deal222 as Address, true]));
 
     assert.equal(await dcDomain.read.creatorOf([id1]), getAddress(alice.account.address));
     assert.equal(await dcDomain.read.creatorOf([id2]), getAddress(bob.account.address));
@@ -738,11 +750,10 @@ describe("Domain Flows", async function () {
     assert.equal(firstPage[1].domainName, "dmn111");
     assert.equal(firstPage[1].tokenId, id1);
 
+    // getDomainsByVolume only shows domains in the heap (have completed trade volume)
+    // dmn333 has no trades, so it's not in the heap; offset=2 is beyond the 2 heap entries
     const secondPage = await dcDomainListReader.read.getDomainsByVolume([2n, 2n]);
-    assert.equal(secondPage.length, 1);
-    assert.equal(secondPage[0].domainName, "dmn333");
-    assert.equal(secondPage[0].tokenId, id3);
-    assert.equal(secondPage[0].tradeVolume, 0n);
+    assert.equal(secondPage.length, 0);
 
     const byName = await dcDomainListReader.read.getDomainByName(["dmn111"]);
     assert.equal(byName[0], true);
@@ -806,6 +817,7 @@ describe("Domain Flows", async function () {
       "",
       zeroAddress,
       bobInfoId,
+      false,
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     const events = await publicClient.getContractEvents({
@@ -879,6 +891,7 @@ describe("Domain Flows", async function () {
         "",
         "",
         zeroAddress,
+        false,
       ]);
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       const events = await publicClient.getContractEvents({
@@ -1079,6 +1092,7 @@ describe("Domain Flows", async function () {
       "",
       "",
       zeroAddress,
+      false,
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const createEvents = await publicClient.getContractEvents({
@@ -1130,6 +1144,7 @@ describe("Domain Flows", async function () {
       "",
       "",
       zeroAddress,
+      false,
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const createEvents = await publicClient.getContractEvents({
@@ -1198,6 +1213,7 @@ describe("Domain Flows", async function () {
       "",
       "",
       false,
+      false, // requireInfoNft
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const createEvents = await publicClient.getContractEvents({
@@ -1330,6 +1346,7 @@ describe("Domain Flows", async function () {
       "",
       "",
       false,
+      false, // requireInfoNft
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const createEvents = await publicClient.getContractEvents({
@@ -1450,6 +1467,7 @@ describe("Domain Flows", async function () {
       "blocked title",
       "",
       false,
+      false, // requireInfoNft
     ]);
     const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const createEvents = await publicClient.getContractEvents({
@@ -1578,6 +1596,7 @@ describe("Domain Flows", async function () {
       "auto switch ete",
       "",
       false,
+      false, // requireInfoNft
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const events = await publicClient.getContractEvents({
@@ -1683,6 +1702,7 @@ describe("Domain Flows", async function () {
         "bad tte",
         "",
         false,
+        false, // requireInfoNft
       ]),
       /TTE swap/,
     );
@@ -1703,6 +1723,7 @@ describe("Domain Flows", async function () {
       "zero margin ete",
       "",
       false,
+      false, // requireInfoNft
     ]);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
     const events = await publicClient.getContractEvents({

@@ -16,7 +16,7 @@ interface IDCDomainListRank {
     function domainDealCount(string calldata domainName) external view returns (uint256);
     function domainTradeVolume(string calldata domainName) external view returns (uint256);
     function topDomainIdCount() external view returns (uint256);
-    function topDomainIdAt(uint256 index) external view returns (uint256);
+    function getTopDomainIds(uint256 limit) external view returns (uint256[] memory);
 }
 
 /// @notice Read-only helper for domain list/search pages.
@@ -59,7 +59,7 @@ contract DCDomainListReader {
         });
     }
 
-    /// @notice Default domain list: top domains pre-sorted by trade volume (O(1) read from DCDomainRank).
+    /// @notice Default domain list: top domains sorted by trade volume descending.
     function getDomainsByVolume(uint256 offset, uint256 limit)
         external
         view
@@ -68,11 +68,17 @@ contract DCDomainListReader {
         _checkLimit(limit);
         uint256 total = rank.topDomainIdCount();
         if (offset >= total) return new DomainEntry[](0);
-        uint256 remaining = total - offset;
-        uint256 n = remaining < limit ? remaining : limit;
+
+        // Fetch all sorted IDs up to (offset + limit) in one call, then slice
+        uint256 need = offset + limit;
+        if (need > total) need = total;
+        uint256[] memory ids = rank.getTopDomainIds(need);
+
+        uint256 n = ids.length > offset ? ids.length - offset : 0;
+        if (n > limit) n = limit;
         page = new DomainEntry[](n);
         for (uint256 i; i < n; ) {
-            page[i] = _entry(rank.topDomainIdAt(offset + i));
+            page[i] = _entry(ids[offset + i]);
             unchecked { ++i; }
         }
     }

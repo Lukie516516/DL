@@ -143,9 +143,10 @@ contract DCDomainHall is ReentrancyGuard {
 
     constructor(address _rank, address _dcDomain, address _dealFactory, address _infoNft) {
         require(
-            _rank != address(0) && _dcDomain != address(0) && _dealFactory != address(0) && _infoNft != address(0),
+            _rank != address(0) && _dcDomain != address(0) && _dealFactory != address(0),
             "DCDomainHall: zero"
         );
+        // _infoNft == address(0) means InfoNftGated feature is disabled
         rank = IDCDomainRankForHall(_rank);
         dcDomain = IDCDomainForHall(_dcDomain);
         dealFactory = IDealFactoryForHall(_dealFactory);
@@ -265,6 +266,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
+        require(!requireInfoNft || infoNft != address(0), "DCDomainHall: InfoNFT not configured");
         _dealDomainHash[deal] = keccak256(bytes(domainName));
         _dealRequiresInfoNft[deal] = requireInfoNft;
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount);
@@ -470,6 +472,7 @@ contract DCDomainHall is ReentrancyGuard {
             IDealFactoryForHall.CreateParams({init: init, trackCreator: trackCreator})
         );
 
+        require(!requireInfoNft || infoNft != address(0), "DCDomainHall: InfoNFT not configured");
         _dealDomainHash[deal] = keccak256(bytes(domainName));
         _dealRequiresInfoNft[deal] = requireInfoNft;
         rank.reportDealWithVolume(domainName, deal, msg.sender, aSwapAmount + bSwapAmount);
@@ -505,7 +508,7 @@ contract DCDomainHall is ReentrancyGuard {
         _requireDomainUser(domainName, msg.sender);
         require(rank.isActive(domainName, pickedVisitor), "DCDomainHall: bad picked");
 
-        if (_dealRequiresInfoNft[deal]) {
+        if (_dealRequiresInfoNft[deal] && infoNft != address(0)) {
             require(
                 IERC721BalanceOf(infoNft).balanceOf(pickedVisitor) > 0,
                 "DCDomainHall: counterparty has no InfoNFT"

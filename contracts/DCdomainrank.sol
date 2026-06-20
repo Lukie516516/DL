@@ -102,10 +102,11 @@ contract DCDomainRank is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     /// @dev 域名最低充值金额（wei），由域名商自行设置
     mapping(string => uint256) private _domainMinDeposit;
 
-    // Top domains by trade volume — maintained incrementally in _updateTopDomains
-    uint256[] private _topDomainIds;                     // tokenIds sorted by domainTradeVolume desc, max MAX_LEADERBOARD
-    mapping(uint256 => uint256) private _topDomainIdPos; // tokenId → 1-based index in _topDomainIds, 0 = not in top
-    mapping(uint256 => uint256) private _topDomainVol;   // tokenId → cached domainTradeVolume (avoids string→name external call in hot loop)
+    // Top domains by trade volume — min-heap of size ≤ MAX_LEADERBOARD
+    // Heap root (_topDomainIds[0]) = token with LOWEST volume among top-N (easiest to evict)
+    uint256[] private _topDomainIds;                     // min-heap array, max MAX_LEADERBOARD entries
+    mapping(uint256 => uint256) private _topDomainIdPos; // tokenId → 1-based index in _topDomainIds, 0 = not in heap
+    mapping(uint256 => uint256) private _topDomainVol;   // tokenId → cached domainTradeVolume
 
     // ── 事件 ──
     event DealReporterSet(address indexed reporter, bool allowed);
@@ -692,58 +693,69 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
         }
     }
 
-    function _updateTopDomains(string memory domainName) internal {
-        uint256 tokenId = dcDomain.tokenIdOf(domainName);
-        uint256 newVol  = domainTradeVolume[domainName];
+    // ── Min-heap helpers ──────────────────────────────────────────────────────
+    // Invariant: _topDomainVol[_topDomainIds[parent]] ≤ _topDomainVol[_topDomainIds[child]]
+    // _topDomainIdPos stores 1-based index (0 = not in heap)
 
-        // Update cached volume for this token
-        _topDomainVol[tokenId] = newVol;
+    function _heapSwap(uint256 i, uint256 j) private {
+        uint256 ti = _topDomainIds[i];
+        uint256 tj = _topDomainIds[j];
+        _topDomainIds[i] = tj;
+        _topDomainIds[j] = ti;
+        _topDomainIdPos[ti] = j + 1;
+        _topDomainIdPos[tj] = i + 1;
+    }
 
-        uint256 pos = _topDomainIdPos[tokenId]; // 1-based; 0 = not in list
-        uint256 len = _topDomainIds.length;
+    function _heapSiftUp(uint256 i) private {
+        while (i > 0) {
+            uint256 parent = (i - 1) / 2;
+            if (_topDomainVol[_topDomainIds[parent]] <= _topDomainVol[_topDomainIds[i]]) break;
+            _heapSwap(i, parent);
+            i = parent;
+        }
+    }
+
+    function _heapSiftDown(uint256 i) private {
+        uint256 n = _topDomainIds.length;
+        while (true) {
+            uint256 smallest = i;
+            uint256 l = 2 * i + 1;
+            uint256 r = 2 * i + 2;
+            if (l < n && _topDomainVol[_topDomainIds[l]] < _topDomainVol[_topDomainIds[smallest]]) smallest = l;
+            if (r < n && _topDomainVol[_topDomainIds[r]] < _topDomainVol[_topDomainIds[smallest]]) smallest = r;
+            if (smallest == i) break;
+            _heapSwap(i, smallest);
+            i = smallest;
+        }
+    }
+
+    function _heapInsertOrUpdate(uint256 tokenId) private {
+        uint256 newVol = _topDomainVol[tokenId];
+        uint256 pos    = _topDomainIdPos[tokenId]; // 1-based
 
         if (pos > 0) {
-            // Already in list — bubble up from current position
-            uint256 idx = pos - 1; // 0-based index
-            while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
-                uint256 neighborId = _topDomainIds[idx - 1];
-                _topDomainIds[idx] = neighborId;
-                _topDomainIdPos[neighborId] = idx + 1; // update neighbor's 1-based pos
-                idx--;
-            }
-            _topDomainIds[idx] = tokenId;
-            _topDomainIdPos[tokenId] = idx + 1;
-        } else if (len < MAX_LEADERBOARD) {
-            // Not in list and there is room — append then bubble up
+            // Already in heap — volume increased → sift up (heap shrinks toward min at root)
+            _heapSiftUp(pos - 1);
+        } else if (_topDomainIds.length < MAX_LEADERBOARD) {
+            // Room available → append + sift up
             _topDomainIds.push(tokenId);
-            uint256 idx = len; // 0-based index of the newly appended element
-            while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
-                uint256 neighborId = _topDomainIds[idx - 1];
-                _topDomainIds[idx] = neighborId;
-                _topDomainIdPos[neighborId] = idx + 1;
-                idx--;
-            }
-            _topDomainIds[idx] = tokenId;
-            _topDomainIdPos[tokenId] = idx + 1;
-        } else {
-            // List is full and token is not in it — check if it beats the last entry
-            uint256 lastTokenId = _topDomainIds[len - 1];
-            if (newVol > _topDomainVol[lastTokenId]) {
-                // Evict the last entry
-                _topDomainIdPos[lastTokenId] = 0;
-                // Place new token at last index then bubble up
-                uint256 idx = len - 1; // 0-based
-                while (idx > 0 && _topDomainVol[_topDomainIds[idx - 1]] < newVol) {
-                    uint256 neighborId = _topDomainIds[idx - 1];
-                    _topDomainIds[idx] = neighborId;
-                    _topDomainIdPos[neighborId] = idx + 1;
-                    idx--;
-                }
-                _topDomainIds[idx] = tokenId;
-                _topDomainIdPos[tokenId] = idx + 1;
-            }
-            // else: does not beat last — nothing to do
+            _topDomainIdPos[tokenId] = _topDomainIds.length; // 1-based
+            _heapSiftUp(_topDomainIds.length - 1);
+        } else if (newVol > _topDomainVol[_topDomainIds[0]]) {
+            // Beats current minimum (root) → evict root, insert new token at root, sift down
+            uint256 evicted = _topDomainIds[0];
+            _topDomainIdPos[evicted] = 0;
+            _topDomainIds[0] = tokenId;
+            _topDomainIdPos[tokenId] = 1;
+            _heapSiftDown(0);
         }
+        // else: below current minimum → ignore
+    }
+
+    function _updateTopDomains(string memory domainName) internal {
+        uint256 tokenId = dcDomain.tokenIdOf(domainName);
+        _topDomainVol[tokenId] = domainTradeVolume[domainName];
+        _heapInsertOrUpdate(tokenId);
     }
 
     function _addDomainTradeVolume(string memory domainName, address deal, uint256 volume) internal {
@@ -875,11 +887,82 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
     // Top-N 排行榜读取（按成交额降序，最多 MAX_LEADERBOARD 条）
     // ═══════════════════════════════════════════
 
-    /// @notice 当前 top 榜中的域名数量（0 … MAX_LEADERBOARD）
+    /// @notice 当前堆中域名数量（0 … MAX_LEADERBOARD）
     function topDomainIdCount() external view returns (uint256) { return _topDomainIds.length; }
 
-    /// @notice 按排名顺序返回 tokenId（0 = 排名第一）
+    /// @notice 堆内第 index 个元素（无排序保证）。保留供向后兼容，新代码请用 getTopDomainIds()。
     function topDomainIdAt(uint256 index) external view returns (uint256) { return _topDomainIds[index]; }
+
+    /**
+     * @notice 按成交额降序返回 top-N 的 tokenId 列表。
+     * @dev    在内存中对堆的 ≤50 个元素做选择排序，view 调用免 gas。
+     * @param  limit  最多返回条数（1 … MAX_LEADERBOARD）
+     */
+    function getTopDomainIds(uint256 limit) external view returns (uint256[] memory sorted) {
+        require(limit > 0 && limit <= MAX_LEADERBOARD, "DCDomainRank: limit 1-50");
+        uint256 n = _topDomainIds.length;
+        if (n == 0) return new uint256[](0);
+        uint256 k = n < limit ? n : limit;
+
+        // Copy heap to memory scratch array
+        uint256[] memory tmp = new uint256[](n);
+        for (uint256 i; i < n; ) {
+            tmp[i] = _topDomainIds[i];
+            unchecked { ++i; }
+        }
+
+        // Selection sort (descending) — only need the first k passes, n ≤ 50 so trivial
+        for (uint256 i; i < k; ) {
+            uint256 maxIdx = i;
+            for (uint256 j = i + 1; j < n; ) {
+                if (_topDomainVol[tmp[j]] > _topDomainVol[tmp[maxIdx]]) maxIdx = j;
+                unchecked { ++j; }
+            }
+            if (maxIdx != i) (tmp[i], tmp[maxIdx]) = (tmp[maxIdx], tmp[i]);
+            unchecked { ++i; }
+        }
+
+        sorted = new uint256[](k);
+        for (uint256 i; i < k; ) {
+            sorted[i] = tmp[i];
+            unchecked { ++i; }
+        }
+    }
+
+    /**
+     * @notice 将链上旧的"有序数组"格式迁移为最小堆格式。
+     * @dev    仅在合约升级后调用一次。会读取 _globalDomains 中所有有成交量的域名并重建堆。
+     */
+    /// @notice 第一步：清空旧排行榜数据，升级后调用一次。
+    function clearLeaderboardForMigration() external onlyOwner {
+        uint256 n = _topDomainIds.length;
+        for (uint256 i; i < n; ) {
+            _topDomainIdPos[_topDomainIds[i]] = 0;
+            unchecked { ++i; }
+        }
+        for (uint256 i; i < n; ) {
+            _topDomainIds.pop();
+            unchecked { ++i; }
+        }
+    }
+
+    /// @notice 第二步：分批从 _globalDomains 重建最小堆，每次处理 batchSize 个域名。
+    ///         从 offset=0 开始，重复调用直到 offset >= globalDomainCount()。
+    function migrateLeaderboardBatch(uint256 offset, uint256 batchSize) external onlyOwner {
+        uint256 total = _globalDomains.length;
+        uint256 end = offset + batchSize;
+        if (end > total) end = total;
+        for (uint256 i = offset; i < end; ) {
+            string memory domain = _globalDomains[i];
+            uint256 vol = domainTradeVolume[domain];
+            if (vol > 0) {
+                uint256 tokenId = dcDomain.tokenIdOf(domain);
+                _topDomainVol[tokenId] = vol;
+                _heapInsertOrUpdate(tokenId);
+            }
+            unchecked { ++i; }
+        }
+    }
 
 }
 

@@ -1,5 +1,13 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable } from "hardhat/config";
+import { readFileSync } from "node:fs";
+// load .env manually (dotenv not installed)
+try {
+  readFileSync(".env", "utf8").split("\n").forEach(line => {
+    const m = line.match(/^([^#=]+)=(.*)$/);
+    if (m) process.env[m[1].trim()] ||= m[2].trim();
+  });
+} catch {}
 
 /** Default pipeline for the rest of the repo (avoids stack-too-deep on large files). */
 const solcDefault = {
