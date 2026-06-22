@@ -144,6 +144,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     mapping(uint256 => mapping(address => uint256))       public  stakeOf;
     mapping(uint256 => uint256)                           public  approvalVotes;
     mapping(uint256 => mapping(address => bool))          private _hasApproved;
+    mapping(uint256 => mapping(address => uint256))       public  vetoStakeOf;
+    mapping(uint256 => uint256)                           public  totalVetoStaked;
 
     // Live cross-proposal staked total per address (dividend checkpointing).
     mapping(address => uint256)                           private _currentStaked;
@@ -159,6 +161,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     event Unstaked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 proposalTotal);
     event StakeClaimed(uint256 indexed proposalId, address indexed staker, uint256 amount);
     event ProposalVetoed(uint256 indexed proposalId, address indexed vetoer);
+    event VetoStaked(uint256 indexed proposalId, address indexed staker, uint256 amount, uint256 vetoTotal);
+    event VetoStakeClaimed(uint256 indexed proposalId, address indexed staker, uint256 amount);
     event ProposalApproved(uint256 indexed proposalId, address indexed approver, uint256 totalApproval);
     event ProposalCanceled(uint256 indexed proposalId);
     event ProposalExecuted(uint256 indexed proposalId);
@@ -419,19 +423,30 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     }
 
     /// @notice Retrieve staked D after a proposal has ended (executed / vetoed / canceled).
+    ///         Returns both support stake (stake()) and collective veto stake (vetoStake()) in one call.
     ///         D is never auto-returned; each staker calls this individually.
     function claimBack(uint256 proposalId) external nonReentrant {
         Proposal storage p = _existingProposal(proposalId);
         if (!_isEnded(p) && !p.activationReturnable) revert NotExecutable();
-        uint256 amount = stakeOf[proposalId][msg.sender];
-        if (amount == 0) revert NothingToClaim();
 
-        stakeOf[proposalId][msg.sender] = 0;
-        _currentStaked[msg.sender] -= amount;
+        uint256 support = stakeOf[proposalId][msg.sender];
+        uint256 vetoAmt = vetoStakeOf[proposalId][msg.sender];
+        uint256 total   = support + vetoAmt;
+        if (total == 0) revert NothingToClaim();
+
+        if (support > 0) {
+            stakeOf[proposalId][msg.sender] = 0;
+            emit StakeClaimed(proposalId, msg.sender, support);
+        }
+        if (vetoAmt > 0) {
+            vetoStakeOf[proposalId][msg.sender] = 0;
+            totalVetoStaked[proposalId] -= vetoAmt;
+            emit VetoStakeClaimed(proposalId, msg.sender, vetoAmt);
+        }
+        _currentStaked[msg.sender] -= total;
         _checkpointStaked(msg.sender);
 
-        IERC20(address(dToken)).safeTransfer(msg.sender, amount);
-        emit StakeClaimed(proposalId, msg.sender, amount);
+        IERC20(address(dToken)).safeTransfer(msg.sender, total);
     }
 
     // ─── Veto (D seat — Parameter / Major / Satoshi) ──────────────────────────
@@ -455,6 +470,39 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         p.vetoed = true;
         p.vetoer = msg.sender;
         emit ProposalVetoed(proposalId, msg.sender);
+    }
+
+    // ─── Collective veto (Parameter / Major / Satoshi) ───────────────────────
+
+    /// @notice Contributes D tokens toward a collective veto.
+    ///         D is physically locked; when cumulative contributions >= activationThreshold
+    ///         the proposal is immediately vetoed.
+    ///         Use veto() instead if your wallet balance already >= activationThreshold (no lock needed).
+    ///         Retrieve locked D with claimBack() after the proposal ends.
+    function vetoStake(uint256 proposalId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        Proposal storage p = _existingProposal(proposalId);
+        if (p.kind == ProposalKind.Treasury) revert CannotVetoTreasury();
+        _requireNotEnded(p);
+
+        if (p.kind == ProposalKind.Parameter || p.kind == ProposalKind.Major) {
+            if (p.windowEndsAt != 0 && block.timestamp >= p.windowEndsAt) revert WindowExpired();
+        }
+
+        IERC20(address(dToken)).safeTransferFrom(msg.sender, address(this), amount);
+        vetoStakeOf[proposalId][msg.sender] += amount;
+        uint256 newTotal = totalVetoStaked[proposalId] + amount;
+        totalVetoStaked[proposalId] = newTotal;
+        _currentStaked[msg.sender] += amount;
+        _checkpointStaked(msg.sender);
+        emit VetoStaked(proposalId, msg.sender, amount, newTotal);
+
+        if (newTotal >= activationThreshold) {
+            if (_wasActivated[proposalId]) --activeProposalCount;
+            p.vetoed = true;
+            p.vetoer = msg.sender;
+            emit ProposalVetoed(proposalId, msg.sender);
+        }
     }
 
     // ─── Fast-pass approval (Parameter / Major) ──────────────────────────────
