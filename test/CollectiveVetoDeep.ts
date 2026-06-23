@@ -266,14 +266,9 @@ describe("集票否决深度测试", async function () {
     await w(govOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
     assert.equal(await gov.read.state([1n]), 2 /* Active */);
 
-    // alice fast-pass approve (70 D ≥ fastPassThreshold) → Succeeded
+    // alice stakes 70 D → totalStaked = 72.5 D ≥ fastPassThreshold (70 D) → Succeeded
     await approve(alice, SEVENTY);
-    const dAsAlice = await (async () => {
-      const { viem } = await network.connect({ network: "hardhatMainnet" });
-      return viem.getContractAt("D", d.address, { client: { wallet: alice } });
-    })();
-    // fast-pass: alice's D balance counts, no transfer
-    await w(govAlice.write.approve([1n]));
+    await w(govAlice.write.stake([1n, SEVENTY]));
     assert.equal(await gov.read.state([1n]), 3 /* Succeeded */);
 
     // bob 仍然可以集票否决（窗口未到期）
