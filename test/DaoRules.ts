@@ -372,22 +372,20 @@ describe("DAO Rules", async function () {
     await assert.rejects(govAsAlice.write.execute([1n]), /AlreadyVetoed|AlreadyEnded/);
   });
 
-  it("fast-passes a Parameter proposal when 70 D approve before window closes", async function () {
+  it("fast-passes a Parameter proposal when totalStaked reaches fastPassThreshold while window is open", async function () {
     const { viem } = await network.connect({ network: "hardhatMainnet" });
     const publicClient = await viem.getPublicClient();
-    const testClient   = await viem.getTestClient();
-    const [owner, alice, bob, carol] = await viem.getWalletClients();
+    const [owner, alice, bob] = await viem.getWalletClients();
 
     const d   = await viem.deployContract("D", [owner.account.address]);
     const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
     const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
 
-    // Distribute: alice 30 D, bob 30 D, carol 10 D, owner keeps 30 D
-    const thirtyD = 30n * D_UNIT;
-    const tenD    = 10n * D_UNIT;
+    // alice 30 D, bob 30 D, owner keeps 40 D
+    const thirtyD    = 30n * D_UNIT;
+    const sevenHalfD = 75n * D_UNIT / 10n; // 7.5 D
     await waitFor(publicClient, await d.write.transfer([alice.account.address, thirtyD]));
     await waitFor(publicClient, await d.write.transfer([bob.account.address,   thirtyD]));
-    await waitFor(publicClient, await d.write.transfer([carol.account.address, tenD]));
 
     const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
     const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
@@ -399,25 +397,23 @@ describe("DAO Rules", async function () {
     ]));
     assert.equal(await gov.read.state([1n]), 1 /* Pending */);
 
-    // Stake 2.5 D to activate
+    // Owner stakes 2.5 D to activate
     await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
     await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
     assert.equal(await gov.read.state([1n]), 2 /* Active */);
 
-    // alice (30 D) + bob (30 D) = 60 D — not enough yet
+    // alice 30D + bob 30D = totalStaked 62.5D — not enough yet
     await waitFor(publicClient, await d.write.approve([gov.address, thirtyD], { account: alice.account }));
-    await waitFor(publicClient, await govAsAlice.write.approve([1n]));
-    assert.equal(await gov.read.approvalVotes([1n]), thirtyD);
+    await waitFor(publicClient, await govAsAlice.write.stake([1n, thirtyD]));
     assert.equal(await gov.read.state([1n]), 2 /* still Active */);
 
     await waitFor(publicClient, await d.write.approve([gov.address, thirtyD], { account: bob.account }));
-    await waitFor(publicClient, await govAsBob.write.approve([1n]));
-    assert.equal(await gov.read.approvalVotes([1n]), 60n * D_UNIT);
-    assert.equal(await gov.read.state([1n]), 2 /* still Active, 60 < 70 */);
+    await waitFor(publicClient, await govAsBob.write.stake([1n, thirtyD]));
+    assert.equal(await gov.read.state([1n]), 2 /* still Active, 62.5 < 70 */);
 
-    // owner (30 D remaining) approves → 60 + 30 = 90 D ≥ 70 → fast-pass
-    await waitFor(publicClient, await d.write.approve([gov.address, thirtyD]));
-    await waitFor(publicClient, await govAsOwner.write.approve([1n]));
+    // owner stakes 7.5 D more → totalStaked = 70 D ≥ fastPassThreshold → Succeeded
+    await waitFor(publicClient, await d.write.approve([gov.address, sevenHalfD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, sevenHalfD]));
     assert.equal(await gov.read.state([1n]), 3 /* Succeeded */);
 
     // Execute immediately — no need to wait for window
@@ -425,42 +421,7 @@ describe("DAO Rules", async function () {
     assert.equal(await gov.read.state([1n]), 6 /* Executed */);
   });
 
-  it("prevents double-approval and rejects approve on non-Parameter/Major proposals", async function () {
-    const { viem } = await network.connect({ network: "hardhatMainnet" });
-    const publicClient = await viem.getPublicClient();
-    const [owner, alice] = await viem.getWalletClients();
-
-    const d   = await viem.deployContract("D", [owner.account.address]);
-    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
-    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
-
-    await waitFor(publicClient, await d.write.transfer([alice.account.address, SEAT_THRESHOLD]));
-
-    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
-    const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
-
-    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
-
-    // Parameter proposal
-    await waitFor(publicClient, await govAsAlice.write.createProposal([
-      [gov.address], [0n], [noop], "double approve test", 0,
-    ]));
-    await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
-    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
-
-    await waitFor(publicClient, await d.write.approve([gov.address, SEAT_THRESHOLD], { account: alice.account }));
-    await waitFor(publicClient, await govAsAlice.write.approve([1n]));
-    await assert.rejects(govAsAlice.write.approve([1n]), /AlreadyApproved/);
-
-    // Treasury proposal cannot be approved
-    await waitFor(publicClient, await govAsOwner.write.createProposal([
-      [gov.address], [0n], [noop], "treasury test", 1,
-    ]));
-    await waitFor(publicClient, await d.write.approve([gov.address, SEAT_THRESHOLD]));
-    await assert.rejects(govAsOwner.write.approve([2n]), /NotExecutable/);
-  });
-
-  it("fast-passed Major proposal executes immediately, D-seat veto still overrides", async function () {
+  it("fast-passed proposal can still be vetoed by D-seat holder while window is open", async function () {
     const { viem } = await network.connect({ network: "hardhatMainnet" });
     const publicClient = await viem.getPublicClient();
     const [owner, alice, bob] = await viem.getWalletClients();
@@ -469,60 +430,44 @@ describe("DAO Rules", async function () {
     const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
     const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
 
-    // owner keeps 70 D, give alice + bob 2.5 D each
-    await waitFor(publicClient, await d.write.transfer([alice.account.address, SEAT_THRESHOLD]));
+    // owner: 90D, alice: 10D (keeps wallet D for veto seat), bob: 2.5D
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, 10n * D_UNIT]));
     await waitFor(publicClient, await d.write.transfer([bob.account.address,   SEAT_THRESHOLD]));
 
     const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
     const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
     const govAsBob   = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: bob } });
 
-    // Major proposal (anyone can create, no fee since majorProposalFee defaults to 1000 DC
-    // but no DC configured in test — set fee to 0 first via onlyGovernance isn't available directly,
-    // so deploy with fee=0 by lowering it: re-deploy gov with fee=0 by using the setter isn't
-    // possible without a passed proposal. Simplest: pass majorProposalFee=0 via initialize workaround.
-    // Instead: use Parameter kind to avoid the fee, but test fast-pass on Major separately.
-    // For this test we lower fastPassThreshold to 5 D via a passed Parameter proposal first.
+    // Step 1: lower fastPassThreshold to 5 D via a passed Parameter proposal
     const setFpCalldata = encodeFunctionData({
-      abi: gov.abi,
-      functionName: "setFastPassThreshold",
-      args: [5n * D_UNIT],
+      abi: gov.abi, functionName: "setFastPassThreshold", args: [5n * D_UNIT],
     });
     await waitFor(publicClient, await govAsAlice.write.createProposal([
       [gov.address], [0n], [setFpCalldata], "lower fast-pass for test", 0,
     ]));
-
-    // Activate + fast-pass with owner's 95 D
-    const ninetyFiveD = 95n * D_UNIT;
-    await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
-    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
-    await waitFor(publicClient, await d.write.approve([gov.address, ninetyFiveD]));
-    await waitFor(publicClient, await govAsOwner.write.approve([1n]));
+    // owner stakes 70 D → totalStaked = 70 D ≥ fastPassThreshold (70 D) → Succeeded
+    await waitFor(publicClient, await d.write.approve([gov.address, FAST_PASS_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, FAST_PASS_THRESHOLD]));
     assert.equal(await gov.read.state([1n]), 3 /* Succeeded */);
     await waitFor(publicClient, await govAsOwner.write.execute([1n]));
     assert.equal(await gov.read.fastPassThreshold(), 5n * D_UNIT);
 
-    // Now fastPassThreshold = 5 D. Bob (2.5 D) creates a Parameter proposal.
+    // Step 2: Bob creates proposal 2, totalStaked reaches new fastPassThreshold (5 D)
     const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [5n * D_UNIT] });
     await waitFor(publicClient, await govAsBob.write.createProposal([
       [gov.address], [0n], [noop], "veto overrides fast-pass", 0,
     ]));
-
-    // Activate proposal 2
+    // owner stakes 2.5 D to activate
     await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
     await waitFor(publicClient, await govAsOwner.write.stake([2n, ACTIVATION_THRESHOLD]));
+    assert.equal(await gov.read.state([2n]), 2 /* Active */);
 
-    // Bob fast-passes (2.5 D >= 5 D threshold... wait 2.5 < 5)
-    // Alice fast-passes with 2.5 D: total = 2.5 < 5, not enough.
-    // Owner approves with remaining ~90 D → total > 5 → fast-passed.
-    await waitFor(publicClient, await d.write.approve([gov.address, SEAT_THRESHOLD], { account: alice.account }));
-    await waitFor(publicClient, await govAsAlice.write.approve([2n]));
-    await waitFor(publicClient, await d.write.approve([gov.address, SEAT_THRESHOLD], { account: bob.account }));
-    await waitFor(publicClient, await govAsBob.write.approve([2n]));
-    // 2.5 + 2.5 = 5 D >= 5 D → fast-passed
+    // owner stakes 2.5 D more → totalStaked = 5 D ≥ fastPassThreshold (5 D) → Succeeded
+    await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([2n, ACTIVATION_THRESHOLD]));
     assert.equal(await gov.read.state([2n]), 3 /* Succeeded */);
 
-    // Alice now vetoes — veto wins over fast-pass
+    // Alice (10 D in wallet, never staked) vetoes — veto wins over fast-pass
     await waitFor(publicClient, await govAsAlice.write.veto([2n]));
     assert.equal(await gov.read.state([2n]), 4 /* Vetoed */);
     await assert.rejects(govAsOwner.write.execute([2n]), /AlreadyVetoed|AlreadyEnded/);
@@ -599,7 +544,7 @@ describe("DAO Rules", async function () {
     await assert.rejects(governorAsAlice.write.execute([1n]), /AlreadyVetoed/);
   });
 
-  it("locks unstaking after fast-pass threshold is reached (prevents de-activation attack)", async function () {
+  it("locks unstaking once totalStaked reaches fastPassThreshold (prevents de-activation attack)", async function () {
     const { viem } = await network.connect({ network: "hardhatMainnet" });
     const publicClient = await viem.getPublicClient();
     const [owner, alice, bob] = await viem.getWalletClients();
@@ -610,6 +555,7 @@ describe("DAO Rules", async function () {
 
     // alice 30 D, bob 30 D, owner keeps 40 D
     const thirtyD = 30n * D_UNIT;
+    const tenD    = 10n * D_UNIT;
     await waitFor(publicClient, await d.write.transfer([alice.account.address, thirtyD]));
     await waitFor(publicClient, await d.write.transfer([bob.account.address,   thirtyD]));
 
@@ -622,25 +568,24 @@ describe("DAO Rules", async function () {
       [gov.address], [0n], [noop], "unstake lock test", 0,
     ]));
 
-    // Owner stakes 2.5 D to activate the proposal
+    // Owner stakes 2.5 D to activate
     await waitFor(publicClient, await d.write.approve([gov.address, ACTIVATION_THRESHOLD]));
     await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
     assert.equal(await gov.read.state([1n]), 2 /* Active */);
 
-    // alice (30 D) + bob (30 D) = 60 D — not enough
+    // alice 30D + bob 30D → totalStaked = 62.5D, still Active
     await waitFor(publicClient, await d.write.approve([gov.address, thirtyD], { account: alice.account }));
-    await waitFor(publicClient, await govAsAlice.write.approve([1n]));
+    await waitFor(publicClient, await govAsAlice.write.stake([1n, thirtyD]));
     await waitFor(publicClient, await d.write.approve([gov.address, thirtyD], { account: bob.account }));
-    await waitFor(publicClient, await govAsBob.write.approve([1n]));
-    assert.equal(await gov.read.approvalVotes([1n]), 60n * D_UNIT);
+    await waitFor(publicClient, await govAsBob.write.stake([1n, thirtyD]));
     assert.equal(await gov.read.state([1n]), 2 /* still Active */);
 
-    // owner (40 D) approves → 60 + 40 = 100 D ≥ 70 → fast-pass
-    await waitFor(publicClient, await d.write.approve([gov.address, thirtyD]));
-    await waitFor(publicClient, await govAsOwner.write.approve([1n]));
+    // owner stakes 10 D more → totalStaked = 72.5 D ≥ 70 D → Succeeded (fast-pass)
+    await waitFor(publicClient, await d.write.approve([gov.address, tenD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, tenD]));
     assert.equal(await gov.read.state([1n]), 3 /* Succeeded */);
 
-    // Attempting to unstake MUST now revert — proposal is fast-passed, stakes are locked
+    // Attempting to unstake MUST now revert — stakes are locked
     await assert.rejects(
       govAsOwner.write.unstake([1n, ACTIVATION_THRESHOLD]),
       /WindowExpired/,
@@ -693,5 +638,218 @@ describe("DAO Rules", async function () {
     // Execute works despite zero totalStaked
     await waitFor(publicClient, await govAsAlice.write.execute([1n]));
     assert.equal(await gov.read.state([1n]), 6 /* Executed */);
+  });
+
+  // ─── 集票否决 (vetoStake) ─────────────────────────────────────────────────
+
+  it("多人集票否决：三人合计达到 2.5 D 门槛时提案立即被否决", async function () {
+    const { viem } = await network.connect({ network: "hardhatMainnet" });
+    const publicClient = await viem.getPublicClient();
+    const [owner, alice, bob, carol] = await viem.getWalletClients();
+
+    const d   = await viem.deployContract("D", [owner.account.address]);
+    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
+    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
+
+    // 分发 D：alice 1 D，bob 1 D，carol 0.6 D，owner 激活提案用 2.5 D
+    const ONE   = 1n * D_UNIT;
+    const PT6   = 6n * D_UNIT / 10n;  // 0.6 D
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, ONE]));
+    await waitFor(publicClient, await d.write.transfer([bob.account.address,   ONE]));
+    await waitFor(publicClient, await d.write.transfer([carol.account.address, PT6]));
+
+    // owner 创建 Parameter 提案
+    const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
+    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
+    const govAsBob   = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: bob } });
+    const govAsCarol = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: carol } });
+
+    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
+    await waitFor(publicClient, await govAsOwner.write.createProposal([[gov.address], [0n], [noop], "collective veto test", 0]));
+
+    // owner 质押 2.5 D 激活提案
+    const dAsOwner = await viem.getContractAt("D", d.address, { client: { wallet: owner } });
+    await waitFor(publicClient, await dAsOwner.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
+    assert.equal(await gov.read.state([1n]), 2 /* Active */);
+
+    // alice 投 1 D 否决票 — 未达门槛，提案仍 Active
+    const dAsAlice = await viem.getContractAt("D", d.address, { client: { wallet: alice } });
+    await waitFor(publicClient, await dAsAlice.write.approve([gov.address, ONE]));
+    await waitFor(publicClient, await govAsAlice.write.vetoStake([1n, ONE]));
+    assert.equal(await gov.read.state([1n]), 2 /* Active，1 D < 2.5 D */);
+    assert.equal(await gov.read.totalVetoStaked([1n]), ONE);
+
+    // bob 投 1 D — 累计 2 D，仍未触发
+    const dAsBob = await viem.getContractAt("D", d.address, { client: { wallet: bob } });
+    await waitFor(publicClient, await dAsBob.write.approve([gov.address, ONE]));
+    await waitFor(publicClient, await govAsBob.write.vetoStake([1n, ONE]));
+    assert.equal(await gov.read.state([1n]), 2 /* Active，2 D < 2.5 D */);
+
+    // carol 投 0.6 D — 累计 2.6 D >= 2.5 D → 立即否决
+    const dAsCarol = await viem.getContractAt("D", d.address, { client: { wallet: carol } });
+    await waitFor(publicClient, await dAsCarol.write.approve([gov.address, PT6]));
+    await waitFor(publicClient, await govAsCarol.write.vetoStake([1n, PT6]));
+    assert.equal(await gov.read.state([1n]), 4 /* Vetoed */);
+    assert.equal(await gov.read.totalVetoStaked([1n]), ONE + ONE + PT6);
+
+    // 触发后不能再执行
+    await assert.rejects(govAsOwner.write.execute([1n]), /AlreadyVetoed|AlreadyEnded/);
+  });
+
+  it("集票否决后各人可通过 claimBack 取回自己的否决质押 D", async function () {
+    const { viem } = await network.connect({ network: "hardhatMainnet" });
+    const publicClient = await viem.getPublicClient();
+    const [owner, alice, bob] = await viem.getWalletClients();
+
+    const d   = await viem.deployContract("D", [owner.account.address]);
+    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
+    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
+
+    const PT5 = 5n * D_UNIT / 10n;  // 0.5 D per person → 两人凑 1 D，owner 再凑 1.5 D = 2.5 D
+    const PT15 = 15n * D_UNIT / 10n;
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, PT5]));
+    await waitFor(publicClient, await d.write.transfer([bob.account.address,   PT5]));
+
+    const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
+    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
+    const govAsBob   = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: bob } });
+    const dAsOwner   = await viem.getContractAt("D", d.address, { client: { wallet: owner } });
+    const dAsAlice   = await viem.getContractAt("D", d.address, { client: { wallet: alice } });
+    const dAsBob     = await viem.getContractAt("D", d.address, { client: { wallet: bob } });
+
+    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
+    await waitFor(publicClient, await govAsOwner.write.createProposal([[gov.address], [0n], [noop], "claimback test", 0]));
+
+    // owner 激活提案
+    await waitFor(publicClient, await dAsOwner.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
+
+    // 三人集票否决
+    await waitFor(publicClient, await dAsAlice.write.approve([gov.address, PT5]));
+    await waitFor(publicClient, await govAsAlice.write.vetoStake([1n, PT5]));
+    await waitFor(publicClient, await dAsBob.write.approve([gov.address, PT5]));
+    await waitFor(publicClient, await govAsBob.write.vetoStake([1n, PT5]));
+    await waitFor(publicClient, await dAsOwner.write.approve([gov.address, PT15]));
+    await waitFor(publicClient, await govAsOwner.write.vetoStake([1n, PT15]));  // 触发否决
+
+    assert.equal(await gov.read.state([1n]), 4 /* Vetoed */);
+
+    // alice 取回 0.5 D
+    const aliceBefore = await d.read.balanceOf([alice.account.address]);
+    await waitFor(publicClient, await govAsAlice.write.claimBack([1n]));
+    const aliceAfter = await d.read.balanceOf([alice.account.address]);
+    assert.equal(aliceAfter - aliceBefore, PT5);
+
+    // bob 取回 0.5 D
+    const bobBefore = await d.read.balanceOf([bob.account.address]);
+    await waitFor(publicClient, await govAsBob.write.claimBack([1n]));
+    const bobAfter = await d.read.balanceOf([bob.account.address]);
+    assert.equal(bobAfter - bobBefore, PT5);
+
+    // 重复 claimBack 应失败
+    await assert.rejects(govAsAlice.write.claimBack([1n]), /NothingToClaim/);
+  });
+
+  it("claimBack 一次性退还支持质押和否决质押", async function () {
+    const { viem } = await network.connect({ network: "hardhatMainnet" });
+    const publicClient = await viem.getPublicClient();
+    const [owner, alice] = await viem.getWalletClients();
+
+    const d   = await viem.deployContract("D", [owner.account.address]);
+    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
+    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
+
+    // alice 拿 3.5 D：1 D 支持（stake）+ 2.5 D 集票否决（vetoStake）
+    const ONE = 1n * D_UNIT;
+    const threeHalfD = ONE + ACTIVATION_THRESHOLD;  // 3.5 D
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, threeHalfD]));
+
+    const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
+    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
+    const dAsAlice   = await viem.getContractAt("D", d.address, { client: { wallet: alice } });
+
+    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
+    await waitFor(publicClient, await govAsOwner.write.createProposal([[gov.address], [0n], [noop], "both stake test", 0]));
+
+    // alice 先质押 1 D 支持提案（激活）
+    await waitFor(publicClient, await dAsAlice.write.approve([gov.address, threeHalfD]));
+    await waitFor(publicClient, await govAsAlice.write.stake([1n, ONE]));
+    // owner 再补 1.5 D 激活
+    const dAsOwner = await viem.getContractAt("D", d.address, { client: { wallet: owner } });
+    await waitFor(publicClient, await dAsOwner.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
+    assert.equal(await gov.read.state([1n]), 2 /* Active */);
+
+    // alice 再 vetoStake 2.5 D → 立即触发否决（approve 已在上面一并给足 3.5 D）
+    await waitFor(publicClient, await govAsAlice.write.vetoStake([1n, ACTIVATION_THRESHOLD]));
+    assert.equal(await gov.read.state([1n]), 4 /* Vetoed */);
+
+    // alice 持有 stakeOf=1D + vetoStakeOf=2.5D，claimBack 应退还 3.5 D
+    const aliceBefore = await d.read.balanceOf([alice.account.address]);
+    await waitFor(publicClient, await govAsAlice.write.claimBack([1n]));
+    const aliceAfter = await d.read.balanceOf([alice.account.address]);
+    assert.equal(aliceAfter - aliceBefore, threeHalfD /* 3.5 D */);
+  });
+
+  it("Treasury 提案不允许集票否决", async function () {
+    const { viem } = await network.connect({ network: "hardhatMainnet" });
+    const publicClient = await viem.getPublicClient();
+    const [owner, alice] = await viem.getWalletClients();
+
+    const d   = await viem.deployContract("D", [owner.account.address]);
+    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
+    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
+
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, ACTIVATION_THRESHOLD]));
+    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
+    const dAsAlice   = await viem.getContractAt("D", d.address, { client: { wallet: alice } });
+
+    // 创建 Treasury 提案（kind=1）
+    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
+    await waitFor(publicClient, await govAsAlice.write.createProposal([[gov.address], [0n], [noop], "treasury test", 1]));
+
+    await waitFor(publicClient, await dAsAlice.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await assert.rejects(
+      govAsAlice.write.vetoStake([1n, ACTIVATION_THRESHOLD]),
+      /CannotVetoTreasury/
+    );
+  });
+
+  it("Parameter 提案窗口关闭后不允许集票否决", async function () {
+    const { viem } = await network.connect({ network: "hardhatMainnet" });
+    const publicClient = await viem.getPublicClient();
+    const testClient   = await viem.getTestClient();
+    const [owner, alice] = await viem.getWalletClients();
+
+    const d   = await viem.deployContract("D", [owner.account.address]);
+    const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
+    const gov = await deployGovernance(viem, d.address, dc.address, owner.account.address);
+
+    await waitFor(publicClient, await d.write.transfer([alice.account.address, ACTIVATION_THRESHOLD]));
+    const govAsOwner = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: owner } });
+    const govAsAlice = await viem.getContractAt("DealGovernance", gov.address, { client: { wallet: alice } });
+    const dAsOwner   = await viem.getContractAt("D", d.address, { client: { wallet: owner } });
+    const dAsAlice   = await viem.getContractAt("D", d.address, { client: { wallet: alice } });
+
+    const noop = encodeFunctionData({ abi: gov.abi, functionName: "setFastPassThreshold", args: [70n * D_UNIT] });
+    await waitFor(publicClient, await govAsOwner.write.createProposal([[gov.address], [0n], [noop], "window test", 0]));
+
+    // 激活提案，开启 24h 窗口
+    await waitFor(publicClient, await dAsOwner.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await waitFor(publicClient, await govAsOwner.write.stake([1n, ACTIVATION_THRESHOLD]));
+
+    // 快进 25 小时，窗口关闭
+    const block = await publicClient.getBlock();
+    await testClient.setNextBlockTimestamp({ timestamp: block.timestamp + 25n * 3600n });
+    await testClient.mine({ blocks: 1 });
+    assert.equal(await gov.read.state([1n]), 3 /* Succeeded */);
+
+    // 窗口关闭后 vetoStake 应失败
+    await waitFor(publicClient, await dAsAlice.write.approve([gov.address, ACTIVATION_THRESHOLD]));
+    await assert.rejects(
+      govAsAlice.write.vetoStake([1n, ACTIVATION_THRESHOLD]),
+      /WindowExpired/
+    );
   });
 });
