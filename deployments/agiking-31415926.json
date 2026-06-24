@@ -31,7 +31,7 @@
     "dealPairManager": "0x66Ae5a605a566B59cFB33dbCf1DDC0cFB853A8a5",
     "dealMessageHub": "0x84E1940E1a5Ad8100f41248254881fb6015926df",
     "dealActivityIndex": "0x1E0b2Ba7572Df0338be4edAe63aF67C0BDdb222a",
-    "dealResultIndex": "0x7D3f79D24972d6B7A9f5D9358d550895Ed612278",
+    "dealResultIndex": "0x27acf92bcf76a40f55b134e5ab45f6c298907a59",
     "dealSwapOrderBook": "0x71d8a47AD749aB8aAf5e184b428B2e2B6b891606",
     "dealRouter": "0x624324B79ca78d0eB45f804fA5a076bA285A5F35",
     "dealRouterQuoter": "0x0171E0445BA759bED1Dcd3AA39d5b9A9c297b56F",
@@ -57,7 +57,10 @@
     "crossChainExecutor": "0x1ABC100Ca6eaB03Ca9a0a75f65239ca9e3FE9A7e",
     "agi": "0x391747E54d24AA8Cef1388FE1C13f8fD57051153",
     "pairDlOldAusd": "0xEb92069fDDbD0435F194E3608D37B3D2E81286c9",
-    "pairDlOldUsdt": "0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc"
+    "pairDlOldUsdt": "0x88b399d8E41D392Db6A56ADAAdcFb18f37c9DDFc",
+    "dealResultIndexV1": "0x7D3f79D24972d6B7A9f5D9358d550895Ed612278",
+    "dealResultIndexV2": "0x27acf92bcf76a40f55b134e5ab45f6c298907a59",
+    "dealResultIndexV2CutoffBlock": "3078036"
   },
   "abi": {
     "DealLib": [
