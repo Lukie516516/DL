@@ -2,7 +2,7 @@
   "chainId": 1,
   "network": "eth-mainnet",
   "rpcUrl": "https://ethereum-rpc.publicnode.com",
-  "deployedAt": "2026-07-03T02:51:40.121Z",
+  "deployedAt": "2026-07-07T03:30:05.146Z",
   "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
   "addresses": {
     "dlToken": "0x591625be924b98accab7e2c8af698c858aa2608d",
@@ -49,7 +49,11 @@
     "dealNftGovernanceActivity": "0x0b57997bf372e41ca1b027cb57da5b581f1b5678",
     "nftVetoRegistry": "0xd8de3603d341584e0aef843ee8f4c00288179177",
     "dealSeatVetoGovernor": "0xa3e818a45281038f5ae8bf213bfdbe1abbb99b7a",
-    "voteDividendClaimer": "0xc42afc0a57e90c41ec3dd29a6b6794a81737f9f3"
+    "voteDividendClaimer": "0xc42afc0a57e90c41ec3dd29a6b6794a81737f9f3",
+    "dealGovernance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "dealGovernanceImpl": "0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6",
+    "crossChainBroadcaster": "0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf",
+    "protocolTreasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a"
   },
   "abi": {
     "DealLib": [
@@ -33898,6 +33902,2519 @@
         "stateMutability": "payable",
         "type": "receive"
       }
+    ],
+    "DealGovernance": [
+      {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          }
+        ],
+        "name": "AddressEmptyCode",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "AlreadyEnded",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "AlreadyExecuted",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "BadArrayLength",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "index",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "returndata",
+            "type": "bytes"
+          }
+        ],
+        "name": "CallFailed",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "CannotVetoTreasury",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "CheckpointUnorderedInsertion",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "implementation",
+            "type": "address"
+          }
+        ],
+        "name": "ERC1967InvalidImplementation",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ERC1967NonPayable",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "FailedCall",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "InsufficientStake",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "InvalidInitialization",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotExecutable",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotInitializing",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotProposer",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotSatoshiEligible",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotSeat",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NothingToClaim",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "OnlyGovernance",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ParamOutOfRange",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ProposalMissing",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ReentrancyGuardReentrantCall",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "bits",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "SafeCastOverflowedUintDowncast",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          }
+        ],
+        "name": "SafeERC20FailedOperation",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "UUPSUnauthorizedCallContext",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "slot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "UUPSUnsupportedProxiableUUID",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "WindowExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "WindowNotOpen",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroAmount",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "string",
+            "name": "param",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "oldValue",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "newValue",
+            "type": "uint256"
+          }
+        ],
+        "name": "GovernanceParamUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "version",
+            "type": "uint64"
+          }
+        ],
+        "name": "Initialized",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "registry",
+            "type": "address"
+          }
+        ],
+        "name": "NftVetoRegistryUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "windowEndsAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalActivated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalCanceled",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "proposer",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "enum DealGovernance.ProposalKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint48",
+            "name": "createdAt",
+            "type": "uint48"
+          }
+        ],
+        "name": "ProposalCreated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalExecuted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "vetoer",
+            "type": "address"
+          }
+        ],
+        "name": "ProposalVetoed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "SatoshiSucceeded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "StakeClaimed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "proposalTotal",
+            "type": "uint256"
+          }
+        ],
+        "name": "Staked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "proposalTotal",
+            "type": "uint256"
+          }
+        ],
+        "name": "Unstaked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "implementation",
+            "type": "address"
+          }
+        ],
+        "name": "Upgraded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "VetoStakeClaimed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "staker",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "vetoTotal",
+            "type": "uint256"
+          }
+        ],
+        "name": "VetoStaked",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "UPGRADE_INTERFACE_VERSION",
+        "outputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "activationThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "activeProposalCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "cancel",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "claimBack",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "values",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes[]",
+            "name": "calldatas",
+            "type": "bytes[]"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "enum DealGovernance.ProposalKind",
+            "name": "kind",
+            "type": "uint8"
+          }
+        ],
+        "name": "createProposal",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "currentDayBucket",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "currentStakedOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "dToken",
+        "outputs": [
+          {
+            "internalType": "contract IDTokenGov",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "dcToken",
+        "outputs": [
+          {
+            "internalType": "contract IERC20",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "execute",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "executedProposalCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "expire",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "fastPassThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "getActions",
+        "outputs": [
+          {
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "values",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes[]",
+            "name": "calldatas",
+            "type": "bytes[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timepoint",
+            "type": "uint256"
+          }
+        ],
+        "name": "getPastStakedOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "getProposal",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "proposer",
+                "type": "address"
+              },
+              {
+                "internalType": "enum DealGovernance.ProposalKind",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "windowEndsAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "vetoed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "canceled",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "executed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nftRegistered",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "satoshiSucceeded",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "activationReturnable",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "vetoer",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionsHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DealGovernance.Proposal",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "getProposals",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "proposer",
+                "type": "address"
+              },
+              {
+                "internalType": "enum DealGovernance.ProposalKind",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "windowEndsAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "vetoed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "canceled",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "executed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nftRegistered",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "satoshiSucceeded",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "activationReturnable",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "vetoer",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionsHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DealGovernance.Proposal[]",
+            "name": "page",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "getStakerList",
+        "outputs": [
+          {
+            "internalType": "address[]",
+            "name": "",
+            "type": "address[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "dToken_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nftVetoRegistry_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "dcToken_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "treasury_",
+            "type": "address"
+          }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "majorProposalFee",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "majorWindowSeconds",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "nftVetoRegistry",
+        "outputs": [
+          {
+            "internalType": "contract INftVetoRegistryGov",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "nftVetoThresholdBps",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "paramWindowSeconds",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "proposalCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "proxiableUUID",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address payable",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "rescueETH",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "satoshiPassThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setActivationThreshold",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "v",
+            "type": "address"
+          }
+        ],
+        "name": "setDcToken",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setFastPassThreshold",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setMajorProposalFee",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setMajorWindowSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "registry",
+            "type": "address"
+          }
+        ],
+        "name": "setNftVetoRegistry",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setNftVetoThresholdBps",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setParamWindowSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setSatoshiPassThreshold",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "v",
+            "type": "address"
+          }
+        ],
+        "name": "setTreasury",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "v",
+            "type": "uint256"
+          }
+        ],
+        "name": "setTreasuryPassThreshold",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "stake",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "stakeOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "state",
+        "outputs": [
+          {
+            "internalType": "enum DealGovernance.ProposalState",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "todayProposalCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "totalVetoStaked",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "treasury",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "treasuryPassThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "unstake",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newImplementation",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "name": "upgradeToAndCall",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "veto",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "vetoStake",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "vetoStakeOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "stateMutability": "payable",
+        "type": "receive"
+      }
+    ],
+    "CrossChainBroadcaster": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "endpoint_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delegate_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "wormholeRelayer_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "axelarGateway_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "axelarGasService_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "BadTargetArrays",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "ChainAlreadyExists",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "ChainNotFound",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "required",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "provided",
+            "type": "uint256"
+          }
+        ],
+        "name": "InsufficientFee",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "eid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "sender",
+            "type": "bytes32"
+          }
+        ],
+        "name": "InvalidSender",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "MissingTarget",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NoActiveChains",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "eid",
+            "type": "uint32"
+          }
+        ],
+        "name": "NoPeer",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotEndpoint",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "got",
+            "type": "uint256"
+          }
+        ],
+        "name": "NotEnoughNative",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotGovernance",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableInvalidOwner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableUnauthorizedAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "RescueFailed",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroTarget",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint32[]",
+            "name": "targetChainIds",
+            "type": "uint32[]"
+          },
+          {
+            "indexed": false,
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "name": "Broadcast",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "lzGuid",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "whSeq",
+            "type": "uint64"
+          }
+        ],
+        "name": "BroadcastToChain",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "ChainAdded",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "ChainRemoved",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "ChainUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "ETHRescued",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "ExcessRefundFailed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "old_",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "new_",
+            "type": "address"
+          }
+        ],
+        "name": "GovernanceUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint32",
+            "name": "eid",
+            "type": "uint32"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "peer",
+            "type": "bytes32"
+          }
+        ],
+        "name": "PeerSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "oldLimit",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "newLimit",
+            "type": "uint256"
+          }
+        ],
+        "name": "WhGasLimitUpdated",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint32",
+                "name": "lzDstEid",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint16",
+                "name": "whDstChain",
+                "type": "uint16"
+              },
+              {
+                "internalType": "address",
+                "name": "whDstAddress",
+                "type": "address"
+              },
+              {
+                "internalType": "string",
+                "name": "axDstChain",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "axDstAddress",
+                "type": "string"
+              },
+              {
+                "internalType": "uint256",
+                "name": "axMinFee",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "active",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct CrossChainBroadcaster.ChainConfig",
+            "name": "cfg",
+            "type": "tuple"
+          }
+        ],
+        "name": "addChain",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint32",
+                "name": "srcEid",
+                "type": "uint32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "sender",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "nonce",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct Origin",
+            "name": "_origin",
+            "type": "tuple"
+          }
+        ],
+        "name": "allowInitializePath",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "axelarGasService",
+        "outputs": [
+          {
+            "internalType": "contract IAxelarGasService",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "axelarGateway",
+        "outputs": [
+          {
+            "internalType": "contract IAxelarGateway",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32[]",
+            "name": "targetChainIds",
+            "type": "uint32[]"
+          },
+          {
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint128",
+            "name": "lzGas",
+            "type": "uint128"
+          }
+        ],
+        "name": "broadcast",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "broadcastNonce",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "chainIds",
+        "outputs": [
+          {
+            "internalType": "uint32",
+            "name": "",
+            "type": "uint32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "",
+            "type": "uint32"
+          }
+        ],
+        "name": "chains",
+        "outputs": [
+          {
+            "internalType": "uint32",
+            "name": "lzDstEid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "whDstChain",
+            "type": "uint16"
+          },
+          {
+            "internalType": "address",
+            "name": "whDstAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "axDstChain",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "axDstAddress",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "axMinFee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "endpoint",
+        "outputs": [
+          {
+            "internalType": "contract ILZEndpointV2",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getChainIds",
+        "outputs": [
+          {
+            "internalType": "uint32[]",
+            "name": "",
+            "type": "uint32[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint32",
+                "name": "srcEid",
+                "type": "uint32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "sender",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "nonce",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct Origin",
+            "name": "_origin",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "_guid",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "_message",
+            "type": "bytes"
+          },
+          {
+            "internalType": "address",
+            "name": "_executor",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes",
+            "name": "_extraData",
+            "type": "bytes"
+          }
+        ],
+        "name": "lzReceive",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "name": "nextNonce",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "eid",
+            "type": "uint32"
+          }
+        ],
+        "name": "peers",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "peer",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32[]",
+            "name": "targetChainIds",
+            "type": "uint32[]"
+          },
+          {
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint128",
+            "name": "lzGas",
+            "type": "uint128"
+          }
+        ],
+        "name": "quoteFees",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          }
+        ],
+        "name": "removeChain",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address payable",
+            "name": "_to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "rescueETH",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint32",
+                "name": "lzDstEid",
+                "type": "uint32"
+              },
+              {
+                "internalType": "uint16",
+                "name": "whDstChain",
+                "type": "uint16"
+              },
+              {
+                "internalType": "address",
+                "name": "whDstAddress",
+                "type": "address"
+              },
+              {
+                "internalType": "string",
+                "name": "axDstChain",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "axDstAddress",
+                "type": "string"
+              },
+              {
+                "internalType": "uint256",
+                "name": "axMinFee",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "active",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct CrossChainBroadcaster.ChainConfig",
+            "name": "cfg",
+            "type": "tuple"
+          }
+        ],
+        "name": "setChain",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "chainId",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ],
+        "name": "setChainActive",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_delegate",
+            "type": "address"
+          }
+        ],
+        "name": "setDelegate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "gov",
+            "type": "address"
+          }
+        ],
+        "name": "setGovernance",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint32",
+            "name": "_eid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "_peer",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setPeer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "gasLimit",
+            "type": "uint256"
+          }
+        ],
+        "name": "setWhGasLimit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "whGasLimit",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "wormholeRelayer",
+        "outputs": [
+          {
+            "internalType": "contract IWormholeRelayerSend",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "stateMutability": "payable",
+        "type": "receive"
+      }
     ]
   },
   "params": {
@@ -33999,6 +36516,7 @@
     "ProtocolTreasury is the default treasury when MAINNET_USE_PROTOCOL_TREASURY is not disabled. If bootstrap is not locked, wire DAO/timelock/executor and lock it before public launch.",
     "MAINNET_STABLE0_ADDRESS and MAINNET_STABLE1_ADDRESS should be real production tokens unless MAINNET_DEPLOY_MOCK_STABLES=1 was explicitly used.",
     "Pair creation is separate from pair initialization. If MAINNET_INIT_PAIRS=false, liquidity and virtual reserves still need a later controlled setup transaction.",
-    "Cross-chain governance is not enabled by this script. Deploy/wire CrossChainBroadcaster and DualBridgeExecutor separately, then call DealFactory.setCrossChainGovernance(executor)."
+    "Cross-chain governance is not enabled by this script. Deploy/wire CrossChainBroadcaster and DualBridgeExecutor separately, then call DealFactory.setCrossChainGovernance(executor).",
+    "[2026-07-07T03:30:05.146Z] DealGovernance deployed and wired: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 impl=0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6; CrossChainBroadcaster=0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf"
   ]
 }

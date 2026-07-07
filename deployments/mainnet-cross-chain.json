@@ -1,0 +1,35 @@
+{
+  "deployedAt": "2026-07-05T08:29:09.585Z",
+  "eth": {
+    "chainId": 1,
+    "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "broadcaster": "0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf"
+  },
+  "bsc": {
+    "chainId": 56,
+    "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "executor": "0x46839754B2dF96E887e41E688880be6aa0A9bF98"
+  },
+  "params": {
+    "ethLzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+    "bscLzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+    "ethLzEid": 30101,
+    "bscLzEid": 30102,
+    "ethWormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+    "bscWormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+    "ethWormholeChainId": 2,
+    "bscWormholeChainId": 4,
+    "ethAxelarGateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
+    "ethAxelarGasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+    "bscAxelarGateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
+    "ethAxelarChainName": "Ethereum",
+    "bscAxelarChainName": "binance",
+    "axelarMinFeeWei": "1000000000000000",
+    "ethGovernance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "bscChainKey": 30102,
+    "bscDealFactory": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+    "setBscFactoryCrosschain": true,
+    "bscChainActiveOnWire": false
+  },
+  "wiredAt": "2026-07-05T08:30:39.051Z"
+}
