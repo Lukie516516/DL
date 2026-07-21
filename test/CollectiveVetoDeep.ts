@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { network } from "hardhat";
-import { encodeFunctionData, zeroAddress } from "viem";
+import { encodeFunctionData, toFunctionSelector, zeroAddress } from "viem";
 
 const D_UNIT = 10n ** 18n;
 const ACTIVATION_THRESHOLD = 25n * D_UNIT / 10n; // 2.5 D
@@ -19,13 +19,28 @@ async function setup() {
 
   const d   = await viem.deployContract("D",       [owner.account.address]);
   const dc  = await viem.deployContract("DCToken", ["DC", "DC", 0n, owner.account.address, owner.account.address]);
-  const impl = await viem.deployContract("DealGovernance", []);
+  const impl = await viem.deployContract("DealGovernanceHarness", []);
   const initData = encodeFunctionData({
     abi: impl.abi,
     functionName: "initialize",
     args: [d.address, zeroAddress, dc.address, owner.account.address],
   });
   const proxy = await viem.deployContract("ERC1967Proxy", [impl.address, initData]);
+  const selector = toFunctionSelector("setFastPassThreshold(uint256)");
+  const rules = [0, 1, 2, 3].map((kind) => ({
+    kind,
+    target: proxy.address,
+    selector,
+    allowed: true,
+    validateNestedBroadcast: false,
+    nestedOnly: false,
+    maxValue: 0n,
+  }));
+  const registry = await viem.deployContract("GovernancePolicyRegistry", [proxy.address, rules]);
+  const harness = await viem.getContractAt("DealGovernanceHarness", proxy.address);
+  await publicClient.waitForTransactionReceipt({
+    hash: await harness.write.bootstrapPolicyRegistryForTest([registry.address]),
+  });
   const gov   = await viem.getContractAt("DealGovernance", proxy.address);
 
   // 工具函数
@@ -357,16 +372,16 @@ describe("集票否决深度测试", async function () {
     assert.equal(await gov.read.activeProposalCount(), 0n); // 应该减为 0
   });
 
-  // ─── 13. totalVetoStaked 不随 claimBack 减少的漏洞检测 ───────────────────
+  // ─── 13. claimBack 同步扣减 totalVetoStaked 的漏洞回归 ────────────────
   //
   // 场景：Major 提案的 activationReturnable=true，允许提前 claimBack。
   // alice vetoStake 1 D，未达门槛。提案激活后 activationReturnable=true。
   // alice 提前 claimBack 取回 1 D → vetoStakeOf 归零，但 totalVetoStaked 仍为 1 D。
   // bob 再投 1.6 D → totalVetoStaked = 2.6 D ≥ 2.5 D → 否决触发！
   // 实际上只有 1.6 D 在合约里，但却被按 2.6 D 计算。
-  // 这是一个会计漏洞：claimBack 没有减少 totalVetoStaked。
+  // 历史漏洞是 claimBack 没有减少 totalVetoStaked；本用例防止它回归。
 
-  it("【漏洞】Major 提案提前 claimBack 不减少 totalVetoStaked，导致幽灵贡献触发否决", async function () {
+  it("回归：Major 提案提前 claimBack 会扣减 totalVetoStaked，不会产生幽灵贡献", async function () {
     const { viem, owner, alice, bob, gov, dc, w, govAs, approve, noop, d } = await setup();
 
     const PT16 = 16n * D_UNIT / 10n; // 1.6 D

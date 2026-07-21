@@ -220,7 +220,7 @@ describe("Business Flow", async function () {
     await waitFor(publicClient, await dcDomainAsAlice.write.approve([dcDomainMarket.address, domainTokenId]));
     await waitFor(publicClient, await marketAsAlice.write.list([domainTokenId, salePrice]));
     await waitFor(publicClient, await dlAsBob.write.approve([dcDomainMarket.address, salePrice]));
-    await waitFor(publicClient, await marketAsBob.write.buy([domainTokenId]));
+    await waitFor(publicClient, await marketAsBob.write.buy([domainTokenId, salePrice]));
 
     assert.equal(await dcDomain.read.ownerOf([domainTokenId]), getAddress(bob.account.address));
     assert.equal(await dcDomain.read.resolve(["sale01"]), getAddress(bob.account.address));

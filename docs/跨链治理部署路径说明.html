@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨链治理 · 部署路径说明</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222637;
+    --border: #2e3348;
+    --accent: #6c8fff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --muted: #8892aa;
+    --code-bg: #141720;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 40px 20px 80px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* header */
+  .page-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 48px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .page-header .subtitle { color: var(--muted); font-size: 14px; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .badge-done  { background: rgba(52,211,153,.15); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+  .badge-todo  { background: rgba(251,191,36,.12);  color: var(--yellow); border: 1px solid rgba(251,191,36,.3); }
+  .badge-warn  { background: rgba(248,113,113,.12); color: var(--red);    border: 1px solid rgba(248,113,113,.3); }
+
+  /* section */
+  .section { margin-bottom: 52px; }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .num {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+  }
+
+  /* card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card h3 { font-size: 14px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+
+  /* arch diagram */
+  .arch {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 28px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 2;
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  .arch .chain-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+  .eth  { background: rgba(108,143,255,.15); color: var(--accent); border: 1px solid rgba(108,143,255,.3); }
+  .bsc  { background: rgba(251,191,36,.1);   color: var(--yellow);  border: 1px solid rgba(251,191,36,.3); }
+  .bridge { color: var(--accent2); }
+  .contract { color: var(--green); }
+  .arrow { color: var(--muted); }
+
+  /* step list */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    align-items: flex-start;
+  }
+  .step.done  { border-color: rgba(52,211,153,.3); }
+  .step.todo  { border-color: rgba(251,191,36,.2); }
+  .step-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step.done .step-icon { background: rgba(52,211,153,.15); }
+  .step.todo .step-icon { background: rgba(251,191,36,.12); }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .step-desc  { color: var(--muted); font-size: 14px; }
+  .step-detail {
+    margin-top: 10px;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #a8b4d0;
+  }
+  .step-detail .hl { color: var(--green); }
+  .step-detail .addr { color: var(--accent); font-size: 11.5px; }
+  .step-detail .comment { color: #4a5568; }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 10px 16px;
+    text-align: left;
+  }
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child  { border-radius: 0 8px 0 0; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--accent); }
+
+  /* security box */
+  .security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .security-grid { grid-template-columns: 1fr; } }
+  .sec-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .sec-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--accent); }
+  .sec-card p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* callout */
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .callout-green { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.25); }
+  .callout-yellow { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { flex: 1; }
+  .callout-body strong { display: block; margin-bottom: 4px; }
+
+  /* edge case table */
+  .edge-row-title { font-weight: 600; font-size: 13px; }
+  .edge-row-sub   { color: var(--muted); font-size: 12px; }
+  .result-ok   { color: var(--green); font-weight: 700; font-size: 13px; }
+  .result-stop { color: var(--red);   font-weight: 700; font-size: 13px; }
+
+  /* flow timeline */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px; top: 8px; bottom: 8px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    opacity: .3;
+  }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -22px; top: 7px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .tl-item h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .tl-item p  { font-size: 13px; color: var(--muted); }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+  .muted { color: var(--muted); }
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- header -->
+  <div class="page-header">
+    <h1>跨链治理 · 部署路径与工作原理</h1>
+    <div class="subtitle">ETH 主网 DAO → 双桥 → BSC 主网协议合约 · 2-of-3 多重确认</div>
+  </div>
+
+  <!-- ── 1. 全局架构 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">1</div>整体架构</div>
+
+    <div class="arch">
+<span class="chain-label eth">ETH 主网（治理层）</span>
+<br>
+<span class="contract">DealGovernance</span>
+<span class="arrow">  ←  NFT 持有者发起提案 / 投票</span>
+<br>
+<span class="arrow">  └→ 提案通过后调用 →</span> <span class="contract">CrossChainBroadcaster</span>
+<br>
+<span class="arrow">        │</span>
+<span class="arrow">        ├──[LayerZero]────────────────────────────────────────────────→</span>
+<span class="arrow">        ├──[Wormhole]────────────────────────────────────────────────→</span>
+<span class="arrow">        └──[Axelar]──────────────────────────────────────────────────→</span>
+<br>
+<span class="chain-label bsc">BSC 主网（执行层）</span>
+<br>
+<span class="contract">DualBridgeExecutor</span>  <span class="arrow">（2-of-3 任意两桥到达即执行）</span>
+<br>
+<span class="arrow">  └→ 执行目标合约（白名单内）</span>
+<br>
+<span class="arrow">       ├→</span> <span class="contract">DealFactory</span><span class="arrow">.setServiceGlobals(...)  // 切换子合约</span>
+<br>
+<span class="arrow">       ├→</span> <span class="contract">DealFactory</span><span class="arrow">.setFeeRate(...)          // 调手续费</span>
+<br>
+<span class="arrow">       └→</span> <span class="contract">DealGovernance</span><span class="arrow">.setParams(...)       // 调治理参数</span>
+    </div>
+
+    <div class="callout callout-green">
+      <div class="callout-icon">✅</div>
+      <div class="callout-body">
+        <strong>测试网已完整验证</strong>
+        Sepolia（CrossChainBroadcaster）→ LZ + WH 两条通道 → BSC testnet（DualBridgeExecutor）→ MockTarget.setParam(42) 执行成功。LZ=true、WH=true、2 条确认达到 threshold=2、callCount=1、无重复执行。
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. 消息流程 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">2</div>一笔治理消息的完整旅程</div>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <h4>① 提案创建（ETH 主网）</h4>
+        <p>NFT 持有者在 DealGovernance 发起提案，内容是「调用 CrossChainBroadcaster.broadcast(chainIds[], targets[], calldata, gasLimit)」。每条目标链都要填自己的业务合约 target，投票周期结束，赞成票超过 quorum。</p>
+      </div>
+      <div class="tl-item">
+        <h4>② 提案执行 → 广播（ETH 主网）</h4>
+        <p>任何人调用 <code>DealGovernance.execute()</code>，触发 <code>CrossChainBroadcaster.broadcast()</code>。该函数会按目标链分别构造 payload：<code>abi.encode(nonce, targetOfThisChain, calldata)</code>。这样 BSC / Polygon / 其他链上的业务合约地址可以不同。</p>
+      </div>
+      <div class="tl-item">
+        <h4>③ 三路传输（桥协议层）</h4>
+        <p>LayerZero ~60 秒到；Wormhole ~2 分钟到；Axelar ~3 分钟到。每条桥独立，互不依赖。任何一条暂时故障不影响其余两条。</p>
+      </div>
+      <div class="tl-item">
+        <h4>④ 到达确认（BSC 主网）</h4>
+        <p>DualBridgeExecutor 收到每条桥的消息后，计算 <code>msgHash = keccak256(nonce, target, calldata)</code>，标记对应桥已确认。</p>
+      </div>
+      <div class="tl-item">
+        <h4>⑤ 阈值触发 → 执行（BSC 主网）</h4>
+        <p>当 confirmed 数量 ≥ threshold（默认 2），立即调用 <code>target.call(calldata)</code>。DealFactory 收到调用后更新参数或切换合约地址。</p>
+      </div>
+      <div class="tl-item">
+        <h4>⑥ 防重执行锁</h4>
+        <p>执行前设 <code>executed[msgHash] = true</code>。第三条桥（或任何后续消息）到达时，第一行检查 <code>if (executed[msgHash]) revert AlreadyExecuted</code>，完全不执行。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. 部署步骤 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">3</div>主网部署步骤（按顺序执行）</div>
+
+    <div class="steps">
+
+      <div class="step done">
+        <div class="step-icon">✅</div>
+        <div class="step-body">
+          <div class="step-title">Step 1 · 合约代码已完成，测试网验证通过</div>
+          <div class="step-desc">CrossChainBroadcaster、DualBridgeExecutor 代码已在 Sepolia→BSC testnet 端到端跑通，2-of-3 机制无 bug。</div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">2</div>
+        <div class="step-body">
+          <div class="step-title">Step 2 · 部署 CrossChainBroadcaster（ETH 主网）</div>
+          <div class="step-desc">配置 LZ Endpoint（ETH 主网）、WH Relayer、AX Gateway 地址。</div>
+          <div class="step-detail">
+<span class="comment">// ETH 主网关键地址</span><br>
+LZ_ENDPOINT  = <span class="addr">0x1a44076050125825900e736c501f859c50fE728c</span><br>
+WH_RELAYER   = <span class="addr">0x27428DD2d3DD32A4D7f7C497eAaa23130d894911</span><br>
+AX_GATEWAY   = <span class="addr">0x4F4495243837681061C4743b74B3eEdf548D56A5</span><br>
+<br>
+<span class="comment">// 目标链（BSC mainnet）</span><br>
+LZ_EID_BSC   = <span class="hl">30102</span><br>
+WH_CHAIN_BSC = <span class="hl">4</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">3</div>
+        <div class="step-body">
+          <div class="step-title">Step 3 · 部署 DualBridgeExecutor（BSC 主网）</div>
+          <div class="step-desc">配置来源链（ETH）、CrossChainBroadcaster 地址、threshold=2。</div>
+          <div class="step-detail">
+<span class="comment">// BSC 主网关键地址</span><br>
+LZ_ENDPOINT  = <span class="addr">0x1a44076050125825900e736c501f859c50fE728c</span><br>
+WH_RELAYER   = <span class="addr">0x27428DD2d3DD32A4D7f7C497eAaa23130d894911</span><br>
+AX_GATEWAY   = <span class="addr">0x304acf330bbE08d1e512eefaa92F6a57871fD895</span><br>
+<br>
+<span class="comment">// 构造参数</span><br>
+whSrcChain   = <span class="hl">2</span>      <span class="comment">// WH chain ID: ETH mainnet</span><br>
+whSrcAddress = <span class="comment">/* CrossChainBroadcaster address, padded to bytes32 */</span><br>
+threshold    = <span class="hl">2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">4</div>
+        <div class="step-body">
+          <div class="step-title">Step 4 · 双向接线（LZ Peer 注册）</div>
+          <div class="step-desc">LZ 需要互相注册 peer 才能通信；WH/AX 只需在 Executor 上配置来源地址。</div>
+          <div class="step-detail">
+<span class="comment">// ETH 主网：CrossChainBroadcaster 注册 BSC 对端</span><br>
+<span class="hl">broadcaster</span>.setPeer(30102, bytes32(uint256(uint160(executorAddr))))<br>
+<br>
+<span class="comment">// BSC 主网：DualBridgeExecutor 注册 ETH 对端</span><br>
+<span class="hl">executor</span>.setPeer(30101, bytes32(uint256(uint160(broadcasterAddr))))
+          </div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">5</div>
+        <div class="step-body">
+          <div class="step-title">Step 5 · 白名单目标合约（BSC 主网）</div>
+          <div class="step-desc">DualBridgeExecutor 只执行白名单内的合约，防止任意调用。每个需要跨链治理的合约都要 setAllowedTarget。</div>
+          <div class="step-detail">
+executor.<span class="hl">setAllowedTarget</span>(dealFactory,        true)<br>
+executor.<span class="hl">setAllowedTarget</span>(dealGovernance,     true)<br>
+executor.<span class="hl">setAllowedTarget</span>(dealCreditGraph,    true)<br>
+executor.<span class="hl">setAllowedTarget</span>(dealSwapOrderBook,  true)
+          </div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">6</div>
+        <div class="step-body">
+          <div class="step-title">Step 6 · 移交 Owner（BSC 主网）⚠️ 不可逆，最后做</div>
+          <div class="step-desc">将协议合约的 owner 从部署者钱包转给 DualBridgeExecutor。此后只有通过跨链 DAO 提案才能修改参数，部署者钱包失去权限。<br><strong>前提：先发一笔测试用 broadcast，确认整条链路能正常到达并执行，再做这一步。</strong></div>
+          <div class="step-detail">
+dealFactory.<span class="hl">transferOwnership</span>(executorAddr)<br>
+dealGovernance.<span class="hl">transferOwnership</span>(executorAddr)<br>
+<span class="comment">// 之后所有参数修改必须通过 ETH DAO 提案</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step todo">
+        <div class="step-icon">7</div>
+        <div class="step-body">
+          <div class="step-title">Step 7 · ETH DAO 接入 CrossChainBroadcaster</div>
+          <div class="step-desc">DealGovernance 的提案执行目标加入 CrossChainBroadcaster，使治理提案能直接触发跨链广播。</div>
+          <div class="step-detail">
+<span class="comment">// 在 DealGovernance 提案中：</span><br>
+targets[0]   = <span class="hl">broadcasterAddr</span><br>
+calldatas[0] = broadcaster.<span class="hl">broadcast</span>(target, calldata, gasLimit)<br>
+values[0]    = bridgeFee  <span class="comment">// 报价后填入</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 4. 可跨链调整的内容 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">4</div>可以跨链调整的内容</div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>类型</th>
+            <th>具体内容</th>
+            <th>调用方式</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>切换子合约</strong></td>
+            <td>升级 DealResultIndex、DealImplementation、DealLib 等</td>
+            <td><code>DealFactory.setServiceGlobals(...)</code></td>
+          </tr>
+          <tr>
+            <td><strong>调手续费</strong></td>
+            <td>平台手续费率、信用分返利比例</td>
+            <td><code>DealFactory.setFeeRate(...)</code></td>
+          </tr>
+          <tr>
+            <td><strong>调治理参数</strong></td>
+            <td>投票周期、quorum、时间锁</td>
+            <td><code>DealGovernance.setVotingPeriod(...)</code></td>
+          </tr>
+          <tr>
+            <td><strong>调 Swap 参数</strong></td>
+            <td>滑点限制、最大单笔额度</td>
+            <td><code>DealSwapOrderBook.setParams(...)</code></td>
+          </tr>
+          <tr>
+            <td><strong>切换桥本身</strong></td>
+            <td>新增或替换某条桥（如换 AX 为 Chainlink CCIP）</td>
+            <td><code>DualBridgeExecutor.setAxSrc(...)</code></td>
+          </tr>
+          <tr>
+            <td><strong>调阈值</strong></td>
+            <td>从 2-of-3 改为 3-of-3（更严格）</td>
+            <td><code>DualBridgeExecutor.setThreshold(3)</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 5. 安全机制 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">5</div>安全机制与边界保护</div>
+
+    <div class="security-grid">
+      <div class="sec-card">
+        <h4>来源验证（三重）</h4>
+        <p>LZ：OApp peers 白名单，只接受注册的 ETH 对端地址。<br>
+           WH：验证 msg.sender == wormholeRelayer + srcChain + srcAddress。<br>
+           AX：axelarGateway.validateContractCall() + 来源链/地址字符串双重匹配。</p>
+      </div>
+      <div class="sec-card">
+        <h4>执行目标白名单</h4>
+        <p><code>allowedTargets[target]</code> 必须为 true 才执行。DAO 无法通过跨链治理调用任意合约，只能调用已登记的合约。</p>
+      </div>
+      <div class="sec-card">
+        <h4>防重放（nonce + hash 锁）</h4>
+        <p>每条消息 <code>msgHash = keccak256(nonce, target, calldata)</code>，执行后永久设 <code>executed[msgHash] = true</code>，任何后续到达的同一消息直接 revert。</p>
+      </div>
+      <div class="sec-card">
+        <h4>无双执行竞态</h4>
+        <p>区块链串行执行。即使两条桥消息在同一区块，先处理的交易执行并设锁，后处理的交易在第一行即被拒绝。</p>
+      </div>
+    </div>
+
+    <br>
+
+    <div class="card">
+      <h3>边界场景速查</h3>
+      <table>
+        <thead>
+          <tr><th>场景</th><th>结果</th><th>原因</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="edge-row-title">第3条桥姗姗来迟</div>
+            </td>
+            <td><span class="result-stop">忽略</span></td>
+            <td><code>executed[hash] = true</code>，第一行 revert</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="edge-row-title">LZ + WH 同一区块到达</div>
+            </td>
+            <td><span class="result-ok">执行一次</span></td>
+            <td>先处理的 tx 执行并上锁，后处理的 tx revert</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="edge-row-title">同一条桥重复发相同消息</div>
+            </td>
+            <td><span class="result-stop">不累加</span></td>
+            <td><code>confirmed[hash][BRIDGE_LZ]</code> 是 bool，置 true 是幂等的；count 从头重新数</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="edge-row-title">calldata 写错，target 内部 revert</div>
+            </td>
+            <td><span class="result-stop">标记已执行，不重试</span></td>
+            <td><code>executed[hash]</code> 在 call 前已设为 true；失败后需要用新 nonce 重新广播</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="edge-row-title">某条桥完全宕机</div>
+            </td>
+            <td><span class="result-ok">另外两桥仍可执行</span></td>
+            <td>threshold=2，任意两桥即可；三桥独立，互不阻塞</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 6. 一次典型提案的时间线 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">6</div>一次典型治理提案的时间线</div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>时间</th><th>发生什么</th><th>链</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>T+0</td>
+            <td>NFT 持有者发起提案（如「将平台手续费从 1% 改为 0.8%」）</td>
+            <td>ETH 主网</td>
+          </tr>
+          <tr>
+            <td>T+3天</td>
+            <td>投票结束，赞成票达 quorum，提案通过</td>
+            <td>ETH 主网</td>
+          </tr>
+          <tr>
+            <td>T+3天 + 时间锁</td>
+            <td>任何人调用 execute()，触发 CrossChainBroadcaster.broadcast()</td>
+            <td>ETH 主网</td>
+          </tr>
+          <tr>
+            <td>T + ~1分钟</td>
+            <td>LayerZero 消息到达 DualBridgeExecutor，LZ=true，count=1/2</td>
+            <td>BSC 主网</td>
+          </tr>
+          <tr>
+            <td>T + ~2分钟</td>
+            <td>Wormhole 消息到达，WH=true，count=2，达到 threshold=2 → 触发 DealFactory.setFeeRate()</td>
+            <td>BSC 主网</td>
+          </tr>
+          <tr>
+            <td>T + ~3分钟</td>
+            <td>Axelar 消息到达，axConfirmed=true 但 executed=true，直接忽略</td>
+            <td>BSC 主网</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-yellow">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <strong>在 owner 移交前必须做冒烟测试</strong>
+        部署完成后，先在 owner 移交前用部署者钱包手动调用 broadcast() 发一条测试消息（比如 setParam(999)），确认 BSC 端正常收到并执行，再做 transferOwnership。一旦移交，只能通过 DAO 提案找回控制权。
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. 当前状态 ── -->
+  <div class="section">
+    <div class="section-title"><div class="num">7</div>当前状态一览</div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>项目</th><th>状态</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>合约代码（CrossChainBroadcaster）</td>
+            <td><span class="badge badge-done">完成</span></td>
+            <td>已审计，无高危/中危问题</td>
+          </tr>
+          <tr>
+            <td>合约代码（DualBridgeExecutor）</td>
+            <td><span class="badge badge-done">完成</span></td>
+            <td>已审计，2-of-3 逻辑无边界漏洞</td>
+          </tr>
+          <tr>
+            <td>测试网端到端验证</td>
+            <td><span class="badge badge-done">完成</span></td>
+            <td>Sepolia→BSC testnet，真实 calldata 执行成功</td>
+          </tr>
+          <tr>
+            <td>ETH 主网部署</td>
+            <td><span class="badge badge-todo">待做</span></td>
+            <td>CrossChainBroadcaster 待部署</td>
+          </tr>
+          <tr>
+            <td>BSC 主网部署</td>
+            <td><span class="badge badge-todo">待做</span></td>
+            <td>DualBridgeExecutor + 协议合约待部署</td>
+          </tr>
+          <tr>
+            <td>LZ Peer 注册 / WH 来源配置</td>
+            <td><span class="badge badge-todo">待做</span></td>
+            <td>部署后各执行一笔 tx</td>
+          </tr>
+          <tr>
+            <td>Owner 移交</td>
+            <td><span class="badge badge-todo">待做</span></td>
+            <td>冒烟测试通过后执行，不可逆</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <p class="muted" style="font-size:13px;text-align:center;">
+    生成日期 2026-06-25 · Deal 协议跨链治理技术文档
+  </p>
+
+</div>
+</body>
+</html>

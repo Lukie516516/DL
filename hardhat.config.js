@@ -1,5 +1,4 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
-import { configVariable } from "hardhat/config";
 import { readFileSync } from "node:fs";
 // load .env manually (dotenv not installed)
 try {
@@ -28,6 +27,20 @@ const solcDealOnly = {
     metadata: { bytecodeHash: "none" },
   },
 };
+
+function envAccount(...keys) {
+  let raw;
+  for (const key of keys) {
+    raw = process.env[key];
+    if (raw) break;
+  }
+  if (!raw) return [];
+  return [raw.startsWith("0x") ? raw : `0x${raw}`];
+}
+
+function envUrl(key) {
+  return process.env[key] || "http://127.0.0.1:8545";
+}
 
 const config = {
   plugins: [hardhatToolboxViemPlugin],
@@ -68,6 +81,16 @@ const config = {
       chainType: "l1",
       allowUnlimitedContractSize: true,
     },
+    hardhatEthFork: {
+      type: "edr-simulated",
+      chainType: "l1",
+      chainId: 1,
+      allowUnlimitedContractSize: true,
+      forking: {
+        enabled: Boolean(process.env.ETH_MAINNET_RPC_URL),
+        url: process.env.ETH_MAINNET_RPC_URL || "http://127.0.0.1:8545",
+      },
+    },
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
@@ -76,22 +99,36 @@ const config = {
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      url: envUrl("SEPOLIA_RPC_URL"),
+      accounts: envAccount("SEPOLIA_PRIVATE_KEY"),
     },
     bscTestnet: {
       type: "http",
       chainType: "l1",
       chainId: 97,
-      url: configVariable("BSC_TESTNET_RPC_URL"),
-      accounts: [configVariable("BSC_TESTNET_PRIVATE_KEY")],
+      url: envUrl("BSC_TESTNET_RPC_URL"),
+      accounts: envAccount("BSC_TESTNET_PRIVATE_KEY"),
+    },
+    ethMainnet: {
+      type: "http",
+      chainType: "l1",
+      chainId: 1,
+      url: envUrl("ETH_MAINNET_RPC_URL"),
+      accounts: envAccount("ETH_MAINNET_PRIVATE_KEY", "AGIKING_PRIVATE_KEY"),
+    },
+    bscMainnet: {
+      type: "http",
+      chainType: "l1",
+      chainId: 56,
+      url: process.env.BSC_MAINNET_RPC_URL || "https://bsc-dataseed.binance.org",
+      accounts: envAccount("BSC_MAINNET_PRIVATE_KEY", "AGIKING_PRIVATE_KEY"),
     },
     agiking: {
       type: "http",
       chainType: "l1",
       chainId: 31415926,
-      url: process.env.AGIKING_RPC_URL,
-      accounts: [process.env.AGIKING_PRIVATE_KEY],
+      url: envUrl("AGIKING_RPC_URL"),
+      accounts: envAccount("AGIKING_PRIVATE_KEY"),
     },
   },
 };

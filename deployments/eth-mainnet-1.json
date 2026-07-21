@@ -51,9 +51,14 @@
     "dealSeatVetoGovernor": "0xa3e818a45281038f5ae8bf213bfdbe1abbb99b7a",
     "voteDividendClaimer": "0xc42afc0a57e90c41ec3dd29a6b6794a81737f9f3",
     "dealGovernance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
-    "dealGovernanceImpl": "0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6",
+    "dealGovernanceImpl": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5",
     "crossChainBroadcaster": "0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf",
-    "protocolTreasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a"
+    "protocolTreasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
+    "governancePolicyRegistry": "0xBFF01F91291476e671f0F310846D5dDb460e2382",
+    "satoshiVaultImplementation": "0x16b1Ad109E8D826F17B5542984c4B83643B4Ce48",
+    "satoshiVault": "0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e",
+    "dealDividendVaultImplementation": "0xB5D30418AEb0a302847EE5227193082fF36C44A8",
+    "dealDividendVault": "0xc0aE5D371f4605c464493B0d056dA56357cD2850"
   },
   "abi": {
     "DealLib": [
@@ -33912,6 +33917,17 @@
       {
         "inputs": [
           {
+            "internalType": "uint256",
+            "name": "index",
+            "type": "uint256"
+          }
+        ],
+        "name": "ActionNotAllowed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "address",
             "name": "target",
             "type": "address"
@@ -33983,6 +33999,22 @@
         "type": "error"
       },
       {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "expected",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "provided",
+            "type": "uint256"
+          }
+        ],
+        "name": "IncorrectExecutionValue",
+        "type": "error"
+      },
+      {
         "inputs": [],
         "name": "InsufficientStake",
         "type": "error"
@@ -34030,6 +34062,11 @@
       {
         "inputs": [],
         "name": "ParamOutOfRange",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "PolicyRegistryMissing",
         "type": "error"
       },
       {
@@ -34149,6 +34186,25 @@
           }
         ],
         "name": "NftVetoRegistryUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "oldRegistry",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newRegistry",
+            "type": "address"
+          }
+        ],
+        "name": "PolicyRegistryUpdated",
         "type": "event"
       },
       {
@@ -34984,6 +35040,19 @@
       },
       {
         "inputs": [],
+        "name": "policyRegistry",
+        "outputs": [
+          {
+            "internalType": "contract IGovernancePolicyRegistryGov",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "proposalCount",
         "outputs": [
           {
@@ -35139,6 +35208,19 @@
           }
         ],
         "name": "setParamWindowSeconds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "registry",
+            "type": "address"
+          }
+        ],
+        "name": "setPolicyRegistry",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -36415,15 +36497,327 @@
         "stateMutability": "payable",
         "type": "receive"
       }
+    ],
+    "GovernancePolicyRegistry": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes4",
+                "name": "selector",
+                "type": "bytes4"
+              },
+              {
+                "internalType": "bool",
+                "name": "allowed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "validateNestedBroadcast",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nestedOnly",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxValue",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct GovernancePolicyRegistry.RuleInput[]",
+            "name": "initialRules",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "OnlyGovernance",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint8",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes4",
+            "name": "selector",
+            "type": "bytes4"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "allowed",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "validateNestedBroadcast",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "nestedOnly",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "maxValue",
+            "type": "uint256"
+          }
+        ],
+        "name": "RuleUpdated",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes4",
+            "name": "selector",
+            "type": "bytes4"
+          }
+        ],
+        "name": "getRule",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "allowed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "validateNestedBroadcast",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nestedOnly",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxValue",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct GovernancePolicyRegistry.Rule",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "name": "isActionAllowed",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes4",
+                "name": "selector",
+                "type": "bytes4"
+              },
+              {
+                "internalType": "bool",
+                "name": "allowed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "validateNestedBroadcast",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nestedOnly",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxValue",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct GovernancePolicyRegistry.RuleInput",
+            "name": "input",
+            "type": "tuple"
+          }
+        ],
+        "name": "setRule",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes4",
+                "name": "selector",
+                "type": "bytes4"
+              },
+              {
+                "internalType": "bool",
+                "name": "allowed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "validateNestedBroadcast",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nestedOnly",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxValue",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct GovernancePolicyRegistry.RuleInput[]",
+            "name": "inputs",
+            "type": "tuple[]"
+          }
+        ],
+        "name": "setRules",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ]
   },
   "params": {
     "treasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
     "admin": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-    "protocolTreasuryEnabled": false,
-    "protocolTreasury": "",
-    "protocolTreasuryController": "0x0000000000000000000000000000000000000000",
-    "protocolTreasuryBootstrapLocked": false,
+    "protocolTreasuryEnabled": true,
+    "protocolTreasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
+    "protocolTreasuryController": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "protocolTreasuryBootstrapLocked": true,
     "dividendExecutor": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
     "dividendSource": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
     "stable0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -36517,6 +36911,34 @@
     "MAINNET_STABLE0_ADDRESS and MAINNET_STABLE1_ADDRESS should be real production tokens unless MAINNET_DEPLOY_MOCK_STABLES=1 was explicitly used.",
     "Pair creation is separate from pair initialization. If MAINNET_INIT_PAIRS=false, liquidity and virtual reserves still need a later controlled setup transaction.",
     "Cross-chain governance is not enabled by this script. Deploy/wire CrossChainBroadcaster and DualBridgeExecutor separately, then call DealFactory.setCrossChainGovernance(executor).",
-    "[2026-07-07T03:30:05.146Z] DealGovernance deployed and wired: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 impl=0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6; CrossChainBroadcaster=0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf"
-  ]
+    "[2026-07-07T03:30:05.146Z] DealGovernance deployed and wired: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 impl=0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6; CrossChainBroadcaster=0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf",
+    "[2026-07-21T03:44:39.551Z] DealGovernance DAO V2 finalized locally: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 implementation=0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5 policyRegistry=0xBFF01F91291476e671f0F310846D5dDb460e2382 proposal=7 tx=0x7ce0d235e82c946f0974640acc6c41eb4aa23d2628a20e0f5e95f089e92ccb64",
+    "[2026-07-21T08:48:21Z] DAO treasury modules finalized locally: SatoshiVault=0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e DealDividendVault=0xc0aE5D371f4605c464493B0d056dA56357cD2850; proposal 8 enabled four exact rules; proposal 9 created the first 100 DC dividend round"
+  ],
+  "updatedAt": "2026-07-21T08:48:21Z",
+  "daoV2": {
+    "upgradedAt": "2026-07-21T03:44:39.551Z",
+    "governanceProxy": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "implementation": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5",
+    "policyRegistry": "0xBFF01F91291476e671f0F310846D5dDb460e2382",
+    "proposalId": "7",
+    "upgradeTransaction": "0x7ce0d235e82c946f0974640acc6c41eb4aa23d2628a20e0f5e95f089e92ccb64",
+    "upgradeBlock": "25578119",
+    "policyRuleCount": 48
+  },
+  "daoTreasuryModules": {
+    "finalizedAt": "2026-07-21T08:48:21Z",
+    "satoshiVaultImplementation": "0x16b1Ad109E8D826F17B5542984c4B83643B4Ce48",
+    "satoshiVault": "0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e",
+    "dealDividendVaultImplementation": "0xB5D30418AEb0a302847EE5227193082fF36C44A8",
+    "dealDividendVault": "0xc0aE5D371f4605c464493B0d056dA56357cD2850",
+    "policyProposalId": "8",
+    "policyExecutionTransaction": "0xe255f8bd53ba84193f1636bd889eb5747b57c226a9b82a8e8dd2ef32540229d7",
+    "policyRuleCount": 52,
+    "firstDividendProposalId": "9",
+    "firstDividendExecutionTransaction": "0x192878dbfc5005e232d7088d7be868bd18fa629a5d0abdb9d5d34da7778dd953",
+    "firstDividendRoundId": "0",
+    "firstDividendAmountWei": "100000000000000000000",
+    "firstDividendSnapshot": "25579735"
+  }
 }

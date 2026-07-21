@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { encodeFunctionData, zeroAddress } from "viem";
+import { encodeFunctionData, toFunctionSelector, zeroAddress } from "viem";
 
 const D_UNIT = 10n ** 18n;
 const MAX_SUPPLY = 100n * D_UNIT;
@@ -12,13 +12,27 @@ const ACTIVATION_THRESHOLD = SEAT_THRESHOLD; // 2.5 D
 
 // Deploy DealGovernance as UUPS proxy
 async function deployGovernance(viem: any, dAddr: `0x${string}`, dcAddr: `0x${string}`, treasury: `0x${string}`) {
-  const impl = await viem.deployContract("DealGovernance", []);
+  const publicClient = await viem.getPublicClient();
+  const impl = await viem.deployContract("DealGovernanceHarness", []);
   const initData = encodeFunctionData({
     abi: impl.abi,
     functionName: "initialize",
     args: [dAddr, zeroAddress, dcAddr, treasury],
   });
   const proxy = await viem.deployContract("ERC1967Proxy", [impl.address, initData]);
+  const selector = toFunctionSelector("setFastPassThreshold(uint256)");
+  const rules = [0, 1, 2, 3].map((kind) => ({
+    kind,
+    target: proxy.address,
+    selector,
+    allowed: true,
+    validateNestedBroadcast: false,
+    nestedOnly: false,
+    maxValue: 0n,
+  }));
+  const registry = await viem.deployContract("GovernancePolicyRegistry", [proxy.address, rules]);
+  const harness = await viem.getContractAt("DealGovernanceHarness", proxy.address);
+  await waitFor(publicClient, await harness.write.bootstrapPolicyRegistryForTest([registry.address]));
   return viem.getContractAt("DealGovernance", proxy.address);
 }
 

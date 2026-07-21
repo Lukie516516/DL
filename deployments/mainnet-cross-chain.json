@@ -26,10 +26,16 @@
     "bscAxelarChainName": "binance",
     "axelarMinFeeWei": "1000000000000000",
     "ethGovernance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "ethDealFactory": "0x02330431f96b21776274f3147bd4c233caf7d752",
+    "setEthFactoryCrosschain": true,
     "bscChainKey": 30102,
     "bscDealFactory": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
     "setBscFactoryCrosschain": true,
-    "bscChainActiveOnWire": false
+    "bscChainActiveOnWire": true
   },
-  "wiredAt": "2026-07-05T08:30:39.051Z"
+  "wiredAt": "2026-07-05T08:30:39.051Z",
+  "activatedAt": "2026-07-08T03:38:20.000Z",
+  "activationTx": "0xd1df7a639b8b30af259b42895e35f9a1a39e493c222e3de03b3bf18d13e6009f",
+  "ethFactoryGovernanceWiredAt": "2026-07-08T04:02:30.000Z",
+  "ethFactoryGovernanceTx": "0x28420b546ad289402146b690a35f167e557d7ff945f8a4e2bf4ab3453ccba021"
 }

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ETH / BSC 主网合约地址总览</title>
+  <style>
+    :root {
+      --bg: #0f131a;
+      --panel: #171d26;
+      --panel-2: #111720;
+      --line: #2a3443;
+      --text: #e8edf5;
+      --muted: #a6b0bf;
+      --accent: #f6b21a;
+      --ok: #36c98e;
+      --chip: #242d3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header {
+      padding: 36px 28px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #182231 0%, #0f131a 100%);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    .notice {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 8px;
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 26px 0 12px;
+      color: var(--accent);
+    }
+    h3 {
+      font-size: 16px;
+      margin: 22px 0 10px;
+      color: #dbe5f3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #202938;
+      color: #dfe8f5;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .name { width: 240px; color: #d8e1ee; font-weight: 650; }
+    code {
+      display: inline-block;
+      max-width: 100%;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: var(--chip);
+      color: #f1f5fb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      word-break: break-all;
+      white-space: normal;
+    }
+    .tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      color: #08130f;
+      background: var(--ok);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .section {
+      margin-bottom: 34px;
+    }
+    .foot {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 28px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      main { padding: 18px; }
+      header { padding: 28px 18px 18px; }
+      h1 { font-size: 24px; }
+      th, td { font-size: 13px; padding: 9px; }
+      .name { width: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ETH / BSC 主网合约地址总览</h1>
+    <div class="meta">更新时间：2026-07-10 · 数据来源：deployments/eth-mainnet-1.json、deployments/bsc-mainnet-56.json、deployments/mainnet-cross-chain.json</div>
+  </header>
+
+  <main>
+    <div class="notice">
+      完整 ABI 在对应 <code>deployments/*.json</code> 文件的 <code>abi</code> 字段里。前端接线优先使用 JSON；本页面用于项目组快速核对地址。
+    </div>
+
+    <section class="section">
+      <h2>核心入口</h2>
+      <table>
+        <thead><tr><th>模块</th><th>ETH Mainnet</th><th>BSC Mainnet</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Chain ID</td><td><code>1</code></td><td><code>56</code></td></tr>
+          <tr><td class="name">DealFactory</td><td><code>0x02330431f96b21776274f3147bd4c233caf7d752</code></td><td><code>0x1ca748feb347d0d177e844e7d4cdca908957c256</code></td></tr>
+          <tr><td class="name">DealReader</td><td><code>0xf9b15bc4347700aa5e5bf7ba85416e71c092ccf1</code></td><td><code>0x37fadb350fd4c00f6608e3c4fa2c172fab1ee11d</code></td></tr>
+          <tr><td class="name">DealRouter</td><td><code>0xe1939e2818049a58c819d63fa536cfa97bb78e32</code></td><td><code>0x9418ef8f45971d58968cc537f6aa19dbe881c842</code></td></tr>
+          <tr><td class="name">DealRouterQuoter</td><td><code>0xd2a702bf9732f4fb2dd84f36fc03251816bea07c</code></td><td><code>0x6cffc8617f8f157a9e184f6357f3e813fda3aa8a</code></td></tr>
+          <tr><td class="name">DealMessageHub</td><td><code>0x9ddc85eb93a571b1c0f4ba7611db02b159480a49</code></td><td><code>0xdcf150b3a9a3e1f93c057dfbf1943f8f906840a1</code></td></tr>
+          <tr><td class="name">DealResultIndex</td><td><code>0x5cd69b939eb7a9498a22b7d9df66c0cbf8e29cb6</code></td><td><code>0x4b6ca91e47fcfb5c449962865e57a0625515590c</code></td></tr>
+          <tr><td class="name">DealActivityIndex</td><td><code>0x10fd064bb8cb9ec9372ff9e9e308c77f18e210a8</code></td><td><code>0x00a23724a1964cdd766ca261acfd4f92b91d07fb</code></td></tr>
+          <tr><td class="name">DealInfoNFT</td><td><code>0xff5efe3b23762170a99f8f4c66abea11613b982d</code></td><td><code>0xe698e7ee81209703122cd996096248f5c8db643d</code></td></tr>
+          <tr><td class="name">DealCoin / DC</td><td><code>0x591625be924b98accab7e2c8af698c858aa2608d</code></td><td><code>0xff5efe3b23762170a99f8f4c66abea11613b982d</code></td></tr>
+          <tr><td class="name">ProtocolTreasury</td><td><code>0x19CC1320DcF7e1396404599209D7c9a844A21b8a</code></td><td><code>0xa7f98a2c6a7861ab73440f869dc6e7914c1d7c0b</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>ETH Mainnet</h2>
+        <table>
+          <tbody>
+            <tr><td class="name">DealCoin / DC</td><td><code>0x591625be924b98accab7e2c8af698c858aa2608d</code></td></tr>
+            <tr><td class="name">USDC</td><td><code>0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48</code></td></tr>
+            <tr><td class="name">USDT</td><td><code>0xdAC17F958D2ee523a2206206994597C13D831ec7</code></td></tr>
+            <tr><td class="name">WETH</td><td><code>0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2</code></td></tr>
+            <tr><td class="name">ProtocolTreasury</td><td><code>0x19CC1320DcF7e1396404599209D7c9a844A21b8a</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="card">
+        <h2>BSC Mainnet</h2>
+        <table>
+          <tbody>
+            <tr><td class="name">DealCoin / DC</td><td><code>0xff5efe3b23762170a99f8f4c66abea11613b982d</code></td></tr>
+            <tr><td class="name">USDC</td><td><code>0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d</code></td></tr>
+            <tr><td class="name">USDT</td><td><code>0x55d398326f99059fF775485246999027B3197955</code></td></tr>
+            <tr><td class="name">WBNB</td><td><code>0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c</code></td></tr>
+            <tr><td class="name">ProtocolTreasury</td><td><code>0xa7f98a2c6a7861ab73440f869dc6e7914c1d7c0b</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="section">
+      <h2>ETH Mainnet 全量地址</h2>
+      <h3>Deal 核心</h3>
+      <table><tbody>
+        <tr><td class="name">DealFactory</td><td><code>0x02330431f96b21776274f3147bd4c233caf7d752</code></td></tr>
+        <tr><td class="name">DealPairManager</td><td><code>0x167104853a997a4b2431b5d05273d6813331122b</code></td></tr>
+        <tr><td class="name">DealMessageHub</td><td><code>0x9ddc85eb93a571b1c0f4ba7611db02b159480a49</code></td></tr>
+        <tr><td class="name">DealCreditGraph</td><td><code>0x1ca748feb347d0d177e844e7d4cdca908957c256</code></td></tr>
+        <tr><td class="name">DealActivityIndex</td><td><code>0x10fd064bb8cb9ec9372ff9e9e308c77f18e210a8</code></td></tr>
+        <tr><td class="name">DealResultIndex</td><td><code>0x5cd69b939eb7a9498a22b7d9df66c0cbf8e29cb6</code></td></tr>
+        <tr><td class="name">DealInfoNFT</td><td><code>0xff5efe3b23762170a99f8f4c66abea11613b982d</code></td></tr>
+        <tr><td class="name">DealInfoNFTRenderer</td><td><code>0xfef16c50afcf3bffb7136dbd58c4797f339dbe1d</code></td></tr>
+        <tr><td class="name">DealReader</td><td><code>0xf9b15bc4347700aa5e5bf7ba85416e71c092ccf1</code></td></tr>
+        <tr><td class="name">DealImplementationRegistry</td><td><code>0x9a143fe401200ed882eafc84038e5e91f0024505</code></td></tr>
+      </tbody></table>
+
+      <h3>Deal 模板与库</h3>
+      <table><tbody>
+        <tr><td class="name">DealLib</td><td><code>0xdb1cab9f6ccaf78ee8c673517c8bef6ad62de58c</code></td></tr>
+        <tr><td class="name">DealAssetNftLib</td><td><code>0x8af16ec65e2bee3897a0d6de1350e8d74a61c410</code></td></tr>
+        <tr><td class="name">Deal Implementation</td><td><code>0xb6f24d3ed15351b9bfd47b7ebb9ea5beda05728f</code></td></tr>
+        <tr><td class="name">DealNoAsset Implementation</td><td><code>0xa952c195cadf2d148582e90612b6a40f7b99f508</code></td></tr>
+        <tr><td class="name">DealAAssetNft Implementation</td><td><code>0x7979abcf36fe76940c557de7b942a2fe69edb6b8</code></td></tr>
+        <tr><td class="name">DealBAssetNft Implementation</td><td><code>0x93066f6d0c18266db369b1d38d6fe4cd6bd480c3</code></td></tr>
+        <tr><td class="name">DealAAssetNftOnly Implementation</td><td><code>0xbb686a57fff9b2886622369cf30e085aedea5dcd</code></td></tr>
+        <tr><td class="name">DealBAssetNftOnly Implementation</td><td><code>0xa7f98a2c6a7861ab73440f869dc6e7914c1d7c0b</code></td></tr>
+        <tr><td class="name">DealOpenTokenToken Implementation</td><td><code>0xbb88a5b4acdd18fca66c2eb14cbdb791b9e8df23</code></td></tr>
+        <tr><td class="name">Pair Implementation</td><td><code>0xacf74fd151de6ffe455ab862a7de9b77cfce82ed</code></td></tr>
+        <tr><td class="name">DealFactory Implementation</td><td><code>0x20289f30c92e0bb36ca0b32741eccff2c95595ee</code></td></tr>
+      </tbody></table>
+
+      <h3>DEX / Pair</h3>
+      <table><tbody>
+        <tr><td class="name">DC/USDC Pair</td><td><code>0xFA891Ff307D0D46ccA371390E836F96739b7988F</code></td></tr>
+        <tr><td class="name">DC/USDT Pair</td><td><code>0x1A9fE3bbb9740e851eae919B29C63832BBe70479</code></td></tr>
+        <tr><td class="name">DC/WETH Pair</td><td><code>0x88E089aE7Fa1358aF7500AeE124d388C54691A91</code></td></tr>
+        <tr><td class="name">DealSwapOrderBook</td><td><code>0xfd06e0a2023b271f463e4d81f5378fd349b9f1f2</code></td></tr>
+        <tr><td class="name">DealRouter</td><td><code>0xe1939e2818049a58c819d63fa536cfa97bb78e32</code></td></tr>
+        <tr><td class="name">DealRouterQuoter</td><td><code>0xd2a702bf9732f4fb2dd84f36fc03251816bea07c</code></td></tr>
+        <tr><td class="name">DealSwapAssetRegistry</td><td><code>0x257c1feab3d9e8d305325aa654ffa913a72510dd</code></td></tr>
+      </tbody></table>
+
+      <h3>域名模块</h3>
+      <table><tbody>
+        <tr><td class="name">DCDomain</td><td><code>0xd602fa2c7a4bbdcd841ad5e9d69b8c028d48e0b2</code></td></tr>
+        <tr><td class="name">DCDomainRank Implementation</td><td><code>0x40126ed70176ae11ce33cc8ad32fb7f6690a9a72</code></td></tr>
+        <tr><td class="name">DCDomainRank</td><td><code>0x8956fd25a7d1cef97d191285181231c544389530</code></td></tr>
+        <tr><td class="name">DCDomainRankReader</td><td><code>0x9418ef8f45971d58968cc537f6aa19dbe881c842</code></td></tr>
+        <tr><td class="name">DCDomainListReader</td><td><code>0x6cffc8617f8f157a9e184f6357f3e813fda3aa8a</code></td></tr>
+        <tr><td class="name">DCDomainMarket</td><td><code>0x37fadb350fd4c00f6608e3c4fa2c172fab1ee11d</code></td></tr>
+        <tr><td class="name">DCDomainSwap</td><td><code>0xec12468e4131f18b2446204dbb20240883a6fe2f</code></td></tr>
+        <tr><td class="name">DCDomainHall</td><td><code>0x0355946ca58e24318e3cd69d4c634a1a1245a698</code></td></tr>
+      </tbody></table>
+
+      <h3>DAO / 分红 / 跨链</h3>
+      <table><tbody>
+        <tr><td class="name">D Token</td><td><code>0x61921ecb954ffaaf8cd3fd2e71eecb14b3ed529f</code></td></tr>
+        <tr><td class="name">DealNftGovernanceActivity</td><td><code>0x0b57997bf372e41ca1b027cb57da5b581f1b5678</code></td></tr>
+        <tr><td class="name">NftVetoRegistry</td><td><code>0xd8de3603d341584e0aef843ee8f4c00288179177</code></td></tr>
+        <tr><td class="name">DealSeatVetoGovernor</td><td><code>0xa3e818a45281038f5ae8bf213bfdbe1abbb99b7a</code></td></tr>
+        <tr><td class="name">VoteDividendClaimer</td><td><code>0xc42afc0a57e90c41ec3dd29a6b6794a81737f9f3</code></td></tr>
+        <tr><td class="name">DealGovernance</td><td><code>0x9a41a9A85C16F590789C846Fb933fF8C715407F7</code><span class="tag">ETH 主治理</span></td></tr>
+        <tr><td class="name">DealGovernance Implementation</td><td><code>0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6</code></td></tr>
+        <tr><td class="name">CrossChainBroadcaster</td><td><code>0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf</code></td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="section">
+      <h2>BSC Mainnet 全量地址</h2>
+      <h3>Deal 核心</h3>
+      <table><tbody>
+        <tr><td class="name">DealFactory</td><td><code>0x1ca748feb347d0d177e844e7d4cdca908957c256</code></td></tr>
+        <tr><td class="name">DealPairManager</td><td><code>0x428353575d19d250393385934caa3a38de69bc5c</code></td></tr>
+        <tr><td class="name">DealMessageHub</td><td><code>0xdcf150b3a9a3e1f93c057dfbf1943f8f906840a1</code></td></tr>
+        <tr><td class="name">DealCreditGraph</td><td><code>0xf6c44acbf320bd5471af6bff86bc2860f437b25d</code></td></tr>
+        <tr><td class="name">DealActivityIndex</td><td><code>0x00a23724a1964cdd766ca261acfd4f92b91d07fb</code></td></tr>
+        <tr><td class="name">DealResultIndex</td><td><code>0x4b6ca91e47fcfb5c449962865e57a0625515590c</code></td></tr>
+        <tr><td class="name">DealInfoNFT</td><td><code>0xe698e7ee81209703122cd996096248f5c8db643d</code></td></tr>
+        <tr><td class="name">DealInfoNFTRenderer</td><td><code>0x0f7342ce4c60941fdd8ab2f4059ee1a75910a9e2</code></td></tr>
+        <tr><td class="name">DealReader</td><td><code>0x37fadb350fd4c00f6608e3c4fa2c172fab1ee11d</code></td></tr>
+        <tr><td class="name">DealImplementationRegistry</td><td><code>0x7338f2b51852dc93979cd2c02dba5163eab18ca2</code></td></tr>
+      </tbody></table>
+
+      <h3>Deal 模板与库</h3>
+      <table><tbody>
+        <tr><td class="name">DealLib</td><td><code>0xbb88a5b4acdd18fca66c2eb14cbdb791b9e8df23</code></td></tr>
+        <tr><td class="name">DealAssetNftLib</td><td><code>0xacf74fd151de6ffe455ab862a7de9b77cfce82ed</code></td></tr>
+        <tr><td class="name">Deal Implementation</td><td><code>0x591625be924b98accab7e2c8af698c858aa2608d</code></td></tr>
+        <tr><td class="name">DealNoAsset Implementation</td><td><code>0x20289f30c92e0bb36ca0b32741eccff2c95595ee</code></td></tr>
+        <tr><td class="name">DealAAssetNft Implementation</td><td><code>0x02330431f96b21776274f3147bd4c233caf7d752</code></td></tr>
+        <tr><td class="name">DealBAssetNft Implementation</td><td><code>0x167104853a997a4b2431b5d05273d6813331122b</code></td></tr>
+        <tr><td class="name">DealAAssetNftOnly Implementation</td><td><code>0x9ddc85eb93a571b1c0f4ba7611db02b159480a49</code></td></tr>
+        <tr><td class="name">DealBAssetNftOnly Implementation</td><td><code>0x10fd064bb8cb9ec9372ff9e9e308c77f18e210a8</code></td></tr>
+        <tr><td class="name">DealOpenTokenToken Implementation</td><td><code>0x5cd69b939eb7a9498a22b7d9df66c0cbf8e29cb6</code></td></tr>
+        <tr><td class="name">Pair Implementation</td><td><code>0x9a143fe401200ed882eafc84038e5e91f0024505</code></td></tr>
+        <tr><td class="name">DealFactory Implementation</td><td><code>0xfef16c50afcf3bffb7136dbd58c4797f339dbe1d</code></td></tr>
+      </tbody></table>
+
+      <h3>DEX / Pair</h3>
+      <table><tbody>
+        <tr><td class="name">DC/USDC Pair</td><td><code>0xf5b388F37F08A27B2ba880119db353F64F1A52eC</code></td></tr>
+        <tr><td class="name">DC/USDT Pair</td><td><code>0x28390eEa26C8040C36b81c7eC599019a16DA30F2</code></td></tr>
+        <tr><td class="name">DC/WBNB Pair</td><td><code>0xd33adf46C967A171aA9B3199545EF2C5BA5C2091</code></td></tr>
+        <tr><td class="name">DealSwapOrderBook</td><td><code>0x40126ed70176ae11ce33cc8ad32fb7f6690a9a72</code></td></tr>
+        <tr><td class="name">DealRouter</td><td><code>0x9418ef8f45971d58968cc537f6aa19dbe881c842</code></td></tr>
+        <tr><td class="name">DealRouterQuoter</td><td><code>0x6cffc8617f8f157a9e184f6357f3e813fda3aa8a</code></td></tr>
+        <tr><td class="name">DealSwapAssetRegistry</td><td><code>0xc17e3952312a09a3cb13591dc79337cd5e839510</code></td></tr>
+      </tbody></table>
+
+      <h3>域名模块</h3>
+      <table><tbody>
+        <tr><td class="name">DCDomain</td><td><code>0x08adc5f32337def9b0162f9f602de40822acb448</code></td></tr>
+        <tr><td class="name">DCDomainRank Implementation</td><td><code>0xec12468e4131f18b2446204dbb20240883a6fe2f</code></td></tr>
+        <tr><td class="name">DCDomainRank</td><td><code>0x0355946ca58e24318e3cd69d4c634a1a1245a698</code></td></tr>
+        <tr><td class="name">DCDomainRankReader</td><td><code>0xff099c4552039a1c061120ad57430b1eac717a8f</code></td></tr>
+        <tr><td class="name">DCDomainListReader</td><td><code>0x92d337bd8a80a6ccac58b77175c76f6ad13f6764</code></td></tr>
+        <tr><td class="name">DCDomainMarket</td><td><code>0x61921ecb954ffaaf8cd3fd2e71eecb14b3ed529f</code></td></tr>
+        <tr><td class="name">DCDomainSwap</td><td><code>0x27768c0c9b3f5a722eda5be9d398c6c0d2be5532</code></td></tr>
+        <tr><td class="name">DCDomainHall</td><td><code>0xd8de3603d341584e0aef843ee8f4c00288179177</code></td></tr>
+      </tbody></table>
+
+      <h3>跨链接收</h3>
+      <table><tbody>
+        <tr><td class="name">DualBridgeExecutor</td><td><code>0x46839754B2dF96E887e41E688880be6aa0A9bF98</code><span class="tag">BSC 接收执行器</span></td></tr>
+      </tbody></table>
+    </section>
+
+    <div class="foot">
+      说明：BSC 当前不部署 DAO 主治理合约；BSC 通过 DualBridgeExecutor 接收 ETH DAO 的跨链治理消息并执行被授权的目标合约调用。
+    </div>
+  </main>
+</body>
+</html>
