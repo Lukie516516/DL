@@ -750,10 +750,13 @@ describe("Domain Flows", async function () {
     assert.equal(firstPage[1].domainName, "dmn111");
     assert.equal(firstPage[1].tokenId, id1);
 
-    // getDomainsByVolume only shows domains in the heap (have completed trade volume)
-    // dmn333 has no trades, so it's not in the heap; offset=2 is beyond the 2 heap entries
+    // Zero-volume domains stay visible after domains with completed trade volume.
     const secondPage = await dcDomainListReader.read.getDomainsByVolume([2n, 2n]);
-    assert.equal(secondPage.length, 0);
+    assert.equal(secondPage.length, 1);
+    assert.equal(secondPage[0].domainName, "dmn333");
+    assert.equal(secondPage[0].tokenId, id3);
+    assert.equal(secondPage[0].tradeVolume, 0n);
+    assert.equal(secondPage[0].dealCount, 0n);
 
     const byName = await dcDomainListReader.read.getDomainByName(["dmn111"]);
     assert.equal(byName[0], true);
@@ -794,6 +797,29 @@ describe("Domain Flows", async function () {
     assert.equal(stillByCreator.length, 2);
     assert.equal(stillByCreator[0].domainName, "dmn111");
     assert.equal(stillByCreator[1].domainName, "dmn333");
+  });
+
+  it("keeps equal zero-volume domains stable across pages", async function () {
+    const fixture = await deployDomainFixture();
+    const { alice, bob, carol, dcDomainListReader } = fixture;
+
+    const id1 = await fixture.registerDomain(alice, "zero01");
+    const id2 = await fixture.registerDomain(bob, "zero02");
+    const id3 = await fixture.registerDomain(carol, "zero03");
+    const id4 = await fixture.registerDomain(alice, "zero04");
+    const id5 = await fixture.registerDomain(bob, "zero05");
+
+    const firstPage = await dcDomainListReader.read.getDomainsByVolume([0n, 2n]);
+    const secondPage = await dcDomainListReader.read.getDomainsByVolume([2n, 2n]);
+    const thirdPage = await dcDomainListReader.read.getDomainsByVolume([4n, 2n]);
+
+    assert.deepEqual(firstPage.map((entry) => entry.tokenId), [id5, id4]);
+    assert.deepEqual(secondPage.map((entry) => entry.tokenId), [id3, id2]);
+    assert.deepEqual(thirdPage.map((entry) => entry.tokenId), [id1]);
+    assert.equal(
+      [...firstPage, ...secondPage, ...thirdPage].every((entry) => entry.tradeVolume === 0n),
+      true,
+    );
   });
 
   it("allows DCDomainSwap to create domain deals with creator DealInfoNFT identity", async function () {

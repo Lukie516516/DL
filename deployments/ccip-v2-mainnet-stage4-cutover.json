@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scope": "activate the existing ETH-to-BSC V2 route and switch only BSC DealFactory governance from V1 executor to V2 executor; no proposal, stake, broadcast, canary or V1 disable",
+  "stage": "complete",
+  "startedAt": "2026-07-23T05:58:16.285Z",
+  "updatedAt": "2026-07-23T05:58:43.588Z",
+  "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+  "executor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+  "bscFactory": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+  "previousFactoryController": "0x46839754B2dF96E887e41E688880be6aa0A9bF98",
+  "actions": {
+    "ethActivateRoute": {
+      "chain": "ethereum",
+      "nonce": 138,
+      "txHash": "0x020ef03d649ce97b8e0097458c0a8de3ba6dc8136df26618b7970734a2d118f0",
+      "blockNumber": "25593491",
+      "verified": true
+    },
+    "bscSwitchFactory": {
+      "chain": "bsc",
+      "nonce": 98,
+      "txHash": "0x44252f8a4715085abd665893277804111011ff3e98e810a2d75316dc97e7bc62",
+      "blockNumber": "111614755",
+      "verified": true
+    }
+  },
+  "canaryQuoteWei": "1324779048966630",
+  "verification": {
+    "routeActive": true,
+    "factoryController": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "expectedExecutor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "broadcastNonce": "0",
+    "minWindowSec": 1800,
+    "canaryQuoteWei": "1324779048966630",
+    "canaryQuoteEth": "0.00132477904896663",
+    "v1PoliciesStillPreserved": true,
+    "canaryNotCreatedOrSent": true
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "scope": "mint exactly one current Major proposal fee to the recorded stage 3 proposer only",
+  "stage": "fee_funded",
+  "executedAt": "2026-07-22T10:54:41.743Z",
+  "chainId": 1,
+  "blockNumber": "25587806",
+  "proposer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "dc": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+  "amountWei": "1000000000000000000000",
+  "transaction": {
+    "hash": "0xe77458c685ad2594fa241645b28534da834dd305c7c9bdf549b80acd2fe25b3a",
+    "nonce": 134,
+    "from": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
+    "to": "0x591625be924b98accab7e2c8af698c858aa2608d",
+    "calldataMatched": true,
+    "receiptSuccess": true
+  },
+  "before": {
+    "totalSupplyWei": "56005004996718757177718673741",
+    "proposerBalanceWei": "0",
+    "allowanceWei": "0",
+    "proposalCount": "12"
+  },
+  "after": {
+    "totalSupplyWei": "56005005996718757177718673741",
+    "proposerBalanceWei": "1000000000000000000000",
+    "allowanceWei": "0",
+    "proposalCount": "12"
+  }
+}
