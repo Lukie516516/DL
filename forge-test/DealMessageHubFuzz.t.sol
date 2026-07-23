@@ -31,20 +31,23 @@ contract DealMessageHubFuzz is Test {
         vm.assume(n > 0 && n < 32);
         MockFactoryHub f = new MockFactoryHub();
         DealMessageHub hub = new DealMessageHub(address(f));
-        address dealA = address(uint160(uint256(keccak256(abi.encode(salt, "deal")))));
-        f.set(dealA, true);
+        address alice = address(uint160(uint256(keccak256(abi.encode(salt, "alice")))));
+        address bob = address(uint160(uint256(keccak256(abi.encode(salt, "bob")))));
+        vm.assume(alice != bob);
+        MockDealPeerView deal = new MockDealPeerView(alice, bob);
+        f.set(address(deal), true);
 
-        vm.startPrank(dealA);
+        vm.startPrank(address(deal));
         for (uint256 i = 0; i < n; i++) {
-            hub.postFromDeal(address(uint160(100 + i)), string(abi.encodePacked("m", i)));
+            hub.postFromDeal(i % 2 == 0 ? alice : bob, string(abi.encodePacked("m", i)));
         }
         vm.stopPrank();
 
-        assertEq(hub.messagesCount(dealA), uint256(n), "count");
-        (string[] memory contents,, address[] memory senders) = hub.getMessages(dealA, 0, 256);
+        assertEq(hub.messagesCount(address(deal)), uint256(n), "count");
+        (string[] memory contents,, address[] memory senders) = hub.getMessages(address(deal), 0, 256);
         assertEq(contents.length, uint256(n));
         for (uint256 j = 0; j < n; j++) {
-            assertEq(senders[j], address(uint160(100 + j)));
+            assertEq(senders[j], j % 2 == 0 ? alice : bob);
             assertTrue(bytes(contents[j]).length > 0);
         }
     }
@@ -61,19 +64,20 @@ contract DealMessageHubFuzz is Test {
     function test_postFromDeal_revertsEmptyOrTooLong() public {
         MockFactoryHub f = new MockFactoryHub();
         DealMessageHub hub = new DealMessageHub(address(f));
-        address deal = address(uint160(uint256(keccak256("deal"))));
-        f.set(deal, true);
+        address alice = address(1);
+        MockDealPeerView deal = new MockDealPeerView(alice, address(2));
+        f.set(address(deal), true);
 
-        vm.startPrank(deal);
+        vm.startPrank(address(deal));
         vm.expectRevert(DealMessageHub.EmptyMessage.selector);
-        hub.postFromDeal(address(1), "");
+        hub.postFromDeal(alice, "");
 
         bytes memory longMsg = new bytes(hub.MAX_MESSAGE_BYTES() + 1);
         for (uint256 i; i < longMsg.length; ++i) {
             longMsg[i] = "a";
         }
         vm.expectRevert(DealMessageHub.MessageTooLong.selector);
-        hub.postFromDeal(address(1), string(longMsg));
+        hub.postFromDeal(alice, string(longMsg));
         vm.stopPrank();
     }
 

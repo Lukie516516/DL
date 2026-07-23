@@ -21,6 +21,13 @@ interface INftVetoRegistryGov {
     function isProposalVetoed(uint256 proposalId) external view returns (bool);
 }
 
+interface IGovernancePolicyRegistryGov {
+    function isActionAllowed(uint8 kind, address target, uint256 value, bytes calldata data)
+        external
+        view
+        returns (bool);
+}
+
 /// @title DealGovernance
 /// @notice Stake-based governance for the Deal protocol.
 ///
@@ -59,6 +66,9 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     error NothingToClaim();
     error ParamOutOfRange();
     error CallFailed(uint256 index, bytes returndata);
+    error PolicyRegistryMissing();
+    error ActionNotAllowed(uint256 index);
+    error IncorrectExecutionValue(uint256 expected, uint256 provided);
 
     // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -149,6 +159,9 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     // Per-address checkpoint history — read by VoteDividendClaimer (Method B).
     mapping(address => Checkpoints.Trace208)              private _stakedCheckpoints;
 
+    // V2 storage. Append-only to preserve the deployed UUPS proxy layout.
+    IGovernancePolicyRegistryGov public policyRegistry;
+
     // ─── Events ───────────────────────────────────────────────────────────────
 
     event ProposalCreated(uint256 indexed proposalId, address indexed proposer, ProposalKind indexed kind, string description, uint48 createdAt);
@@ -164,6 +177,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     event ProposalExecuted(uint256 indexed proposalId);
     event NftVetoRegistryUpdated(address indexed registry);
     event GovernanceParamUpdated(string indexed param, uint256 oldValue, uint256 newValue);
+    event PolicyRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
@@ -276,6 +290,12 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         fastPassThreshold = v;
     }
 
+    function setPolicyRegistry(address registry) external onlyGovernance {
+        if (registry == address(0)) revert PolicyRegistryMissing();
+        emit PolicyRegistryUpdated(address(policyRegistry), registry);
+        policyRegistry = IGovernancePolicyRegistryGov(registry);
+    }
+
     // ─── Proposal creation ────────────────────────────────────────────────────
 
     /// @notice Create a proposal.
@@ -290,6 +310,8 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     ) external returns (uint256 proposalId) {
         if (targets.length == 0 || targets.length != values.length || targets.length != calldatas.length)
             revert BadArrayLength();
+
+        _validateCalldataActions(kind, targets, values, calldatas);
 
         if (kind == ProposalKind.Parameter || kind == ProposalKind.Satoshi) {
             if (IERC20(address(dToken)).balanceOf(msg.sender) < activationThreshold)
@@ -540,13 +562,21 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         _requireNotEnded(p);
         if (!_canExecute(p, proposalId)) revert NotExecutable();
 
+        address[] storage targets   = _targets[proposalId];
+        uint256[] storage vals      = _values[proposalId];
+        bytes[]   storage calldatas = _calldatas[proposalId];
+
+        uint256 requiredValue;
+        for (uint256 i; i < targets.length; ++i) {
+            requiredValue += vals[i];
+            if (!_isActionAllowed(p.kind, targets[i], vals[i], calldatas[i])) revert ActionNotAllowed(i);
+        }
+        if (msg.value != requiredValue) revert IncorrectExecutionValue(requiredValue, msg.value);
+
         p.executed = true;
         if (_wasActivated[proposalId]) --activeProposalCount;
         ++executedProposalCount;
 
-        address[] storage targets   = _targets[proposalId];
-        uint256[] storage vals      = _values[proposalId];
-        bytes[]   storage calldatas = _calldatas[proposalId];
         for (uint256 i = 0; i < targets.length; ++i) {
             (bool ok, bytes memory ret) = targets[i].call{value: vals[i]}(calldatas[i]);
             if (!ok) revert CallFailed(i, ret);
@@ -607,6 +637,32 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     }
 
     // ─── Internal ─────────────────────────────────────────────────────────────
+
+    function _validateCalldataActions(
+        ProposalKind kind,
+        address[] calldata targets,
+        uint256[] calldata values,
+        bytes[] calldata calldatas
+    ) private view {
+        uint256 length = targets.length;
+        for (uint256 i; i < length; ++i) {
+            if (!_isActionAllowed(kind, targets[i], values[i], calldatas[i])) revert ActionNotAllowed(i);
+        }
+    }
+
+    function _isActionAllowed(ProposalKind kind, address target, uint256 value, bytes memory data)
+        private
+        view
+        returns (bool)
+    {
+        IGovernancePolicyRegistryGov registry = policyRegistry;
+        if (address(registry) == address(0)) revert PolicyRegistryMissing();
+        try registry.isActionAllowed(uint8(kind), target, value, data) returns (bool allowed) {
+            return allowed;
+        } catch {
+            return false;
+        }
+    }
 
     function _canExecute(Proposal storage p, uint256 proposalId) private view returns (bool) {
         // Satoshi: once satoshiSucceeded is set it is permanent; free-unstake cannot block execution.

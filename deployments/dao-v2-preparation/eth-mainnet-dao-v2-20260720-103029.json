@@ -1,0 +1,11 @@
+{
+  "preparedAt": "2026-07-20T10:30:09.297Z",
+  "chainId": 1,
+  "blockNumber": "25573336",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "currentImplementation": "0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6",
+  "broadcastQuoteWei": "1040836170195005",
+  "broadcastMaxValueWei": "10000000000000000",
+  "proposalBlockers": [],
+  "proposalId": "7"
+}

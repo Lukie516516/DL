@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "chainId": 1,
+  "network": "eth-mainnet",
+  "deployedAt": "2026-07-23T00:12:06.341Z",
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "reader": "0xD9470399Ac26152CF81F0EcE72E3FD3a9a907DBD",
+  "transactionHash": "0x3f6504f7bfb6435b95783aa7fe468ace7d951ae5d6dfe1785c8cd5a4a3c2d5a2",
+  "blockNumber": "25591769",
+  "receiptStatus": "success",
+  "gasUsed": "1264887",
+  "runtimeCodeBytes": 5585,
+  "runtimeCodeHash": "0x3dc10f724c02eac2cf185e1870b3cdd7d2050ea4bfbf23d764c37a6eb332386e",
+  "creationBytecodeHash": "0xffade93fc66e87b2b333c21d456fd5abc19ba68df7c2ae8adb30ea3e75d89f49",
+  "sourceVerification": {
+    "blockscout": "verified",
+    "url": "https://eth.blockscout.com/address/0xD9470399Ac26152CF81F0EcE72E3FD3a9a907DBD#code",
+    "etherscan": "not verified: API key not configured"
+  },
+  "verification": {
+    "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "maxPageSize": "50",
+    "maxStateBatchSize": "100",
+    "proposalCount": "13",
+    "proposal13Id": "13",
+    "proposal13State": "Pending",
+    "proposal13TotalStaked": "0"
+  }
+}

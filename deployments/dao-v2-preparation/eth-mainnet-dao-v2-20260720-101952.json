@@ -1,0 +1,12 @@
+{
+  "preparedAt": "2026-07-20T10:19:32.756Z",
+  "chainId": 1,
+  "blockNumber": "25573283",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "currentImplementation": "0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6",
+  "broadcastQuoteWei": "1040836170195005",
+  "broadcastMaxValueWei": "10000000000000000",
+  "proposalBlockers": [],
+  "registryAddress": "0xBFF01F91291476e671f0F310846D5dDb460e2382",
+  "implementationAddress": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5"
+}

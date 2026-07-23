@@ -1,0 +1,27 @@
+{
+  "SatoshiVault": {
+    "storage": [
+      { "label": "dealCoin", "slot": "0", "offset": 0, "typeLabel": "contract IERC20" },
+      { "label": "controller", "slot": "1", "offset": 0, "typeLabel": "address" },
+      { "label": "__gap", "slot": "2", "offset": 0, "typeLabel": "uint256[48]" }
+    ]
+  },
+  "DealDividendVault": {
+    "storage": [
+      { "label": "dToken", "slot": "0", "offset": 0, "typeLabel": "contract IDealDividendSnapshotToken" },
+      { "label": "dealCoin", "slot": "1", "offset": 0, "typeLabel": "contract IERC20" },
+      { "label": "governance", "slot": "2", "offset": 0, "typeLabel": "address" },
+      { "label": "rounds", "slot": "3", "offset": 0, "typeLabel": "struct DealDividendVault.Round[]" },
+      { "label": "claimed", "slot": "4", "offset": 0, "typeLabel": "mapping(uint256 => mapping(address => bool))" },
+      { "label": "reservedUnclaimed", "slot": "5", "offset": 0, "typeLabel": "uint256" },
+      { "label": "__gap", "slot": "6", "offset": 0, "typeLabel": "uint256[44]" }
+    ],
+    "round": [
+      { "label": "snapshot", "slot": "0", "offset": 0, "typeLabel": "uint48" },
+      { "label": "total", "slot": "1", "offset": 0, "typeLabel": "uint256" },
+      { "label": "claimed", "slot": "2", "offset": 0, "typeLabel": "uint256" },
+      { "label": "totalWeight", "slot": "3", "offset": 0, "typeLabel": "uint256" },
+      { "label": "claimedWeight", "slot": "4", "offset": 0, "typeLabel": "uint256" }
+    ]
+  }
+}
