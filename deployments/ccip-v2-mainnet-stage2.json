@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "scope": "wire V2 peers, add inactive BSC config, allow only BSC DealFactory; no activation, factory switch, DAO proposal or canary",
+  "stage": "complete",
+  "startedAt": "2026-07-22T09:59:16.553Z",
+  "updatedAt": "2026-07-22T10:00:39.820Z",
+  "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+  "executor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+  "actions": {
+    "bscSetPeer": {
+      "chain": "bsc",
+      "nonce": 95,
+      "txHash": "0xcd11fabd2e6dbdd02822201224fc2933b9c3656e4810f50d782c54260b399bc7",
+      "blockNumber": "111454945",
+      "verified": true
+    },
+    "bscAllowFactory": {
+      "chain": "bsc",
+      "nonce": 96,
+      "txHash": "0x96e5778c9d985c89cb39eeb3afa874b8541b9165640bbcdcb4356e71c0f4c23b",
+      "blockNumber": "111454955",
+      "verified": true
+    },
+    "ethSetPeer": {
+      "chain": "ethereum",
+      "nonce": 132,
+      "txHash": "0x0a944b103eefa15ff29f5e27ec92d2becf5327b3f43724bdf0e2b56b97efe142",
+      "blockNumber": "25587534",
+      "verified": true
+    },
+    "ethAddBscInactive": {
+      "chain": "ethereum",
+      "nonce": 133,
+      "txHash": "0x0fc15290141e3729b396bb20ce446c611461be2915e783109d7c93ca97db3dc7",
+      "blockNumber": "25587538",
+      "verified": true
+    }
+  },
+  "verification": {
+    "broadcasterPeer": "0x000000000000000000000000407381d841dd48bbbd40bd37f9db268ce75950a8",
+    "executorPeer": "0x000000000000000000000000cf4d1b59c43f0e19f7e0e0416067e999f12cd1e6",
+    "chainId": 30102,
+    "chainActive": false,
+    "ccipReceiver": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "axelarDestination": "0x407381d841dd48bbbd40bd37f9db268ce75950a8",
+    "factoryAllowed": true,
+    "inactiveQuoteReverted": true,
+    "factoryStillControlledByV1": true,
+    "newBroadcasterPolicyEnabled": false,
+    "oldBroadcasterPolicyPreserved": true
+  }
+}

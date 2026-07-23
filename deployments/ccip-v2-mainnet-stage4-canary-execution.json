@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "scope": "read-only verification of executed DAO proposal #15 and its ETH-to-BSC three-bridge canary; no additional transaction sent by this verification",
+  "verifiedAt": "2026-07-23T09:15:36.619Z",
+  "proposalId": "15",
+  "messageHash": "0x96f280742490feb4ff2a8411e143f960144d2e113bd25290bd3dfebc7077dae0",
+  "ethereum": {
+    "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+    "executorCaller": "0x5CcB69B2Ba6dcC61C4be40a0B06D79Ddcb445aC5",
+    "txHash": "0x4bbb1898cf6190284570f805a97786ede50ac5533989abd0999903c6a0572fb7",
+    "blockNumber": "25594224",
+    "receiptStatus": "success",
+    "txValueWei": "2000000000000000",
+    "proposalState": "Executed (6)",
+    "totalStakedWei": "70000000000000000000",
+    "broadcastNonce": "1"
+  },
+  "bsc": {
+    "executor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "target": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+    "expectedAndFinalDealImplementation": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+    "confirmStatus": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": 3,
+      "executed": true
+    },
+    "executionAttempts": "1",
+    "thresholdExecution": {
+      "bridge": "Axelar",
+      "confirmCount": 2,
+      "txHash": "0x14c80cb4991cb31283690a739a199ac39e93fc07df6fdd13de84c0e4a3748647",
+      "blockNumber": "111636632",
+      "receiptStatus": "success",
+      "targetCallSuccess": true
+    },
+    "lateConfirmation": {
+      "bridge": "Chainlink CCIP",
+      "confirmCount": 3,
+      "txHash": "0x1855da07d7ecec0bc98373a22e77c1e43e3dd2fabd285e334d737e021ace219c",
+      "blockNumber": "111636651"
+    }
+  },
+  "verification": {
+    "allThreeBridgesConfirmed": true,
+    "thresholdReached": true,
+    "executedExactlyOnce": true,
+    "implementationAddressUnchanged": true,
+    "proxyUpgradePerformed": false,
+    "tokenTransferOrMintPerformed": false,
+    "treasuryTouched": false,
+    "businessImpact": "zero"
+  }
+}

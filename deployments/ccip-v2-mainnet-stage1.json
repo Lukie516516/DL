@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "scope": "deploy two V2 contracts only; no wiring, activation, factory switch, DAO proposal or canary",
+  "stage": "both_deployed",
+  "startedAt": "2026-07-22T09:10:41.866Z",
+  "updatedAt": "2026-07-22T09:12:20.015Z",
+  "signers": {
+    "eth": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "bsc": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893"
+  },
+  "eth": {
+    "address": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+    "predictedNonce": 131,
+    "txHash": "0x2b585c5358ed4b94319f003bcebbe34108289319493488f7610dc8fce04faaa1",
+    "blockNumber": "25587290",
+    "verified": true
+  },
+  "bsc": {
+    "address": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "predictedNonce": 94,
+    "txHash": "0x2772a388400b893b2ea64684868b14fe82ed12e74eafef9d013ab80acd4e6f20",
+    "blockNumber": "111448525",
+    "verified": true
+  },
+  "verification": {
+    "runtimeBytes": {
+      "broadcaster": 11691,
+      "executor": 8788
+    },
+    "broadcasterChainCount": 0,
+    "executorPeerUnset": true,
+    "factoryAllowed": false,
+    "factoryStillControlledByV1": true,
+    "daoPolicyChanged": false,
+    "newBroadcasterPolicyEnabled": false,
+    "oldBroadcasterPolicyPreserved": true
+  }
+}
