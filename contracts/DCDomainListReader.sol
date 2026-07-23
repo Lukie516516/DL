@@ -59,26 +59,55 @@ contract DCDomainListReader {
         });
     }
 
-    /// @notice Default domain list: top domains sorted by trade volume descending.
+    /// @dev Builds all registered domains and sorts only the prefix needed by the requested page.
+    ///      This keeps zero-volume domains visible without restoring the old unconditional O(n^2)
+    ///      full sort. Equal-volume domains use newest tokenId first, matching the original reader.
+    function _sortedAllByVolume(uint256 needed) internal view returns (DomainEntry[] memory entries) {
+        uint256 total = dcDomain.totalDomains();
+        entries = new DomainEntry[](total);
+        for (uint256 i; i < total; ) {
+            entries[i] = _entry(i + 1);
+            unchecked { ++i; }
+        }
+
+        for (uint256 i; i < needed; ) {
+            uint256 best = i;
+            for (uint256 j = i + 1; j < total; ) {
+                if (
+                    entries[j].tradeVolume > entries[best].tradeVolume ||
+                    (
+                        entries[j].tradeVolume == entries[best].tradeVolume &&
+                        entries[j].tokenId > entries[best].tokenId
+                    )
+                ) {
+                    best = j;
+                }
+                unchecked { ++j; }
+            }
+            if (best != i) {
+                (entries[i], entries[best]) = (entries[best], entries[i]);
+            }
+            unchecked { ++i; }
+        }
+    }
+
+    /// @notice All registered domains sorted by trade volume descending.
+    ///         Domains with no completed trade remain visible at the end with tradeVolume = 0.
     function getDomainsByVolume(uint256 offset, uint256 limit)
         external
         view
         returns (DomainEntry[] memory page)
     {
         _checkLimit(limit);
-        uint256 total = rank.topDomainIdCount();
+        uint256 total = dcDomain.totalDomains();
         if (offset >= total) return new DomainEntry[](0);
 
-        // Fetch all sorted IDs up to (offset + limit) in one call, then slice
-        uint256 need = offset + limit;
-        if (need > total) need = total;
-        uint256[] memory ids = rank.getTopDomainIds(need);
-
-        uint256 n = ids.length > offset ? ids.length - offset : 0;
-        if (n > limit) n = limit;
+        uint256 remaining = total - offset;
+        uint256 n = remaining < limit ? remaining : limit;
+        DomainEntry[] memory all = _sortedAllByVolume(offset + n);
         page = new DomainEntry[](n);
         for (uint256 i; i < n; ) {
-            page[i] = _entry(ids[offset + i]);
+            page[i] = all[offset + i];
             unchecked { ++i; }
         }
     }

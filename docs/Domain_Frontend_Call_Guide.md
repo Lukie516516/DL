@@ -38,14 +38,16 @@ npm run deploy:agiking:domain-open-access
 
 当前域名相关地址：
 
-- `DealCoin / DC`: `0xf9606500fbbea6d220bb65fc5cea9641c6e436d3`
-- `DCDomain`: `0xea6d563afe03142e8b9a0996b7f03c35b8ed45a3`
-- `DCDomainRank`: `0x0beca59bc7f8bf68488fd7f4e3f16aabd8dbadee`
-- `DCDomainMarket`: `0x10f393c7e7544c29eb6a768de4b1bb5e8a507fdd`
-- `DCDomainSwap`: `0x39e77dd312f5dbc2b18396937a4e97163247497d`
-- `DCDomainHall`: `0xf6d8d7bebc381674d4a72a5d1ae0a1971422eeef`
-- `DealFactory`: `0xf698c84a771fb740743ba71baa5ae143b9a85c0c`
-- `DealReader`: `0xd7b981136821259445360f3234e2b1307f6b811d`
+- `DealCoin / DC`: `0x802C43662C38aAd9b4299c2f723A6B16f228217A`
+- `DCDomain`: `0x0a18a23B7B709Ae063d9dFF397008029f2b07EB7`
+- `DCDomainRank`: `0x347F39116BDfca98788EBD60841e14226f63c761`
+- `DCDomainRankReader`: `0x3160026ffcDa4481D5601c1b2563Dde0ADf78bc7`
+- `DCDomainListReader`: `0xA23638bDde663442271e478c538b66fb22a5bD83`
+- `DCDomainMarket`: `0x85CaC6b96FC473f4C57A26068500514D092fe48e`
+- `DCDomainSwap`: `0x79D16213e4AcdF1Fb9Cf471ffB8B812169095D34`
+- `DCDomainHall`: `0x1682f3968158f34051e76f95D8B0E2Eb329Bb6ad`
+- `DealFactory`: `0xd0Fc2685945790df25bDdeaA69426a348D05775B`
+- `DealReader`: `0x10340C8138c29F6772061a0aae34982e74D3780E`
 
 ---
 
@@ -137,6 +139,7 @@ npm run deploy:agiking:domain-open-access
 作用：
 - 域名列表分页查询
 - 默认按域名累计成交额 `tradeVolume` 从高到低排序
+- 没有已完成成交的域名也会返回，`tradeVolume = 0`，排在有成交域名之后
 - `tradeVolume` 只统计已 `Completed` 的域名 deal；`Ready / Active / Locked / Canceled / Abandoned` 不计入
 - 按域名名称、域名 ID、解析地址精确查询
 - 按当前持有人钱包地址查询“我的域名”
@@ -266,7 +269,15 @@ await dcDomain.register("abc123");
 
 ### 4.8 域名列表 / 搜索：`DCDomainListReader`
 
-前端域名列表不要再自己从 `tokenId = 1..totalDomains` 全量拉取后排序。使用新的只读合约：
+Agiking `31415926` 当前地址：
+
+```text
+0xA23638bDde663442271e478c538b66fb22a5bD83
+```
+
+旧地址 `0x57DD9E0471C313Cc09B1123D384467A081DC776c` 不再用于默认域名列表。
+
+前端域名列表不要自己从 `tokenId = 1..totalDomains` 全量拉取后排序，统一使用新的只读合约：
 
 | 需求 | 方法 |
 | --- | --- |
@@ -294,6 +305,8 @@ struct DomainEntry {
 ```
 
 说明：
+- `getDomainsByVolume` 返回全部已注册域名：有成交域名在前，零成交域名在后；相同成交额按较新的 `tokenId` 优先。
+- 这是 `eth_call`，不消耗用户钱包 Gas；RPC 节点仍限制单次调用计算量，所以必须继续按 `limit <= 50` 分页读取。
 - `tradeVolume` 的名义金额由 `DCDomainSwap` / `DCDomainHall` 在创建域名 deal 时登记，但只有 deal 最终进入 `Completed` 才会计入域名累计成交额。
 - 普通币币域名 deal 的登记口径是 `aSwapAmount + bSwapAmount`。
 - 大厅模板 2/3 的登记口径是 `aSwapAmount + aMarginAmount + bSwapAmount + bMarginAmount`。

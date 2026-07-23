@@ -1,9 +1,9 @@
 {
   "chainId": 31415926,
   "rpcUrl": "https://rpc.agikingrpc.shop",
-  "deployedAt": "2026-06-22T11:33:34.360Z",
-  "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
-  "upgrade": "v4-veto-stake",
+  "deployedAt": "2026-07-23T09:15:36.619Z",
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "upgrade": "domain-list-reader-zero-volume-visible",
   "addresses": {
     "deployer": "0xe88c63d29ece76e3336b0db747e10876c3bf9893",
     "dlToken": "0x802C43662C38aAd9b4299c2f723A6B16f228217A",
@@ -42,7 +42,7 @@
     "dcDomainRankImpl": "0x4611F6455D4DB317378573f1825E33BBF4B32DEF",
     "dcDomainRank": "0x347F39116BDfca98788EBD60841e14226f63c761",
     "dcDomainRankReader": "0x3160026ffcDa4481D5601c1b2563Dde0ADf78bc7",
-    "dcDomainListReader": "0x57DD9E0471C313Cc09B1123D384467A081DC776c",
+    "dcDomainListReader": "0xA23638bDde663442271e478c538b66fb22a5bD83",
     "dcDomainMarket": "0x85CaC6b96FC473f4C57A26068500514D092fe48e",
     "dcDomainSwap": "0x79D16213e4AcdF1Fb9Cf471ffB8B812169095D34",
     "dcDomainHall": "0x1682f3968158f34051e76f95D8B0E2Eb329Bb6ad",
@@ -35592,6 +35592,8 @@
     "DealGovernance nftVetoRegistry defaults to address(0). Enable via setNftVetoRegistry proposal.",
     "CrossChainDispatcher/_Executor are bridge placeholders. Wire real bridge via setBridgeAdapter().",
     "D token: 100 D minted to deployer. Distribute seats before enabling governance proposals.",
-    "[2026-06-22T11:33:34.360Z] DealGovernance v4: proxy=0x7228B42F791e7920CF685B7f665aC85B5aaae80d impl=0x130Cf21B8D980313425eE2C241181221931060Bf (vetoStake feature)"
-  ]
+    "[2026-06-22T11:33:34.360Z] DealGovernance v4: proxy=0x7228B42F791e7920CF685B7f665aC85B5aaae80d impl=0x130Cf21B8D980313425eE2C241181221931060Bf (vetoStake feature)",
+    "[2026-07-23T09:15:36.619Z] DCDomainListReader 0xA23638bDde663442271e478c538b66fb22a5bD83: getDomainsByVolume now includes zero-completed-trade domains after non-zero domains."
+  ],
+  "previousDeployment": "DCDomainListReader 0x57DD9E0471C313Cc09B1123D384467A081DC776c"
 }

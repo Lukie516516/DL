@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scope": "deploy one read-only DCDomainListReader on Agiking; reuse DCDomain and DCDomainRank; no core upgrade or asset write",
+  "deployedAt": "2026-07-23T09:15:36.619Z",
+  "chainId": 31415926,
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "oldReader": "0x57DD9E0471C313Cc09B1123D384467A081DC776c",
+  "newReader": "0xA23638bDde663442271e478c538b66fb22a5bD83",
+  "dcDomain": "0x0a18a23B7B709Ae063d9dFF397008029f2b07EB7",
+  "rank": "0x347F39116BDfca98788EBD60841e14226f63c761",
+  "txHash": "0xd1e81e0681551b42c2c6820da483ee1208d025ddffc480a5d6f9b14af6eb211b",
+  "blockNumber": "3495107",
+  "gasUsed": "1110322",
+  "runtimeBytes": 4880,
+  "runtimeCodeHash": "0xc2e02803542f0f433bdf41a97fe3a614a89b94675729f81ae54c891ac206ac8d",
+  "verification": {
+    "totalDomains": "3",
+    "oldVisible": 0,
+    "newVisible": 3,
+    "pointersMatch": true,
+    "sortedDescending": true,
+    "coreContractsChanged": false
+  }
+}
