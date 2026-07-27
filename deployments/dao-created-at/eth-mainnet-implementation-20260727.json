@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "scope": "deploy DealGovernance Proposal.createdAt implementation only; no proxy upgrade, proposal, Reader, stake or execution",
+  "chainId": 1,
+  "deployedAt": "2026-07-27T04:48:59.000Z",
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "governanceProxy": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "implementation": "0x23Bc252571BC446FDbbf466E5C35C38cc6F6e8A5",
+  "transaction": {
+    "hash": "0x8fcebfdfbfcc75b7d72d6f83e613bf006b1d7dae1ebbdf8c29c82ca51e3929f7",
+    "nonce": 156,
+    "blockNumber": "25621859",
+    "receiptStatus": "success",
+    "gasUsed": "4021228",
+    "effectiveGasPriceWei": "37553678",
+    "nativeCostWei": "151011901476584",
+    "nativeCostEth": "0.000151011901476584",
+    "valueWei": "0"
+  },
+  "bytecode": {
+    "creationBytecodeHash": "0x2ee4dcf834f8902506a32d2c4718087bbe655da982f6a2e585cf7c4d99184371",
+    "runtimeCodeHash": "0x5532a7a7d31e48694365bc9e18cdb6df7ac575fbd19bddb67643b1748b4c3314",
+    "creationTransactionMatchesArtifact": true,
+    "runtimeMatchesArtifactAfterImmutableAddressPatching": true,
+    "immutableReferenceOffsets": [
+      4044,
+      4511
+    ]
+  },
+  "verification": {
+    "proxiableUUID": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+    "governanceProxyImplementationAfterDeployment": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5",
+    "governanceProposalCountAfterDeployment": "17",
+    "proxyUpgradePerformed": false,
+    "proposalCreated": false,
+    "readerDeployed": false,
+    "stakePerformed": false,
+    "governanceExecutionPerformed": false
+  }
+}

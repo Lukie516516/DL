@@ -46,7 +46,11 @@ async function fixture() {
   await waitFor(publicClient, await harness.write.bootstrapPolicyRegistryForTest([registry.address]));
 
   const governance = await viem.getContractAt("DealGovernance", proxy.address);
-  const reader = await viem.deployContract("DealGovernanceReader", [proxy.address]);
+  const reader = await viem.deployContract("DealGovernanceReader", [
+    proxy.address,
+    [],
+    [],
+  ]);
   const action = encodeFunctionData({ abi: target.abi, functionName: "treasuryAction" });
 
   for (const description of ["first", "second", "third"]) {
@@ -62,7 +66,7 @@ async function fixture() {
   await waitFor(publicClient, await d.write.approve([proxy.address, 100n * D]));
   await waitFor(publicClient, await governance.write.stake([2n, 25n * 10n ** 17n]));
 
-  return { viem, publicClient, owner, other, d, governance, reader, target, action };
+  return { viem, publicClient, owner, other, d, governance, harness, reader, target, action };
 }
 
 describe("DealGovernanceReader", function () {
@@ -78,6 +82,8 @@ describe("DealGovernanceReader", function () {
     assert.equal(total, 3n);
     assert.deepEqual(page.map((item: any) => item.proposalId), [3n, 2n]);
     assert.deepEqual(page.map((item: any) => item.description), ["third", "second"]);
+    assert.ok(page[0].createdAt > 0n);
+    assert.ok(page[0].createdAt >= page[1].createdAt);
     assert.equal(page[0].currentState, 1);
     assert.equal(page[1].currentState, 2);
     assert.equal(page[1].accountStake, 25n * 10n ** 17n);
@@ -114,12 +120,28 @@ describe("DealGovernanceReader", function () {
 
     assert.equal(proposal.proposalId, 1n);
     assert.equal(proposal.description, "first");
+    const directProposal = await ctx.governance.read.getProposal([1n]);
+    assert.equal(proposal.createdAt, directProposal.createdAt);
+    assert.ok(proposal.createdAt > 0n);
     assert.deepEqual(
       targets.map((target: string) => target.toLowerCase()),
       [ctx.target.address.toLowerCase()],
     );
     assert.deepEqual(values, [0n]);
     assert.deepEqual(calldatas, [ctx.action]);
+  });
+
+  it("keeps the pre-createdAt getProposal ABI readable", async function () {
+    const ctx = await fixture();
+    const legacyReader = await ctx.viem.deployContract(
+      "DealGovernanceLegacyReaderMock",
+      [ctx.governance.address],
+    );
+    const proposal = await legacyReader.read.getProposal([1n]);
+
+    assert.equal(proposal.proposer.toLowerCase(), ctx.owner.account.address.toLowerCase());
+    assert.equal(proposal.description, "first");
+    assert.equal(proposal.totalStaked, 0n);
   });
 
   it("batches state refreshes and returns normalized governance stats", async function () {
@@ -147,9 +169,118 @@ describe("DealGovernanceReader", function () {
 
   it("rejects zero and non-contract governance targets", async function () {
     const ctx = await fixture();
-    await assert.rejects(ctx.viem.deployContract("DealGovernanceReader", [zeroAddress]));
     await assert.rejects(
-      ctx.viem.deployContract("DealGovernanceReader", [ctx.other.account.address]),
+      ctx.viem.deployContract("DealGovernanceReader", [zeroAddress, [], []]),
+    );
+    await assert.rejects(
+      ctx.viem.deployContract("DealGovernanceReader", [
+        ctx.other.account.address,
+        [],
+        [],
+      ]),
+    );
+  });
+
+  it("validates and returns immutable historical createdAt fallbacks", async function () {
+    const ctx = await fixture();
+    const block = await ctx.publicClient.getBlock();
+    const proposal1 = await ctx.governance.read.getProposal([1n]);
+    await waitFor(
+      ctx.publicClient,
+      await ctx.harness.write.clearProposalCreatedAtForTest([1n]),
+    );
+    const proposalReader = await ctx.viem.deployContract(
+      "DealGovernanceReader",
+      [ctx.governance.address, [1n], [proposal1.createdAt]],
+    );
+    const [proposalView] = await proposalReader.read.getProposalDetail([
+      1n,
+      zeroAddress,
+    ]);
+    assert.equal(proposalView.createdAt, proposal1.createdAt);
+
+    const fallbackReader = await ctx.viem.deployContract("DealGovernanceReader", [
+      ctx.governance.address,
+      [10n, 11n],
+      [block.timestamp - 2n, block.timestamp - 1n],
+    ]);
+
+    assert.equal(
+      await fallbackReader.read.historicalCreatedAt([10n]),
+      Number(block.timestamp - 2n),
+    );
+    await assert.rejects(
+      ctx.viem.deployContract("DealGovernanceReader", [
+        ctx.governance.address,
+        [10n],
+        [],
+      ]),
+    );
+    await assert.rejects(
+      ctx.viem.deployContract("DealGovernanceReader", [
+        ctx.governance.address,
+        [10n, 10n],
+        [block.timestamp - 2n, block.timestamp - 1n],
+      ]),
+    );
+    await assert.rejects(
+      ctx.viem.deployContract("DealGovernanceReader", [
+        ctx.governance.address,
+        [10n],
+        [block.timestamp + 1_000n],
+      ]),
+    );
+  });
+
+  it("backfills only missing historical createdAt values through governance", async function () {
+    const ctx = await fixture();
+    const original = await ctx.governance.read.getProposal([1n]);
+    assert.ok(original.createdAt > 0n);
+
+    await waitFor(
+      ctx.publicClient,
+      await ctx.harness.write.clearProposalCreatedAtForTest([1n]),
+    );
+    assert.equal((await ctx.governance.read.getProposal([1n])).createdAt, 0);
+
+    await assert.rejects(
+      ctx.governance.write.backfillProposalCreatedAt([1n, [original.createdAt]]),
+    );
+
+    await waitFor(
+      ctx.publicClient,
+      await ctx.harness.write.backfillProposalCreatedAtForTest([
+        1n,
+        [original.createdAt],
+      ]),
+    );
+    assert.equal(
+      (await ctx.governance.read.getProposal([1n])).createdAt,
+      original.createdAt,
+    );
+
+    await assert.rejects(
+      ctx.harness.write.backfillProposalCreatedAtForTest([1n, [original.createdAt]]),
+    );
+  });
+
+  it("rejects invalid historical createdAt ranges and future timestamps", async function () {
+    const ctx = await fixture();
+    const latestBlock = await ctx.publicClient.getBlock();
+
+    await assert.rejects(
+      ctx.harness.write.backfillProposalCreatedAtForTest([0n, [1n]]),
+    );
+
+    await waitFor(
+      ctx.publicClient,
+      await ctx.harness.write.clearProposalCreatedAtForTest([3n]),
+    );
+    await assert.rejects(
+      ctx.harness.write.backfillProposalCreatedAtForTest([
+        3n,
+        [latestBlock.timestamp + 1_000n],
+      ]),
     );
   });
 });

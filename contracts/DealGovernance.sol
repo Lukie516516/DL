@@ -69,6 +69,9 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     error PolicyRegistryMissing();
     error ActionNotAllowed(uint256 index);
     error IncorrectExecutionValue(uint256 expected, uint256 provided);
+    error InvalidCreatedAtRange();
+    error ProposalCreatedAtAlreadySet(uint256 proposalId);
+    error InvalidProposalCreatedAt(uint256 proposalId, uint48 createdAt);
 
     // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -142,9 +145,11 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         address vetoer;
         bytes32 actionsHash;
         string description;
+        // V3: append-only field. Existing proposals are populated once during the governed upgrade.
+        uint48 createdAt;
     }
 
-    mapping(uint256 => Proposal)                          private _proposals;
+    mapping(uint256 => Proposal)                          internal _proposals;
     mapping(uint256 => address[])                         private _targets;
     mapping(uint256 => uint256[])                         private _values;
     mapping(uint256 => bytes[])                           private _calldatas;
@@ -178,6 +183,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
     event NftVetoRegistryUpdated(address indexed registry);
     event GovernanceParamUpdated(string indexed param, uint256 oldValue, uint256 newValue);
     event PolicyRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
+    event ProposalCreatedAtBackfilled(uint256 indexed firstProposalId, uint256 indexed lastProposalId);
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
@@ -329,6 +335,7 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         p.kind        = kind;
         p.actionsHash = keccak256(abi.encode(targets, values, calldatas));
         p.description = description;
+        p.createdAt   = uint48(block.timestamp);
 
         _targets[proposalId]   = targets;
         _values[proposalId]    = values;
@@ -342,6 +349,54 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
         ++todayProposalCount;
 
         emit ProposalCreated(proposalId, msg.sender, kind, description, uint48(block.timestamp));
+    }
+
+    /// @notice One-time migration for proposals created before `Proposal.createdAt` existed.
+    /// @dev Intended to be invoked atomically through the governed UUPS `upgradeToAndCall`.
+    ///      Existing non-zero timestamps cannot be changed.
+    function backfillProposalCreatedAt(uint256 firstProposalId, uint48[] calldata createdAts)
+        external
+        onlyGovernance
+    {
+        uint256 length = createdAts.length;
+        if (
+            firstProposalId == 0 || length == 0 || firstProposalId > proposalCount
+                || length > proposalCount - firstProposalId + 1
+        ) revert InvalidCreatedAtRange();
+
+        uint48 previousCreatedAt = 0;
+        if (firstProposalId > 1) {
+            previousCreatedAt = _proposals[firstProposalId - 1].createdAt;
+        }
+
+        for (uint256 i; i < length; ) {
+            uint256 proposalId = firstProposalId + i;
+            Proposal storage p = _proposals[proposalId];
+            if (p.createdAt != 0) revert ProposalCreatedAtAlreadySet(proposalId);
+
+            uint48 createdAt = createdAts[i];
+            if (
+                createdAt == 0 || uint256(createdAt) > block.timestamp
+                    || (previousCreatedAt != 0 && createdAt < previousCreatedAt)
+            ) revert InvalidProposalCreatedAt(proposalId, createdAt);
+
+            p.createdAt = createdAt;
+            previousCreatedAt = createdAt;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 nextProposalId = firstProposalId + length;
+        if (nextProposalId <= proposalCount) {
+            uint48 nextCreatedAt = _proposals[nextProposalId].createdAt;
+            if (nextCreatedAt != 0 && previousCreatedAt > nextCreatedAt) {
+                revert InvalidProposalCreatedAt(nextProposalId - 1, previousCreatedAt);
+            }
+        }
+
+        emit ProposalCreatedAtBackfilled(firstProposalId, firstProposalId + length - 1);
     }
 
     // ─── Staking ──────────────────────────────────────────────────────────────
@@ -600,6 +655,10 @@ contract DealGovernance is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrad
 
     function getProposal(uint256 proposalId) external view returns (Proposal memory) {
         return _proposals[proposalId];
+    }
+
+    function proposalCreatedAt(uint256 proposalId) external view returns (uint48) {
+        return _proposals[proposalId].createdAt;
     }
 
     function getProposals(uint256 offset, uint256 limit)

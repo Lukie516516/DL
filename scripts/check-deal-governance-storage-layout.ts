@@ -29,6 +29,8 @@ export type StorageLayoutCheck = {
   v1FieldCount: number;
   v2FieldCount: number;
   appendedField: BaselineEntry;
+  proposalFieldCount: number;
+  proposalAppendedField: BaselineEntry;
 };
 
 function semanticEntry(
@@ -83,24 +85,36 @@ export function assertDealGovernanceStorageLayout(cwd = process.cwd()): StorageL
     (type) => type.label === "struct DealGovernance.Proposal",
   );
   if (!proposalType?.members) throw new Error("DealGovernance.Proposal storage metadata missing");
-  if (proposalType.members.length !== baseline.proposal.length) {
-    throw new Error("DealGovernance.Proposal field count changed");
+  if (proposalType.members.length !== baseline.proposal.length + 1) {
+    throw new Error(
+      `DealGovernance.Proposal must append exactly one field: expected ${baseline.proposal.length + 1}, got ${proposalType.members.length}`,
+    );
   }
   const actualProposal = proposalType.members.map((entry) => semanticEntry(entry, layout.types));
   baseline.proposal.forEach((expected, index) => {
     assertEntry(actualProposal[index], expected, `DealGovernance.Proposal field ${index}`);
   });
+  const proposalAppend = actualProposal.at(-1)!;
+  const expectedProposalAppend: BaselineEntry = {
+    label: "createdAt",
+    slot: "6",
+    offset: 0,
+    typeLabel: "uint48",
+  };
+  assertEntry(proposalAppend, expectedProposalAppend, "DealGovernance.Proposal append");
 
   return {
     v1FieldCount: baseline.storage.length,
     v2FieldCount: actualStorage.length,
     appendedField: appended,
+    proposalFieldCount: actualProposal.length,
+    proposalAppendedField: proposalAppend,
   };
 }
 
 if (process.argv[1]?.endsWith("check-deal-governance-storage-layout.ts")) {
   const result = assertDealGovernanceStorageLayout();
   console.log(
-    `DealGovernance storage layout OK: ${result.v1FieldCount} preserved fields; ${result.appendedField.label} appended at slot ${result.appendedField.slot}.`,
+    `DealGovernance storage layout OK: ${result.v1FieldCount} preserved top-level fields; ${result.appendedField.label} at slot ${result.appendedField.slot}; Proposal.${result.proposalAppendedField.label} appended at relative slot ${result.proposalAppendedField.slot}.`,
   );
 }

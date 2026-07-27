@@ -94,7 +94,22 @@ async function fixture() {
   await waitFor(publicClient, await d.write.approve([proxy.address, 100n * D]));
   await waitFor(publicClient, await dc.write.approve([proxy.address, 10_000n * D]));
 
-  return { viem, publicClient, owner, other, d, dc, target, remoteA, remoteB, broadcaster, proxy, governance, registry };
+  return {
+    viem,
+    publicClient,
+    owner,
+    other,
+    d,
+    dc,
+    target,
+    remoteA,
+    remoteB,
+    broadcaster,
+    proxy,
+    governance,
+    harness,
+    registry,
+  };
 }
 
 async function createProposal(ctx: Awaited<ReturnType<typeof fixture>>, kind: number, target: any, data: `0x${string}`, value = 0n) {
@@ -269,10 +284,33 @@ describe("DealGovernance V2 action policy", function () {
     const nextImplementation = await ctx.viem.deployContract("DealGovernanceUpgradeMock", []);
     const beforeD = await ctx.governance.read.dToken();
     const beforeThreshold = await ctx.governance.read.fastPassThreshold();
+    const historicalData = encodeFunctionData({
+      abi: ctx.target.abi,
+      functionName: "majorAction",
+    });
+    const historicalId = await createProposal(
+      ctx,
+      2,
+      ctx.target.address,
+      historicalData,
+    );
+    const historicalCreatedAt = (
+      await ctx.governance.read.getProposal([historicalId])
+    ).createdAt;
+    await waitFor(
+      ctx.publicClient,
+      await ctx.harness.write.clearProposalCreatedAtForTest([historicalId]),
+    );
+
+    const backfillData = encodeFunctionData({
+      abi: ctx.governance.abi,
+      functionName: "backfillProposalCreatedAt",
+      args: [historicalId, [historicalCreatedAt]],
+    });
     const upgradeData = encodeFunctionData({
       abi: ctx.governance.abi,
       functionName: "upgradeToAndCall",
-      args: [nextImplementation.address, "0x"],
+      args: [nextImplementation.address, backfillData],
     });
     const id = await createProposal(ctx, 2, ctx.proxy.address, upgradeData);
     await waitFor(ctx.publicClient, await ctx.governance.write.stake([id, 70n * D]));
@@ -282,6 +320,10 @@ describe("DealGovernance V2 action policy", function () {
     assert.equal(await upgraded.read.version(), 2n);
     assert.equal(await upgraded.read.dToken(), beforeD);
     assert.equal(await upgraded.read.fastPassThreshold(), beforeThreshold);
+    assert.equal(
+      (await upgraded.read.getProposal([historicalId])).createdAt,
+      historicalCreatedAt,
+    );
     assert.equal(
       (await upgraded.read.policyRegistry()).toLowerCase(),
       ctx.registry.address.toLowerCase(),

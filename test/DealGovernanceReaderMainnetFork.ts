@@ -13,7 +13,11 @@ describeFork("DealGovernanceReader ETH mainnet fork", function () {
   it("matches direct DealGovernance reads and exposes proposal 13 unchanged", async function () {
     const { viem } = await network.connect({ network: "hardhatEthFork" });
     const governance = await viem.getContractAt("DealGovernance", GOVERNANCE);
-    const reader = await viem.deployContract("DealGovernanceReader", [GOVERNANCE]);
+    const reader = await viem.deployContract("DealGovernanceReader", [
+      GOVERNANCE,
+      [],
+      [],
+    ]);
 
     const total = await governance.read.proposalCount();
     assert.ok(total >= 13n);
@@ -29,6 +33,11 @@ describeFork("DealGovernanceReader ETH mainnet fork", function () {
     assert.equal(readerProposal.description, directProposal.description);
     assert.equal(readerProposal.currentState, directState);
     assert.equal(readerProposal.actionsHash, directProposal.actionsHash);
+    assert.equal(
+      BigInt(readerProposal.createdAt),
+      BigInt(directProposal.createdAt),
+    );
+    assert.ok(BigInt(readerProposal.createdAt) > 0n);
     assert.deepEqual(readerTargets, directTargets);
     assert.deepEqual(readerValues, directValues);
     assert.deepEqual(readerCalldatas, directCalldatas);
