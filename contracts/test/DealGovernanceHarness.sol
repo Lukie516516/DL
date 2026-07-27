@@ -8,4 +8,12 @@ contract DealGovernanceHarness is DealGovernance {
     function bootstrapPolicyRegistryForTest(address registry) external {
         policyRegistry = IGovernancePolicyRegistryGov(registry);
     }
+
+    function clearProposalCreatedAtForTest(uint256 proposalId) external {
+        _proposals[proposalId].createdAt = 0;
+    }
+
+    function backfillProposalCreatedAtForTest(uint256 firstProposalId, uint48[] calldata createdAts) external {
+        this.backfillProposalCreatedAt(firstProposalId, createdAts);
+    }
 }

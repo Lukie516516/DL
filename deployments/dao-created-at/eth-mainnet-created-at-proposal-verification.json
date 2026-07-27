@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-27T04:59:54.464Z",
+  "readOnly": true,
+  "privateKeyLoaded": false,
+  "transactionSentByVerification": false,
+  "sourceDeployment": "deployments/dao-created-at/eth-mainnet-created-at-proposal.json",
+  "proposal": {
+    "proposalId": "18",
+    "proposalCount": "18",
+    "proposalState": 1,
+    "kind": 2,
+    "totalStaked": "0",
+    "executed": false,
+    "descriptionMatched": true,
+    "actionsMatched": true
+  },
+  "upgradeAction": {
+    "target": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "valueWei": "0",
+    "newImplementation": "0x23Bc252571BC446FDbbf466E5C35C38cc6F6e8A5",
+    "backfillFirstProposalId": "1",
+    "backfillCount": 17,
+    "allBackfillTimesMatchProposalCreatedEvents": true
+  },
+  "proposal18Event": {
+    "createdAt": "1785128315",
+    "blockNumber": "25621907",
+    "transactionHash": "0xe7329f90ca5f2bcd5627b2d5c544c3b270bc4a6b4067c5a27d4f93e4b5da0827"
+  },
+  "scopeGuards": {
+    "proposerDcBalance": "0",
+    "proposerAllowance": "0",
+    "proposerStake": "0",
+    "totalVetoStaked": "0",
+    "proxyImplementation": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5",
+    "proxyUpgradePerformed": false,
+    "readerDeployed": false,
+    "proposalExecutionPerformed": false
+  },
+  "transactions": [
+    {
+      "label": "mint",
+      "hash": "0x6c9dad3b96223923a7eb42d63e4f26274d74349f93e3e37821ba97d3cab31a53",
+      "nonce": 157,
+      "blockNumber": "25621897",
+      "status": "success",
+      "calldataMatched": true
+    },
+    {
+      "label": "approve",
+      "hash": "0xe033bb0db7ded4fb2197d997372dc76304bcb9959b14a6132387876a4fbd3c80",
+      "nonce": 158,
+      "blockNumber": "25621905",
+      "status": "success",
+      "calldataMatched": true
+    },
+    {
+      "label": "createProposal",
+      "hash": "0xe7329f90ca5f2bcd5627b2d5c544c3b270bc4a6b4067c5a27d4f93e4b5da0827",
+      "nonce": 159,
+      "blockNumber": "25621907",
+      "status": "success",
+      "calldataMatched": true
+    }
+  ],
+  "result": {
+    "allThreeReceiptsSuccessful": true,
+    "allThreeTargetsAndCalldataMatched": true,
+    "exactMajorProposalStored": true,
+    "historicalBackfillMatchesEvents": true,
+    "noStake": true,
+    "noExecution": true,
+    "healthy": true
+  }
+}

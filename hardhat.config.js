@@ -89,6 +89,9 @@ const config = {
       forking: {
         enabled: Boolean(process.env.ETH_MAINNET_RPC_URL),
         url: process.env.ETH_MAINNET_RPC_URL || "http://127.0.0.1:8545",
+        ...(process.env.ETH_MAINNET_FORK_BLOCK
+          ? { blockNumber: Number(process.env.ETH_MAINNET_FORK_BLOCK) }
+          : {}),
       },
     },
     hardhatOp: {

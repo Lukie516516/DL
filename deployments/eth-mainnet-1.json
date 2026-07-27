@@ -51,14 +51,15 @@
     "dealSeatVetoGovernor": "0xa3e818a45281038f5ae8bf213bfdbe1abbb99b7a",
     "voteDividendClaimer": "0xc42afc0a57e90c41ec3dd29a6b6794a81737f9f3",
     "dealGovernance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
-    "dealGovernanceImpl": "0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5",
+    "dealGovernanceImpl": "0x23Bc252571BC446FDbbf466E5C35C38cc6F6e8A5",
     "crossChainBroadcaster": "0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf",
     "protocolTreasury": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
     "governancePolicyRegistry": "0xBFF01F91291476e671f0F310846D5dDb460e2382",
     "satoshiVaultImplementation": "0x16b1Ad109E8D826F17B5542984c4B83643B4Ce48",
     "satoshiVault": "0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e",
     "dealDividendVaultImplementation": "0xB5D30418AEb0a302847EE5227193082fF36C44A8",
-    "dealDividendVault": "0xc0aE5D371f4605c464493B0d056dA56357cD2850"
+    "dealDividendVault": "0xc0aE5D371f4605c464493B0d056dA56357cD2850",
+    "dealGovernanceReader": "0xc7Df737304d57595C0a0e690F2AE3400B7225CE6"
   },
   "abi": {
     "DealLib": [
@@ -34021,7 +34022,28 @@
       },
       {
         "inputs": [],
+        "name": "InvalidCreatedAtRange",
+        "type": "error"
+      },
+      {
+        "inputs": [],
         "name": "InvalidInitialization",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint48",
+            "name": "createdAt",
+            "type": "uint48"
+          }
+        ],
+        "name": "InvalidProposalCreatedAt",
         "type": "error"
       },
       {
@@ -34067,6 +34089,17 @@
       {
         "inputs": [],
         "name": "PolicyRegistryMissing",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalCreatedAtAlreadySet",
         "type": "error"
       },
       {
@@ -34274,6 +34307,25 @@
           }
         ],
         "name": "ProposalCreated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "firstProposalId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "lastProposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "ProposalCreatedAtBackfilled",
         "type": "event"
       },
       {
@@ -34514,6 +34566,24 @@
           }
         ],
         "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "firstProposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint48[]",
+            "name": "createdAts",
+            "type": "uint48[]"
+          }
+        ],
+        "name": "backfillProposalCreatedAt",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
@@ -34820,6 +34890,11 @@
                 "internalType": "string",
                 "name": "description",
                 "type": "string"
+              },
+              {
+                "internalType": "uint48",
+                "name": "createdAt",
+                "type": "uint48"
               }
             ],
             "internalType": "struct DealGovernance.Proposal",
@@ -34911,6 +34986,11 @@
                 "internalType": "string",
                 "name": "description",
                 "type": "string"
+              },
+              {
+                "internalType": "uint48",
+                "name": "createdAt",
+                "type": "uint48"
               }
             ],
             "internalType": "struct DealGovernance.Proposal[]",
@@ -35059,6 +35139,25 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          }
+        ],
+        "name": "proposalCreatedAt",
+        "outputs": [
+          {
+            "internalType": "uint48",
+            "name": "",
+            "type": "uint48"
           }
         ],
         "stateMutability": "view",
@@ -36809,6 +36908,494 @@
         "stateMutability": "nonpayable",
         "type": "function"
       }
+    ],
+    "DealGovernanceReader": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "historicalProposalIds_",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint48[]",
+            "name": "historicalCreatedAts_",
+            "type": "uint48[]"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "BadHistoricalCreatedAtLength",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "GovernanceHasNoCode",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint48",
+            "name": "createdAt",
+            "type": "uint48"
+          }
+        ],
+        "name": "InvalidHistoricalCreatedAt",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "InvalidPageLimit",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "StateBatchTooLarge",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroGovernance",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_PAGE_SIZE",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_STATE_BATCH_SIZE",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getGovernanceStats",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "proposalCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "activeProposalCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "executedProposalCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "todayProposalCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "activationThreshold",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "treasuryPassThreshold",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "satoshiPassThreshold",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "fastPassThreshold",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "paramWindowSeconds",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "majorWindowSeconds",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "majorProposalFee",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "nftVetoThresholdBps",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct DealGovernanceReader.GovernanceStats",
+            "name": "stats",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "proposalId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "getProposalDetail",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "proposalId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint48",
+                "name": "createdAt",
+                "type": "uint48"
+              },
+              {
+                "internalType": "address",
+                "name": "proposer",
+                "type": "address"
+              },
+              {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "currentState",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalVetoStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "accountStake",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "accountVetoStake",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "windowEndsAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "vetoed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "canceled",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "executed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nftRegistered",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "satoshiSucceeded",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "activationReturnable",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "vetoer",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionsHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DealGovernanceReader.ProposalView",
+            "name": "proposal",
+            "type": "tuple"
+          },
+          {
+            "internalType": "address[]",
+            "name": "targets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "values",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes[]",
+            "name": "calldatas",
+            "type": "bytes[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "offset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "newestFirst",
+            "type": "bool"
+          }
+        ],
+        "name": "getProposalPage",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "proposalId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint48",
+                "name": "createdAt",
+                "type": "uint48"
+              },
+              {
+                "internalType": "address",
+                "name": "proposer",
+                "type": "address"
+              },
+              {
+                "internalType": "uint8",
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "currentState",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalVetoStaked",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "accountStake",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "accountVetoStake",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "windowEndsAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bool",
+                "name": "vetoed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "canceled",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "executed",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "nftRegistered",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "satoshiSucceeded",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "activationReturnable",
+                "type": "bool"
+              },
+              {
+                "internalType": "address",
+                "name": "vetoer",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionsHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct DealGovernanceReader.ProposalView[]",
+            "name": "page",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256[]",
+            "name": "proposalIds",
+            "type": "uint256[]"
+          }
+        ],
+        "name": "getProposalStates",
+        "outputs": [
+          {
+            "internalType": "uint8[]",
+            "name": "states",
+            "type": "uint8[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "contract DealGovernance",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "historicalCreatedAt",
+        "outputs": [
+          {
+            "internalType": "uint48",
+            "name": "",
+            "type": "uint48"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ]
   },
   "params": {
@@ -36913,9 +37500,10 @@
     "Cross-chain governance is not enabled by this script. Deploy/wire CrossChainBroadcaster and DualBridgeExecutor separately, then call DealFactory.setCrossChainGovernance(executor).",
     "[2026-07-07T03:30:05.146Z] DealGovernance deployed and wired: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 impl=0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6; CrossChainBroadcaster=0xa5bbD19f109afB7D2768C4f0f3B691936639BDCf",
     "[2026-07-21T03:44:39.551Z] DealGovernance DAO V2 finalized locally: proxy=0x9a41a9A85C16F590789C846Fb933fF8C715407F7 implementation=0xAAB065B8FDB3c09C207273eA53B2E0DF0EafD1e5 policyRegistry=0xBFF01F91291476e671f0F310846D5dDb460e2382 proposal=7 tx=0x7ce0d235e82c946f0974640acc6c41eb4aa23d2628a20e0f5e95f089e92ccb64",
-    "[2026-07-21T08:48:21Z] DAO treasury modules finalized locally: SatoshiVault=0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e DealDividendVault=0xc0aE5D371f4605c464493B0d056dA56357cD2850; proposal 8 enabled four exact rules; proposal 9 created the first 100 DC dividend round"
+    "[2026-07-21T08:48:21Z] DAO treasury modules finalized locally: SatoshiVault=0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e DealDividendVault=0xc0aE5D371f4605c464493B0d056dA56357cD2850; proposal 8 enabled four exact rules; proposal 9 created the first 100 DC dividend round",
+    "[2026-07-27] DealGovernance proposal 18 added Proposal.createdAt and backfilled proposals 1..17; frontend Reader V2=0xc7Df737304d57595C0a0e690F2AE3400B7225CE6 covers proposals 1..18"
   ],
-  "updatedAt": "2026-07-21T08:48:21Z",
+  "updatedAt": "2026-07-27T08:37:19.830Z",
   "daoV2": {
     "upgradedAt": "2026-07-21T03:44:39.551Z",
     "governanceProxy": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
@@ -36940,5 +37528,21 @@
     "firstDividendRoundId": "0",
     "firstDividendAmountWei": "100000000000000000000",
     "firstDividendSnapshot": "25579735"
+  },
+  "daoCreatedAt": {
+    "upgradedAt": "2026-07-27T07:15:23.000Z",
+    "governanceProxy": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "implementation": "0x23Bc252571BC446FDbbf466E5C35C38cc6F6e8A5",
+    "proposalId": "18",
+    "upgradeTransaction": "0x9682fe9201b5f55943a6259696b78bd0ea7eff6be5482bdfb990c7993eeec93d",
+    "upgradeBlock": "25622586",
+    "storageBackfilledProposalIds": "1..17",
+    "readerV2": "0xc7Df737304d57595C0a0e690F2AE3400B7225CE6",
+    "readerDeploymentTransaction": "0x63023a36bd6dbcf983413cd763297d45b7b33ba4a23aeaab98039cfb6aebffad",
+    "readerDeploymentBlock": "25622898",
+    "readerRuntimeCodeHash": "0x27ace99bc2793f88befef69d8d3a7978716a54f1fe87d0c4402eb6ef5f7445e1",
+    "readerHistoricalProposalIds": "1..18",
+    "proposal18FallbackCreatedAt": "1785128315",
+    "verifiedAt": "2026-07-27T08:21:20.623Z"
   }
 }

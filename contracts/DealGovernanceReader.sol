@@ -3,6 +3,29 @@ pragma solidity ^0.8.26;
 
 import {DealGovernance} from "./DealGovernance.sol";
 
+/// @dev Stable prefix of DealGovernance.Proposal, kept so this Reader also works before the
+///      createdAt implementation upgrade. Solidity ABI decoding permits the upgraded DAO's
+///      appended trailing field.
+interface IDealGovernanceLegacyProposalReader {
+    struct Proposal {
+        address proposer;
+        DealGovernance.ProposalKind kind;
+        uint256 totalStaked;
+        uint256 windowEndsAt;
+        bool vetoed;
+        bool canceled;
+        bool executed;
+        bool nftRegistered;
+        bool satoshiSucceeded;
+        bool activationReturnable;
+        address vetoer;
+        bytes32 actionsHash;
+        string description;
+    }
+
+    function getProposal(uint256 proposalId) external view returns (Proposal memory);
+}
+
 /// @title DealGovernanceReader
 /// @notice Read-only aggregation layer for DAO proposal list and detail pages.
 /// @dev This contract never writes to DealGovernance and never holds tokens. Its purpose is to
@@ -12,14 +35,18 @@ contract DealGovernanceReader {
     uint256 public constant MAX_STATE_BATCH_SIZE = 100;
 
     DealGovernance public immutable governance;
+    mapping(uint256 => uint48) public historicalCreatedAt;
 
     error ZeroGovernance();
     error GovernanceHasNoCode();
     error InvalidPageLimit();
     error StateBatchTooLarge();
+    error BadHistoricalCreatedAtLength();
+    error InvalidHistoricalCreatedAt(uint256 proposalId, uint48 createdAt);
 
     struct ProposalView {
         uint256 proposalId;
+        uint48 createdAt;
         address proposer;
         uint8 kind;
         uint8 currentState;
@@ -54,10 +81,36 @@ contract DealGovernanceReader {
         uint256 nftVetoThresholdBps;
     }
 
-    constructor(address governance_) {
+    constructor(
+        address governance_,
+        uint256[] memory historicalProposalIds_,
+        uint48[] memory historicalCreatedAts_
+    ) {
         if (governance_ == address(0)) revert ZeroGovernance();
         if (governance_.code.length == 0) revert GovernanceHasNoCode();
+        if (historicalProposalIds_.length != historicalCreatedAts_.length) {
+            revert BadHistoricalCreatedAtLength();
+        }
         governance = DealGovernance(payable(governance_));
+
+        uint256 previousProposalId = 0;
+        uint48 previousCreatedAt = 0;
+        for (uint256 i; i < historicalProposalIds_.length; ) {
+            uint256 proposalId = historicalProposalIds_[i];
+            uint48 createdAt = historicalCreatedAts_[i];
+            if (
+                proposalId == 0 || proposalId <= previousProposalId || createdAt == 0
+                    || uint256(createdAt) > block.timestamp
+                    || (previousCreatedAt != 0 && createdAt < previousCreatedAt)
+            ) revert InvalidHistoricalCreatedAt(proposalId, createdAt);
+
+            historicalCreatedAt[proposalId] = createdAt;
+            previousProposalId = proposalId;
+            previousCreatedAt = createdAt;
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @notice Returns one proposal page and the total proposal count.
@@ -150,9 +203,10 @@ contract DealGovernanceReader {
         view
         returns (ProposalView memory result)
     {
-        DealGovernance.Proposal memory proposal = governance.getProposal(proposalId);
-        uint256 accountStake;
-        uint256 accountVetoStake;
+        IDealGovernanceLegacyProposalReader.Proposal memory proposal =
+            IDealGovernanceLegacyProposalReader(address(governance)).getProposal(proposalId);
+        uint256 accountStake = 0;
+        uint256 accountVetoStake = 0;
         if (account != address(0)) {
             accountStake = governance.stakeOf(proposalId, account);
             accountVetoStake = governance.vetoStakeOf(proposalId, account);
@@ -160,6 +214,7 @@ contract DealGovernanceReader {
 
         result = ProposalView({
             proposalId: proposalId,
+            createdAt: _proposalCreatedAt(proposalId),
             proposer: proposal.proposer,
             kind: uint8(proposal.kind),
             currentState: uint8(governance.state(proposalId)),
@@ -178,5 +233,17 @@ contract DealGovernanceReader {
             actionsHash: proposal.actionsHash,
             description: proposal.description
         });
+    }
+
+    function _proposalCreatedAt(uint256 proposalId) internal view returns (uint48 createdAt) {
+        (bool ok, bytes memory returndata) = address(governance).staticcall(
+            abi.encodeWithSelector(DealGovernance.proposalCreatedAt.selector, proposalId)
+        );
+        if (ok && returndata.length >= 32) {
+            createdAt = abi.decode(returndata, (uint48));
+        }
+        if (createdAt == 0) {
+            createdAt = historicalCreatedAt[proposalId];
+        }
     }
 }

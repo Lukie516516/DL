@@ -1,0 +1,30 @@
+{
+  "verifiedAt": "2026-07-27T08:21:20.623Z",
+  "chainId": 1,
+  "checkedBlock": "25622912",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "implementation": "0x23Bc252571BC446FDbbf466E5C35C38cc6F6e8A5",
+  "proposal18": {
+    "state": 6,
+    "executed": true,
+    "executionTransactionHash": "0x9682fe9201b5f55943a6259696b78bd0ea7eff6be5482bdfb990c7993eeec93d",
+    "executionBlockNumber": "25622586",
+    "executionBlockTimestamp": "1785136523",
+    "backfilledFirstProposalId": "1",
+    "backfilledLastProposalId": "17"
+  },
+  "daoCreatedAt": {
+    "verifiedProposalIds": "1..18",
+    "storageBackfilledProposalIds": "1..17",
+    "proposal18StorageValue": "0"
+  },
+  "reader": {
+    "address": "0xc7Df737304d57595C0a0e690F2AE3400B7225CE6",
+    "deploymentTransactionHash": "0x63023a36bd6dbcf983413cd763297d45b7b33ba4a23aeaab98039cfb6aebffad",
+    "deploymentBlockNumber": "25622898",
+    "runtimeCodeHash": "0x27ace99bc2793f88befef69d8d3a7978716a54f1fe87d0c4402eb6ef5f7445e1",
+    "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "verifiedProposalIds": "1..18",
+    "proposal18FallbackCreatedAt": "1785128315"
+  }
+}

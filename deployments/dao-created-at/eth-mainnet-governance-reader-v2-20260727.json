@@ -1,0 +1,20 @@
+{
+  "deployed": true,
+  "deployedAt": "2026-07-27T08:18:05.514Z",
+  "address": "0xc7df737304d57595c0a0e690f2ae3400b7225ce6",
+  "transactionHash": "0x63023a36bd6dbcf983413cd763297d45b7b33ba4a23aeaab98039cfb6aebffad",
+  "blockNumber": "25622898",
+  "gasUsed": "1764441",
+  "governance": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+  "maxPageSize": "50",
+  "maxStateBatchSize": "100",
+  "proposalCount": "18",
+  "historySource": "verified-receipt-snapshot-fallback",
+  "historicalCreatedAtCount": 18,
+  "historicalCreatedAtThroughProposalId": "18",
+  "historicalCreatedAtHash": "0xe8afc2a03835e598348a5d1d4b358ea056a95ca12d0d29fe95c39bda990a9574",
+  "latestHistoricalCreatedAt": "1785128315",
+  "proposal13Id": "13",
+  "creationBytecodeHash": "0x34419df5c2aec971a3ee388879bbdd6e93191cc181ce87dbea43fe75572bcd5a",
+  "runtimeCodeHash": "0x27ace99bc2793f88befef69d8d3a7978716a54f1fe87d0c4402eb6ef5f7445e1"
+}

@@ -25,6 +25,10 @@
     "check:contract-sizes": "node --import tsx/esm scripts/check-contract-sizes.ts",
     "dao:v2:dry-run": "node node_modules/hardhat/dist/src/cli.js run scripts/prepare-eth-dao-v2.ts --network ethMainnet",
     "dao:v2:verify": "node node_modules/hardhat/dist/src/cli.js run scripts/verify-eth-dao-v2-upgrade.ts --network ethMainnet",
+    "dao:created-at:prepare": "node --import tsx/esm scripts/prepare-eth-dao-created-at-upgrade.ts",
+    "dao:created-at:implementation": "node --import tsx/esm scripts/deploy-eth-dao-created-at-implementation.ts",
+    "dao:created-at:proposal": "node --import tsx/esm scripts/create-eth-dao-created-at-proposal.ts",
+    "test:dao-created-at:fork": "DAO_CREATED_AT_MAINNET_FORK=1 ETH_MAINNET_FORK_BLOCK=25621896 node node_modules/hardhat/dist/src/cli.js test test/DealGovernanceCreatedAtMainnetFork.ts --network hardhatEthFork",
     "dao:treasury-modules:dry-run": "node node_modules/hardhat/dist/src/cli.js run scripts/prepare-eth-dao-treasury-modules.ts --network ethMainnet",
     "test:dao-v2:fork": "DAO_V2_MAINNET_FORK=1 node node_modules/hardhat/dist/src/cli.js test test/DealGovernanceV2MainnetFork.ts --network hardhatEthFork",
     "test:dao-treasury-modules:fork": "DAO_TREASURY_MODULES_FORK=1 node node_modules/hardhat/dist/src/cli.js test test/DaoTreasuryModulesMainnetFork.ts --network hardhatEthFork"
