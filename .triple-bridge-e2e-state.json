@@ -1,0 +1,6 @@
+{
+  "mockTarget": "0x7338f2b51852dc93979cd2c02dba5163eab18ca2",
+  "msgHash": "0x463ae69752f09e311eb35c761df34b5b1e50cadf5cd4b13e1a0cbe94c2bea349",
+  "broadcastTx": "0x9c79d91b0d84e5ae71a61dd9a90c5e2bbb99ae0ad52ba932b43c7050a2484ea1",
+  "expectedParam": "42"
+}

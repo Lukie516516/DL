@@ -24,17 +24,8 @@
 Thumbs.db
 /.codegraph/
 
-# Local bridge/test state (runtime-only, may contain environment-specific data)
-/.triple-bridge-e2e-state.json
-/.triple-bridge-state.json
-/.wormhole-test-state.json
-
 # Local archives
 *.zip
-
-# Generated deployment snapshots/backups
-/deployments/agiking-31415926-*.json
-/deployments/backups/
 
 # Secrets / env files
 .env
