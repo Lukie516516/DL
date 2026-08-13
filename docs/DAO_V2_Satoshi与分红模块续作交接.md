@@ -1,17 +1,17 @@
 # DAO V2 Satoshi 与专用 DC 分红模块续作交接
 
-更新时间：2026-07-21
+更新时间：2026-07-22
 
 ## 1. 一句话状态
 
-**ETH 主网 DAO V2、`SatoshiVault` 与 `DealDividendVault` 已完成部署和治理接线。Major proposal `8` 已执行并开放四条精确策略；Treasury proposal `9` 已执行并创建首轮 100 DC 分红。当前前端接入以 `docs/ETH_DAO_V2_国库中本聪分红前端交接.md` 为准。**
+**ETH 主网 DAO V2、`SatoshiVault` 与 `DealDividendVault` 已完成部署和治理接线。Major proposal `8` 已执行并开放四条精确策略；Treasury proposal `9` 已执行并创建首轮 100 DC 分红。2026-07-22 经用户明确授权，MINTER_ROLE 直接向 ProtocolTreasury 增发 50 亿 DC、向 SatoshiVault 增发 500 亿 DC。当前前端接入以 `docs/ETH_DAO_V2_国库中本聪分红前端交接.md` 为准。**
 
 当前边界：
 
 1. 两个模块都采用 `implementation + ERC1967Proxy`。
 2. 两个代理都只能由当前 DealGovernance proxy 授权升级，不存在 EOA 管理员。
 3. 不提供普通救援、任意代币提取或 generic execute。
-4. SatoshiVault 当前尚未充值或执行付款；DealDividendVault 已有 round `0`。
+4. SatoshiVault 当前持有 `50,000,000,000 DC`，但尚未执行任何 Satoshi 付款；DealDividendVault 已有 round `0`。
 
 ## 2. 仓库与分支
 
@@ -373,7 +373,7 @@ DAO_TREASURY_MODULES_MAINNET_PROPOSE_CONFIRM=CREATE_DAO_TREASURY_MODULE_RULES_PR
 2. 验证达到 90 D、取回 D、该条提案仍成功；执行前再验证否决路径。
 3. 再用小额 Treasury 提案执行“国库转 DC + 创建分红轮”。
 4. 使用普通钱包 D、支持 stake 和集体否决 stake 分别验证自领取。
-5. 灰度验证完成前不要大额充值。
+5. 大额充值已于 2026-07-22 经用户逐笔明确授权完成；实际 Satoshi 付款仍应先使用小额提案灰度。
 
 ## 9. 明确禁止事项
 
@@ -391,6 +391,6 @@ DAO_TREASURY_MODULES_MAINNET_PROPOSE_CONFIRM=CREATE_DAO_TREASURY_MODULE_RULES_PR
 
 ## 10. 当前停点
 
-当前停在：**DAO V2、Treasury 权限、SatoshiVault、DealDividendVault、四条策略和首轮 100 DC 分红均已完成；等待前端按新交接文档接入。**
+当前停在：**DAO V2、Treasury 权限、SatoshiVault、DealDividendVault、四条策略、首轮 100 DC 分红及两处 DC 储备充值均已完成；等待前端按新余额接入，并等待实际 Satoshi 付款灰度。**
 
-尚未完成的后续业务包括：SatoshiVault 充值/实际付款灰度，以及 BSC/其他副链本地分红模块设计与实施。
+尚未完成的后续业务包括：SatoshiVault 实际付款灰度，以及 BSC/其他副链本地分红模块设计与实施。

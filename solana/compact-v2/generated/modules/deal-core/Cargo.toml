@@ -1,0 +1,31 @@
+[package]
+name = "deal-core"
+version = "0.1.0"
+description = "Deal lifecycle registry and state machine for Solana"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_core"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+
+[dev-dependencies]
+litesvm = "0.10.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"

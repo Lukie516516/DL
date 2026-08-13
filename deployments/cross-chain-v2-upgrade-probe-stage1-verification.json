@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-23T12:43:42.726Z",
+  "readOnly": true,
+  "transactionSentByVerification": false,
+  "sourceDeployment": "deployments/cross-chain-v2-upgrade-probe-stage1.json",
+  "snapshot": {
+    "ethBlock": "25595505",
+    "bscBlock": "111668745",
+    "proposalCount": "15",
+    "broadcastNonce": "1"
+  },
+  "eth": {
+    "chainId": 1,
+    "signer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "controller": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "proxyImplementation": "0x84CEBcA724a32Cf82739233A79D7b04F116030cc",
+    "proxyVersion": "1",
+    "marker": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "updateCount": "0",
+    "v2ImplementationVersion": "2",
+    "runtimeHashes": {
+      "v1Implementation": "0x0b2a1c076bb8e41a8ea2de6192c2a4c2e53299b638dfc226064d6c1926af8ea1",
+      "proxy": "0xc08b0f88e0e8f941508884b82220c370c9c107a38490f3d2d14253269c2b1ea4",
+      "v2Implementation": "0x57520926804d0d5ece9cb8cf60b7f2cf40f47b7b001b1e0786bf214c458d2abb"
+    },
+    "transactions": [
+      {
+        "txHash": "0xe9d8097bd1e03b6c391aa43dfb8f6ef920c014a5313ea0e897cea8b54bdb1405",
+        "nonce": 146,
+        "blockNumber": "25595482",
+        "contractAddress": "0x84CEBcA724a32Cf82739233A79D7b04F116030cc",
+        "gasUsed": "476130",
+        "effectiveGasPrice": "266044502",
+        "nativeCostWei": "126671768737260",
+        "status": "success",
+        "calldataHash": "0x9dece79abd9efc954a274268fc79fc56ecf9c206196af87264f5bdda8fc8df80"
+      },
+      {
+        "txHash": "0x96dcb1eee9ca3a205f7e541d1a30e89be6ac92df7a9b0b61544fc3d2337bcbc4",
+        "nonce": 147,
+        "blockNumber": "25595485",
+        "contractAddress": "0xacD12B3B3067f8D489bC7c5832E85C104fB2A054",
+        "gasUsed": "155391",
+        "effectiveGasPrice": "265063678",
+        "nativeCostWei": "41188509988098",
+        "status": "success",
+        "calldataHash": "0xf3acc44ee5fc595bf5610ab1dc8f30d05099f2500f48d14fd941c4f972efb3f2"
+      },
+      {
+        "txHash": "0x27e31aba90ac4d2253c281f0ed5880665d3cd1631b3d25d6ffb342e7161a26a5",
+        "nonce": 148,
+        "blockNumber": "25595487",
+        "contractAddress": "0x7DBF60d7Bfb9Dc3Cd26b8055e94B7601D6DDF0b6",
+        "gasUsed": "484347",
+        "effectiveGasPrice": "262528627",
+        "nativeCostWei": "127154952901569",
+        "status": "success",
+        "calldataHash": "0x6aa6b599b46a76d2669d4e75cb5854a0ef98a987a1a72a92375663be2a4a2f60"
+      }
+    ],
+    "totalNativeCostWei": "295015231626927"
+  },
+  "bsc": {
+    "chainId": 56,
+    "signer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "controller": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "proxyImplementation": "0x0b014b826a22b4bea24d2B5643116C75CF82263d",
+    "proxyVersion": "1",
+    "marker": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "updateCount": "0",
+    "v2ImplementationVersion": "2",
+    "runtimeHashes": {
+      "v1Implementation": "0xe220933f4266d5b99868644a40ead8a5d351c49eb974155fe01fc4512e715a9f",
+      "proxy": "0xc08b0f88e0e8f941508884b82220c370c9c107a38490f3d2d14253269c2b1ea4",
+      "v2Implementation": "0x4e821b2c43ee069f5b00253c1db11847551e6d0d28324f03c02e050481980d81"
+    },
+    "transactions": [
+      {
+        "txHash": "0x0c44b6e0fa484267e1938a8ee32c758fcc328a3a98fa68754f36778529d3a28f",
+        "nonce": 99,
+        "blockNumber": "111668306",
+        "contractAddress": "0x0b014b826a22b4bea24d2B5643116C75CF82263d",
+        "gasUsed": "476130",
+        "effectiveGasPrice": "50000000",
+        "nativeCostWei": "23806500000000",
+        "status": "success",
+        "calldataHash": "0x9dece79abd9efc954a274268fc79fc56ecf9c206196af87264f5bdda8fc8df80"
+      },
+      {
+        "txHash": "0x5d0d962673970af4b28d08384f2fcfb3b6d7749246bc22264e222c53f59b7c2e",
+        "nonce": 100,
+        "blockNumber": "111668327",
+        "contractAddress": "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+        "gasUsed": "155391",
+        "effectiveGasPrice": "50000000",
+        "nativeCostWei": "7769550000000",
+        "status": "success",
+        "calldataHash": "0x85b7cb963884cf3f686e6fd89bd15b72d5056b58f91822a31fbf1510fd0ec8cc"
+      },
+      {
+        "txHash": "0x2b9d1c3b1b1d05fff365026cf561de8c095dfdcff493909ac9782f906fadd3f9",
+        "nonce": 101,
+        "blockNumber": "111668349",
+        "contractAddress": "0x14D0F49A72038FD745241109c5bA5059FFFbf156",
+        "gasUsed": "484347",
+        "effectiveGasPrice": "50000000",
+        "nativeCostWei": "24217350000000",
+        "status": "success",
+        "calldataHash": "0x6aa6b599b46a76d2669d4e75cb5854a0ef98a987a1a72a92375663be2a4a2f60"
+      }
+    ],
+    "totalNativeCostWei": "55793400000000"
+  },
+  "scopeGuards": {
+    "bscAllowlisted": false,
+    "ethUpgradePolicyAllowed": false,
+    "bscUpgradePolicyAllowed": false,
+    "daoProposalCreatedByStage1": false,
+    "crossChainBroadcastSentByStage1": false,
+    "proxyUpgradePerformedByStage1": false
+  },
+  "result": {
+    "allSixReceiptsSuccessful": true,
+    "allSixCreateCalldataMatched": true,
+    "allSixRuntimeBytecodesMatched": true,
+    "bothProxyControllersMatched": true,
+    "bothProxiesStillOnV1": true,
+    "bothV2ImplementationsReady": true,
+    "deploymentScopeRespected": true
+  }
+}

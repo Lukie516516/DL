@@ -1,0 +1,56 @@
+{
+  "scope": "Base CrossChain V2 stage 1: isolated Executor and asset-free GovernanceProbe",
+  "chainId": 8453,
+  "stage": "configured",
+  "initialNonce": 61,
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "executor": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+  "probeImplementation": "0xf0c56777f3B73bbDb153767D5c1C2727B6aE867C",
+  "probe": "0x61921eCb954FFaAf8cd3Fd2e71EeCB14B3eD529f",
+  "transactions": [
+    {
+      "label": "DualBridgeExecutorV2.deploy",
+      "hash": "0xc9c4c1cb220a0b443c27e7b5733a67738a2cff07fd0dc5bdc6b0593d239537da",
+      "blockNumber": "49664127",
+      "gasUsed": "2165964"
+    },
+    {
+      "label": "GovernanceProbe.implementation.deploy",
+      "hash": "0x11a3da1875b1fb09f8a93446b640d908b8dbfbc3bd936d176171042a3c767323",
+      "blockNumber": "49664131",
+      "gasUsed": "476130"
+    },
+    {
+      "label": "GovernanceProbe.proxy.deploy",
+      "hash": "0x01fc0d94526bde85634c5f95f4d6b324966cbcb8386f0005103e93155e0e3759",
+      "blockNumber": "49664135",
+      "gasUsed": "155391"
+    },
+    {
+      "label": "Executor.setPeer(Ethereum)",
+      "hash": "0x1dd1bf2c99ce60cd660f7561f565b34835fb5f53e8bb24b96189b93e83be48bd",
+      "blockNumber": "49664139",
+      "gasUsed": "47708"
+    },
+    {
+      "label": "Executor.allow(self)",
+      "hash": "0xb7f163d8f176a44181081c320d113bea0900df9b9bffd5ababd81c6708e13638",
+      "blockNumber": "49664143",
+      "gasUsed": "48287"
+    },
+    {
+      "label": "Executor.allow(GovernanceProbe)",
+      "hash": "0xf317851b8640d10b47177e9b60a874d619f4c3adb563f43b8bee99db2635e90a",
+      "blockNumber": "49664148",
+      "gasUsed": "48287"
+    },
+    {
+      "label": "Executor.setDelegate(self)",
+      "hash": "0x3f91ed9570b2470c8c03a9d394e936c54569abaf7a2e7c3ca4a9979e57190492",
+      "blockNumber": "49664152",
+      "gasUsed": "34359"
+    }
+  ],
+  "verifiedAt": "2026-08-07T15:47:35.783Z",
+  "verifiedBlock": "49664154"
+}

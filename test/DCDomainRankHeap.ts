@@ -292,6 +292,32 @@ describe("DCDomainRank — min-heap leaderboard", async () => {
     assert.equal(ids[0], slot50Id, "top should be slot50");
   });
 
+  it("6b. increased existing min sinks before later eviction decisions", async () => {
+    const { rank, addVolume, mockDomain } = await setup();
+
+    // Fill 50 domains: volumes 100, 200, ..., 5000.
+    for (let i = 1; i <= 50; i++) {
+      await addVolume(`rise${i}`, BigInt(i * 100) * ONE);
+    }
+
+    const oldMinId = await mockDomain.read.tokenIdOf(["rise1"]);
+    const secondMinId = await mockDomain.read.tokenIdOf(["rise2"]);
+
+    // The current min-heap root is rise1. Raise it far above the rest.
+    // Correct behavior: rise1 must sink, and rise2 becomes the real minimum.
+    await addVolume("rise1", 10_000n * ONE);
+
+    // This candidate beats the new true minimum (rise2 = 200), so it must enter.
+    await addVolume("candidate250", 250n * ONE);
+
+    const candidateId = await mockDomain.read.tokenIdOf(["candidate250"]);
+    const ids = await rank.read.getTopDomainIds([50n]);
+
+    assert.equal(ids.includes(oldMinId), true, "raised old minimum should stay in top 50");
+    assert.equal(ids.includes(candidateId), true, "candidate should enter after old min sinks");
+    assert.equal(ids.includes(secondMinId), false, "second minimum should be evicted");
+  });
+
   it("7. limit parameter truncates result correctly", async () => {
     const { rank, addVolume } = await setup();
 

@@ -1,0 +1,24 @@
+[package]
+name = "deal-compact-exchange"
+version = "0.1.0"
+description = "Generated Deal Compact V2 exchange composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_exchange"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-dex-pair = { path = "../../modules/deal-dex-pair", features = ["no-entrypoint"] }
+deal-dex-router = { path = "../../modules/deal-dex-router", features = ["no-entrypoint"] }
+deal-dex-quoter = { path = "../../modules/deal-dex-quoter", features = ["no-entrypoint"] }
+deal-swap-asset-registry = { path = "../../modules/deal-swap-asset-registry", features = ["no-entrypoint"] }
+deal-swap-orderbook = { path = "../../modules/deal-swap-orderbook", features = ["no-entrypoint"] }

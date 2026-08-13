@@ -1,0 +1,14 @@
+/.anchor/
+/.local/
+/target/
+**/.anchor/
+**/.local/
+**/target/
+**/test-ledger/
+**/node_modules/
+**/*-keypair.json
+/programs/*/target/
+/test-ledger/
+/target/deploy/*.json
+/.env
+**/.env

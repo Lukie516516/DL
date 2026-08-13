@@ -45,6 +45,15 @@ function envUrl(key) {
 const config = {
   plugins: [hardhatToolboxViemPlugin],
   chainDescriptors: {
+    56: {
+      name: "BNB Smart Chain",
+      chainType: "l1",
+      // BSC Osaka/Mendel mainnet activation: 2026-04-28 02:30:00 UTC.
+      // Required by EDR to execute calls against a current BSC fork snapshot.
+      hardforkHistory: { osaka: { timestamp: 1777343400 } },
+    },
+    8453: { name: "Base", chainType: "op" },
+    84532: { name: "Base Sepolia", chainType: "op" },
     31415926: { name: "Agiking", chainType: "l1" },
   },
   solidity: {
@@ -94,6 +103,31 @@ const config = {
           : {}),
       },
     },
+    hardhatBscFork: {
+      type: "edr-simulated",
+      chainType: "l1",
+      chainId: 56,
+      allowUnlimitedContractSize: true,
+      ...(process.env.FORK_NO_LOCAL_ACCOUNTS === "1" ? { accounts: [] } : {}),
+      forking: {
+        enabled: Boolean(process.env.BSC_MAINNET_RPC_URL),
+        url: process.env.BSC_MAINNET_RPC_URL || "http://127.0.0.1:8545",
+      },
+    },
+    hardhatBaseFork: {
+      type: "edr-simulated",
+      chainType: "op",
+      chainId: 8453,
+      allowUnlimitedContractSize: true,
+      ...(process.env.FORK_NO_LOCAL_ACCOUNTS === "1" ? { accounts: [] } : {}),
+      forking: {
+        enabled: Boolean(process.env.BASE_MAINNET_RPC_URL),
+        url: process.env.BASE_MAINNET_RPC_URL || "http://127.0.0.1:8545",
+        ...(process.env.BASE_MAINNET_FORK_BLOCK
+          ? { blockNumber: Number(process.env.BASE_MAINNET_FORK_BLOCK) }
+          : {}),
+      },
+    },
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
@@ -125,6 +159,20 @@ const config = {
       chainId: 56,
       url: process.env.BSC_MAINNET_RPC_URL || "https://bsc-dataseed.binance.org",
       accounts: envAccount("BSC_MAINNET_PRIVATE_KEY", "AGIKING_PRIVATE_KEY"),
+    },
+    baseSepolia: {
+      type: "http",
+      chainType: "op",
+      chainId: 84532,
+      url: envUrl("BASE_SEPOLIA_RPC_URL"),
+      accounts: envAccount("BASE_SEPOLIA_PRIVATE_KEY", "BASE_MAINNET_PRIVATE_KEY", "AGIKING_PRIVATE_KEY"),
+    },
+    baseMainnet: {
+      type: "http",
+      chainType: "op",
+      chainId: 8453,
+      url: envUrl("BASE_MAINNET_RPC_URL"),
+      accounts: envAccount("BASE_MAINNET_PRIVATE_KEY", "AGIKING_PRIVATE_KEY"),
     },
     agiking: {
       type: "http",

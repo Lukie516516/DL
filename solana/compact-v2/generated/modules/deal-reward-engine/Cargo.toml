@@ -1,0 +1,51 @@
+[package]
+name = "deal-reward-engine"
+version = "0.1.0"
+description = "EVM-compatible A/B/C DealCoin rewards for completed Solana deals"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_reward_engine"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = [
+    "anchor-lang/idl-build",
+    "anchor-spl/idl-build",
+    "deal-asset-controller/idl-build",
+    "deal-core/idl-build",
+    "deal-credit-graph/idl-build",
+    "deal-dc-controller/idl-build",
+    "deal-identity/idl-build",
+    "deal-swap-asset-registry/idl-build",
+]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+deal-asset-controller = { path = "../deal-asset-controller", features = ["no-entrypoint"] }
+deal-core = { path = "../deal-core", features = ["no-entrypoint"] }
+deal-credit-graph = { path = "../deal-credit-graph", features = ["no-entrypoint"] }
+deal-dc-controller = { path = "../deal-dc-controller", features = ["cpi"] }
+deal-dex-pair = { path = "../deal-dex-pair", features = ["no-entrypoint"] }
+deal-identity = { path = "../deal-identity", features = ["cpi"] }
+deal-swap-asset-registry = { path = "../deal-swap-asset-registry", features = ["no-entrypoint"] }
+deal-terminal-guard = { path = "../../crates/deal-terminal-guard" }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.1.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"

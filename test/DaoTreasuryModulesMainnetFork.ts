@@ -16,6 +16,7 @@ import {
   buildDaoV2TreasuryModuleRules,
   DAO_V2_PROPOSAL_KIND,
 } from "../scripts/dao-v2-policy.js";
+import { ensureForkSpendableD } from "./helpers/mainnetForkGovernance.js";
 
 const IMPLEMENTATION_SLOT =
   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc" as Hex;
@@ -77,7 +78,16 @@ forkDescribe("DAO treasury modules ETH mainnet fork", function () {
     const d = await viem.getContractAt("D", dAddress, {
       client: { public: publicClient, wallet: dHolderWallet },
     });
-    assert.ok((await d.read.balanceOf([dHolder])) >= 90n * UNIT);
+    const governance = await viem.getContractAt("DealGovernance", governanceAddress, {
+      client: { public: publicClient, wallet: dHolderWallet },
+    });
+    await ensureForkSpendableD({
+      publicClient,
+      governance,
+      dToken: d,
+      holder: dHolder,
+      required: 90n * UNIT,
+    });
     await waitFor(publicClient, await d.write.approve([governanceAddress, maxUint256]));
 
     const mainnetDeployer = getAddress(eth.deployer);
@@ -88,9 +98,6 @@ forkDescribe("DAO treasury modules ETH mainnet fork", function () {
       client: { public: publicClient, wallet: mainnetDeployerWallet },
     });
 
-    const governance = await viem.getContractAt("DealGovernance", governanceAddress, {
-      client: { public: publicClient, wallet: dHolderWallet },
-    });
     assert.equal(getAddress(await governance.read.policyRegistry()), registryAddress);
     const majorFee = await governance.read.majorProposalFee();
     await waitFor(publicClient, await dcAsMinter.write.mint([dHolder, majorFee * 2n]));

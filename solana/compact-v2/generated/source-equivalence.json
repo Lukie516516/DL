@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "module": "deal_governance_executor",
+      "file": "src/constants.rs",
+      "originalSha256": "beab81c934c3f85e3fa4d8f5db51d2944d2246267722c863813944045bff4a0b",
+      "generatedSha256": "beab81c934c3f85e3fa4d8f5db51d2944d2246267722c863813944045bff4a0b",
+      "normalizedBusinessSha256": "beab81c934c3f85e3fa4d8f5db51d2944d2246267722c863813944045bff4a0b",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_governance_executor",
+      "file": "src/errors.rs",
+      "originalSha256": "3ac63f9410c549d4f6f67a55b117418cd98a4df0916cfb0c017d34528e8f260d",
+      "generatedSha256": "3ac63f9410c549d4f6f67a55b117418cd98a4df0916cfb0c017d34528e8f260d",
+      "normalizedBusinessSha256": "ce9420e099abd57bf05ade84d2fe8ccc69662ceaf223ee7e8e7492d2eca5bbf4",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_governance_executor",
+      "file": "src/lib.rs",
+      "originalSha256": "55a789377fccf1ac5bcf6f651d678b3d0ab345d3422cde0b85f7e772107d04e1",
+      "generatedSha256": "8c7e8678fc63997a62dee340ba5cab0d93b6d13cd26b29454e234e5d09ec2d42",
+      "normalizedBusinessSha256": "bab9501431cabeb02562f98cf329738f4a50fad2482d72ce6b87771ebef1d141",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_governance_executor",
+      "file": "src/state.rs",
+      "originalSha256": "21543218f63410f69d98afde07ad7539d1f0917f39a9de0a2de76223a332f645",
+      "generatedSha256": "21543218f63410f69d98afde07ad7539d1f0917f39a9de0a2de76223a332f645",
+      "normalizedBusinessSha256": "21543218f63410f69d98afde07ad7539d1f0917f39a9de0a2de76223a332f645",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_protocol_treasury",
+      "file": "src/lib.rs",
+      "originalSha256": "35c9674d4e750e9d323b0ce5248a4d954cf4de98f0288a53a35f8aafb7aa30e2",
+      "generatedSha256": "e31b088bc26dde52fca5737913607be9b0244cef191241b8566479b080c1c0c1",
+      "normalizedBusinessSha256": "1a6a9fc22cfa4aa63bdc06731a6922e0b06eef65d1dd9016a969cbcd490005ab",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_core",
+      "file": "src/constants.rs",
+      "originalSha256": "c7ba02f8cb4e785ee6b5c1cb3cdba378f2e1f844315bf9aeb93727a4e3291800",
+      "generatedSha256": "c7ba02f8cb4e785ee6b5c1cb3cdba378f2e1f844315bf9aeb93727a4e3291800",
+      "normalizedBusinessSha256": "c7ba02f8cb4e785ee6b5c1cb3cdba378f2e1f844315bf9aeb93727a4e3291800",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_core",
+      "file": "src/errors.rs",
+      "originalSha256": "a4a5946926746db4b3b657a942bfd4acc874e5458e5a7bafe2d688c449737668",
+      "generatedSha256": "a4a5946926746db4b3b657a942bfd4acc874e5458e5a7bafe2d688c449737668",
+      "normalizedBusinessSha256": "c8bf9e5557afcc39c381b1ee955808da582fcae5e7fb021dd4be8a3fb4a330da",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_core",
+      "file": "src/lib.rs",
+      "originalSha256": "7f6cd7a556f7842155ca3030817c4787ee9a1d1ad5217d5968610193fe1227af",
+      "generatedSha256": "84d209531d907dc94e7f9b1a685f66ab8a1df1c39e985323350965d5b25429ab",
+      "normalizedBusinessSha256": "1768ae9dbef35bd59d677e480b20ad41266f92e65cf3d77bab126a0f4208a331",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_core",
+      "file": "src/state.rs",
+      "originalSha256": "9589d058cffea99f669b4d5456d2fa5a5e4915e58ea39398aac377d13a401e31",
+      "generatedSha256": "9589d058cffea99f669b4d5456d2fa5a5e4915e58ea39398aac377d13a401e31",
+      "normalizedBusinessSha256": "9589d058cffea99f669b4d5456d2fa5a5e4915e58ea39398aac377d13a401e31",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_asset_controller",
+      "file": "src/errors.rs",
+      "originalSha256": "50bec5a225c29bbbedc3a2b3d89424f7e44e3015c2c30c4b2328b7a8052946a0",
+      "generatedSha256": "d277bf831597c4a3e49d4a5d4dcb1e7cd5a857faf16bad2ab7395e383763b5ac",
+      "normalizedBusinessSha256": "f6472471b8c3dbff60e213e38d3ee6f6858543a0fcc552d334fb8b46ba6fbd3c",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_asset_controller",
+      "file": "src/lib.rs",
+      "originalSha256": "917ebe00b062c5a5281dfa853ec042262d1deff198f69e747571d50d34d15c17",
+      "generatedSha256": "90598244f8766c3825e82c5232b664554d65c1c96b72f745a78c16f7fcde2904",
+      "normalizedBusinessSha256": "381be5dce66e769ed2bf90172d1694aadf045b74cd2b95e975c3596a354f6852",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "retarget explicit program ID 5VGLevrU3z3P9Epr6E1nTuMuxTdqqZiusbz21NugTgG9 -> 7m8WXGUfwnuyxi2GmzNepfkrXgsCAurTKvANSdPqZXzG",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core join CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core deposit CPI",
+          "count": 2
+        },
+        {
+          "label": "reload DealAccount after compact Core withdrawal CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core cpi_exit_by_b CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core cpi_kick_b_by_a CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core cpi_replace_inactive_b CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core cpi_replace_non_voting_b CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DealAccount after compact Core cpi_abandon CPI",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_asset_controller",
+      "file": "src/state.rs",
+      "originalSha256": "71e67db9591ecbd31ad0f9d701d81df2649b51479d611d5d82fcfda8bda11013",
+      "generatedSha256": "71e67db9591ecbd31ad0f9d701d81df2649b51479d611d5d82fcfda8bda11013",
+      "normalizedBusinessSha256": "71e67db9591ecbd31ad0f9d701d81df2649b51479d611d5d82fcfda8bda11013",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_finalizer",
+      "file": "src/lib.rs",
+      "originalSha256": "1c1b05cf47c59a89c15566f1947e2d2e3039b521b110f0cfa15c09ca2f92f499",
+      "generatedSha256": "ca64be532da62d49979969e4878e99e567b74d70436a43ec11a79743ab2e3b30",
+      "normalizedBusinessSha256": "a3649a0c1820aa65d58493134f4c15cb20e20c53399d275b7a29fb5d5d0c8af1",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "retarget explicit program ID 5mXPbnW19tZ3M4CLz59riBfF8u6sEq2LJxDjBB434v4m -> 7m8WXGUfwnuyxi2GmzNepfkrXgsCAurTKvANSdPqZXzG",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_credit_valuator",
+      "file": "src/lib.rs",
+      "originalSha256": "91780b412da4988ef631cbe2974a9a59ab026f84b75e5c9fc6f3b3236f250680",
+      "generatedSha256": "f32593dc3ab231b067a2621e908ca59bfda6230e3836d5887d60dc47b1a9fc28",
+      "normalizedBusinessSha256": "b3d27d8963e641d4dd744f64a9a7c9426da85696f564b1157855c3e646003372",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "retarget explicit program ID EVq7dnxAft4VVAXp3gZvt93DnJyUA3uwBRSS86yxZwo5 -> 7m8WXGUfwnuyxi2GmzNepfkrXgsCAurTKvANSdPqZXzG",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_reward_engine",
+      "file": "src/lib.rs",
+      "originalSha256": "12ac60d054f1f318fd79f9f64a16678d88f83336527b9e34c8286a78799c3bf6",
+      "generatedSha256": "f2f69660afb3d8524d4686f86671b24495868639097a422d8fc50512d6ae2365",
+      "normalizedBusinessSha256": "23f1271058b90f499a06ed4a9d95b583da523f403f6f85a7d34855639998705d",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "retarget explicit program ID 5VGLevrU3z3P9Epr6E1nTuMuxTdqqZiusbz21NugTgG9 -> 7m8WXGUfwnuyxi2GmzNepfkrXgsCAurTKvANSdPqZXzG",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_identity",
+      "file": "src/lib.rs",
+      "originalSha256": "e83e5814994fd0aa93b3f688bb40f03a2fd850576fffe93f5543ca58101cdc5f",
+      "generatedSha256": "b32c958751f5ad276814b4b6166c2c1c83ec16a25ff3a6d6c821e82827126ea6",
+      "normalizedBusinessSha256": "3fe1f2dcb10c3071de4c5e312e8d491ff9f690c8f97f65f6b9ce15b80ffcbdff",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_credit_graph",
+      "file": "src/lib.rs",
+      "originalSha256": "5c12cee67486eb8a2558be63d1c9f8dd617334e731cd18095bdbbbec6d99f5bd",
+      "generatedSha256": "a34676b80baf9474cb48cfab1ba6f90a7ebe1e5fa059d8578f7cc068649b86fc",
+      "normalizedBusinessSha256": "a248a2a703c581d17fc9f7cb7ffecd143db645b119c472b1eeaa092782ce64d6",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_dc_controller",
+      "file": "src/lib.rs",
+      "originalSha256": "1f87cf5c905eeff9e1350daf20f648e2504e3061417ef9b247fa8792c39d8d58",
+      "generatedSha256": "019033cd6b0e536259d06c767b6474cc398e90c631fef386e8b7786a85053341",
+      "normalizedBusinessSha256": "530f65f2fa25a76d4134f1c1fea5052c84d6a2a02764888d18b50d7ae20dedde",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_parameter_registry",
+      "file": "src/lib.rs",
+      "originalSha256": "12880aa36c397125bbb7d9e733fef5eaaa75f4e7e7971f1fc2741283547329b6",
+      "generatedSha256": "718efd91f7e723c448b684ddfd6a28bb202f61cfb65e0d2a35581253252cbcfc",
+      "normalizedBusinessSha256": "90d22ae6c03248a6d6903969ff7cd7b62c76cfadb268dfee6ff7cce1f0411643",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_dex_pair",
+      "file": "src/lib.rs",
+      "originalSha256": "4ec773a93e6271bee96efc6b7491a35724bb4c47c909a3280d48627bcd53a7c4",
+      "generatedSha256": "2e5d741026c1e6ed38bbec601df8fbc23206787c6f040ba6073b70c4a1bc9e46",
+      "normalizedBusinessSha256": "3d8fb27aac7f98e0f7747ebedb17784590c44b1617669b82c5d98d1a2220608a",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_dex_router",
+      "file": "src/lib.rs",
+      "originalSha256": "b0099d4be95af1f2ee63b1a8374e1908b64cbcef0ff6ad16a29a01659b806b3d",
+      "generatedSha256": "af04275db66c850f3154da1cbcf75e990979ecc1289240f6aa00722ed4593e64",
+      "normalizedBusinessSha256": "0164015edbdf8ba48219345251e4cd900c42218faa5a793cd90ab822bd20953a",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "reload PairState after compact Pair single-hop CPI minimum_dc_out",
+          "count": 1
+        },
+        {
+          "label": "reload PairState after compact Pair single-hop CPI required_other_in",
+          "count": 1
+        },
+        {
+          "label": "reload PairState after compact Pair single-hop CPI minimum_other_out",
+          "count": 1
+        },
+        {
+          "label": "reload PairState after compact Pair single-hop CPI required_dc_in",
+          "count": 1
+        },
+        {
+          "label": "reload pair A after compact Pair exact-input CPI",
+          "count": 1
+        },
+        {
+          "label": "reload pair B after compact Pair exact-input CPI",
+          "count": 1
+        },
+        {
+          "label": "reload pair A after compact Pair exact-output CPI",
+          "count": 1
+        },
+        {
+          "label": "reload pair B after compact Pair exact-output CPI",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_dex_quoter",
+      "file": "src/lib.rs",
+      "originalSha256": "1948f457069c5fea365bc0f95cdbba1e58d6cc014b241cc18b495d2adb251595",
+      "generatedSha256": "a7e3d23a1c7ed6e659aefea39d76c669d9e6eb01846411fb821fc16fa095e5be",
+      "normalizedBusinessSha256": "97747bddaac58ab265876e2181aa07d527b414e7da32ec00d6f7d06b53ba3a6f",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_swap_asset_registry",
+      "file": "src/lib.rs",
+      "originalSha256": "d207ea2c590799f8c2ed9a3f41a05b161eec7ccf62a23092b13b8904b93ba5f4",
+      "generatedSha256": "0f4c5183aa597d26c22458d65db91d0370ce3e0567e83e354bb568a8ec4176d3",
+      "normalizedBusinessSha256": "9b09a6e9986f78c5549a3ad223e1568fc4debd359f40e94068565bef5a81e26e",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "allow only the composed Exchange root as Pair/Router shared identity",
+          "count": 1
+        },
+        {
+          "label": "test the composed Exchange identity exception and arbitrary duplicate rejection",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_swap_orderbook",
+      "file": "src/lib.rs",
+      "originalSha256": "3e2654f6e7084252d0eae64757eea17ffead3a060365ad4d958c25546779b6fd",
+      "generatedSha256": "2642b306529f778d06007599573b2e9f32db49452b09d2c17a2eae531b98f4d9",
+      "normalizedBusinessSha256": "9e9ea2f57b0ecfd609cd26bba4c67c6425da1d060c4fdea54365c154f1a542e5",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "reload PairState after compact order settlement amount_other_out",
+          "count": 1
+        },
+        {
+          "label": "reload PairState after compact order settlement dc_out",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_domain_registry",
+      "file": "src/lib.rs",
+      "originalSha256": "ae4e36ff0409883f3b1d99f1a26c24710b173657588deb2d515fc964ff373219",
+      "generatedSha256": "c8ebb770bb156fae7b7f7a5c49399f34823e0335bfbdb537534ec0dd3cb7f49e",
+      "normalizedBusinessSha256": "3719c055f109be151612983481c7beeea3d03591202e7e2dcb8df57aa4ce1b61",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_domain_market",
+      "file": "src/lib.rs",
+      "originalSha256": "451356205b83b4e66934dd66dd39077775aa9b467414518426071566eb2f4596",
+      "generatedSha256": "96fcd48bb8e77a244ae9da3010b0fa64919ecae3730edf64c091105df4a2dda3",
+      "normalizedBusinessSha256": "e33fd03aa0adecf361765c7ad0249ad4828adc6cd4186c944c481832c048ca80",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": [
+        {
+          "label": "reload DomainRecord after compact registry escrow CPI",
+          "count": 1
+        },
+        {
+          "label": "reload DomainRecord after compact registry release CPI DomainDelisted",
+          "count": 1
+        },
+        {
+          "label": "reload DomainRecord after compact registry release CPI DomainSold",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "module": "deal_domain_rank",
+      "file": "src/lib.rs",
+      "originalSha256": "a504866e195c5eb53306aefc151f13a9f20da54e9119776a0ad4a1c0186d90b7",
+      "generatedSha256": "fa903fedbddcf0699feb38329508585f8821303d8c89696ac8c0660892f27c0c",
+      "normalizedBusinessSha256": "8be5c3d59f7ea0caba98c09a204b1a86aea37e1acf4ab5ff2a4f88603bfbd2b4",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_domain_entry",
+      "file": "src/lib.rs",
+      "originalSha256": "c726f33cce97d841e63af53794c8ab8de9369430e90c6503b6e1067c696bc1ea",
+      "generatedSha256": "9c5fed835d03c01619752262c92e41a1a3196053c20b46a599959ccfad7233c2",
+      "normalizedBusinessSha256": "9748e83a2eddb47716bc1d2c7d468fff51dcc37706af3637a3b2db65623fa043",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_domain_hall",
+      "file": "src/lib.rs",
+      "originalSha256": "45c1bc16e1890f4ab5c0c9a49ea940dbe992d3cad73bfd58ca176b947e7b8282",
+      "generatedSha256": "6574761e57b470535d27bc8a31e2dd0c78bc6917952c4ea04bc17e623709cc63",
+      "normalizedBusinessSha256": "0bf6ae15baf88e7c00a44e8f4aa3f991d9c372ad66c4e58304b7e3f20f78bb06",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_history_index",
+      "file": "src/lib.rs",
+      "originalSha256": "f3d6e5020f6dc34887b4295ecc4f7043b926b4273b26cbdf1cefb5040406a7e0",
+      "generatedSha256": "b7d18c05c57ea41af7434e361d5d567838e758b121e1ef06e89d960a1a95c46b",
+      "normalizedBusinessSha256": "e34a03ddb7400a781905b85df3a636b50b97132c3daf76c7c37f31a9be227291",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_result_index",
+      "file": "src/lib.rs",
+      "originalSha256": "a50de6dc48f4399ecbaec6a8807ab36d129d875e4b6a96e677b03f44e73844e5",
+      "generatedSha256": "b142d840c5c09523288eb88a3fdd5085b51fb8eba661bff8f9fff3ef1a2b2868",
+      "normalizedBusinessSha256": "be2d2363b9e2ede526951c766372cc9067962f69163bd2e6542c0da931f096f8",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    },
+    {
+      "module": "deal_message_hub",
+      "file": "src/lib.rs",
+      "originalSha256": "1232301e89c81fc5da2975a01a320cdf36ebe8f57f04a9b112ee4c901dba7b62",
+      "generatedSha256": "1f800d521ea33b528dc748cd50e3c3f8b1058f2a659fe8f15fb4dcf3850f264b",
+      "normalizedBusinessSha256": "b13d7251dcce147dfbaaa54a94b654815be44168a5b65a008aa2998f2e4ada8b",
+      "allowedChanges": [
+        "declare_id",
+        "error_code_offset"
+      ],
+      "compactPlumbingChanges": []
+    }
+  ]
+}

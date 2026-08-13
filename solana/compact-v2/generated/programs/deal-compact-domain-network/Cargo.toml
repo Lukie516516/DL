@@ -1,0 +1,22 @@
+[package]
+name = "deal-compact-domain-network"
+version = "0.1.0"
+description = "Generated Deal Compact V2 domain_network composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_domain_network"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-domain-rank = { path = "../../modules/deal-domain-rank", features = ["no-entrypoint"] }
+deal-domain-entry = { path = "../../modules/deal-domain-entry", features = ["no-entrypoint"] }
+deal-domain-hall = { path = "../../modules/deal-domain-hall", features = ["no-entrypoint"] }

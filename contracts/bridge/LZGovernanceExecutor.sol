@@ -3,14 +3,10 @@ pragma solidity ^0.8.26;
 
 import {OAppBase, Origin} from "../lib/OAppBase.sol";
 
-/// @title LZGovernanceExecutor
-/// @notice 部署在目标链（BSC / Agiking 等）。
-///         接收来自主网 LZGovernanceDispatcher 的消息，解码后调用目标合约。
-///
-/// 安全模型：
-///   1. OAppBase.lzReceive() 验证消息只能来自已注册 peer（Dispatcher）
-///   2. 目标地址必须在 allowedTargets 白名单内（防止自身被调用或任意合约被攻击）
-///   3. 调用失败时发出事件但不 revert，避免消息永久卡在 LZ 重试队列
+/// @title LZGovernanceExecutor  [LEGACY — 单桥简化版，已被 DualBridgeExecutor 取代]
+/// @notice 配套 LZGovernanceDispatcher 使用，仅 LayerZero 单桥，无多重确认。
+///         生产环境请使用 DualBridgeExecutor（三桥 2-of-3）。
+///         本合约保留仅供参考或紧急单桥降级使用。
 contract LZGovernanceExecutor is OAppBase {
 
     // FIX CRITICAL-1: 目标白名单，只有白名单内的合约可以被跨链调用

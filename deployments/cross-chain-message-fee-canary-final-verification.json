@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "stage": "destinations-executed",
+  "verifiedAt": "2026-08-12T10:44:29.772Z",
+  "proposalId": "25",
+  "ethTransaction": "0xac95bb8f8ad30d89ee6fc1d78c2c512508f0e1bf387fc787d1fd47ef6e82e162",
+  "broadcastNonce": "5",
+  "targetPrice": "105000000000000000000",
+  "checkedAt": "2026-08-12T10:44:29.772Z",
+  "transactionSent": false,
+  "bsc": {
+    "block": "115490800",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": "3"
+    },
+    "executed": true,
+    "attempts": "1",
+    "price": "105000000000000000000"
+  },
+  "base": {
+    "block": "49871061",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": false,
+      "count": "2"
+    },
+    "executed": true,
+    "attempts": "1",
+    "price": "105000000000000000000"
+  },
+  "healthy": true
+}

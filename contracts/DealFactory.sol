@@ -199,7 +199,9 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _;
     }
 
-    function setCrossChainGovernance(address addr) external onlyOwner {
+    function setCrossChainGovernance(
+        address addr
+    ) external onlyOwnerOrGovernance {
         crossChainGovernance = addr;
         emit CrossChainGovernanceUpdated(addr);
     }
@@ -297,6 +299,10 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     bool public msgPriceEnabled;
     address public msgPriceToken; // 0 原生
     uint256 public msgPriceAmountInToken;
+    uint256 public constant ADMIN_MIN_MESSAGE_PRICE = 1 * 10 ** 16;
+    uint256 public constant ADMIN_MAX_MESSAGE_PRICE = 100 ether;
+    uint256 public constant ADMIN_MIN_CREATE_BURN_AMOUNT = 1 ether;
+    uint256 public constant ADMIN_MAX_CREATE_BURN_AMOUNT = 10 ether;
 
     uint32 public minWindowSec = 1800;
 
@@ -375,6 +381,15 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         if (msg.sender != admin) revert NotAdmin();
         _;
     }
+    modifier onlyAdminOrOwnerOrGovernance() {
+        require(
+            msg.sender == admin ||
+                msg.sender == owner() ||
+                msg.sender == crossChainGovernance,
+            "NOT_AUTHORIZED"
+        );
+        _;
+    }
     modifier onlyDeal() {
         if (!isDeal[msg.sender]) revert NotDeal();
         _;
@@ -414,7 +429,10 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit MarginTokenAllowedUpdated(recognizedToken1, true);
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    /// @dev The current production implementation still needs its present
+    ///      owner for the first upgrade. After this implementation is active,
+    ///      the configured DAO/executor can authorize all later upgrades.
+    function _authorizeUpgrade(address) internal override onlyOwnerOrGovernance {}
 
     /* ========== Owner Admin 配置 ========== */
     function setDealImplementation(address impl) external onlyOwnerOrGovernance {
@@ -434,7 +452,7 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit MinTimeoutUpdated(s);
     }
 
-    function setAdmin(address _admin) external onlyAdmin {
+    function setAdmin(address _admin) external onlyAdminOrOwnerOrGovernance {
         if (_admin == address(0)) revert ZeroAddress();
         admin = _admin;
     }
@@ -595,11 +613,23 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         defaultMintOnFees = r2;
         emit FeesAndMintOnFeesUpdated(feeNonDLNum, 1000, mintOnFeesNum, 1000);
     }
+    function setSpecialNoFeeToken(address token) external onlyOwnerOrGovernance {
+        _setSpecialNoFeeToken(token);
+    }
     function setSpecialNoFeeTokenByAdmin(address token) external onlyAdmin {
+        _setSpecialNoFeeToken(token);
+    }
+    function _setSpecialNoFeeToken(address token) internal {
         specialNoFeeToken = token;
         emit SpecialNoFeeTokenUpdated(token);
     }
+    function setTreasury(address _treasury) external onlyOwnerOrGovernance {
+        _setTreasury(_treasury);
+    }
     function setTreasuryByAdmin(address _treasury) external onlyAdmin {
+        _setTreasury(_treasury);
+    }
+    function _setTreasury(address _treasury) internal {
         if (_treasury == address(0)) revert ZeroAddress();
         treasury = _treasury;
     }
@@ -612,21 +642,35 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ) external onlyOwnerOrGovernance {
         msgPriceEnabled = enabled;
         msgPriceToken = pricingToken;
-        msgPriceAmountInToken = amountInToken;
-        emit MessagePriceRuleUpdated(enabled, pricingToken, amountInToken);
+        _setMessagePriceAmount(amountInToken);
     }
+
+    /// @notice Changes only the message-price amount without touching the
+    ///         chain-local pricing token or the enabled flag.
+    /// @dev This governance path intentionally has the same amount semantics
+    ///      as setMessagePriceRule. It is suitable for one shared cross-chain
+    ///      calldata even when each chain uses a different token address.
+    function setMessagePriceAmount(
+        uint256 amountInToken
+    ) external onlyOwnerOrGovernance {
+        _setMessagePriceAmount(amountInToken);
+    }
+
+    /// @dev Limited operational lane. Its range is intentionally narrower
+    ///      than governance; governance values outside this range remain
+    ///      manageable through setMessagePriceAmount.
     function setMessagePriceRuleByAdmin(
         uint256 amountInToken
     ) external onlyAdmin {
         require(
-            amountInToken >= 1 * 10 ** 16 && amountInToken <= 10 * 10 ** 18
+            amountInToken >= ADMIN_MIN_MESSAGE_PRICE && amountInToken <= ADMIN_MAX_MESSAGE_PRICE
         );
+        _setMessagePriceAmount(amountInToken);
+    }
+
+    function _setMessagePriceAmount(uint256 amountInToken) internal {
         msgPriceAmountInToken = amountInToken;
-        emit MessagePriceRuleUpdated(
-            msgPriceEnabled,
-            msgPriceToken,
-            amountInToken
-        );
+        emit MessagePriceRuleUpdated(msgPriceEnabled, msgPriceToken, amountInToken);
     }
 
     /* ---------- 创建销毁规则（可选） ---------- */
@@ -637,21 +681,33 @@ contract DealFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     ) external onlyOwnerOrGovernance {
         createBurnEnabled = enabled;
         createBurnPricingToken = pricingToken;
-        createBurnAmountInToken = amountInToken;
-        emit CreateBurnRuleUpdated(enabled, pricingToken, amountInToken);
+        _setCreateBurnAmount(amountInToken);
     }
+
+    /// @notice Changes only the create-burn amount without touching the
+    ///         chain-local pricing token or the enabled flag.
+    /// @dev Governance deliberately has no amount range. Zero and the full
+    ///      uint256 range remain available to DAO decisions.
+    function setCreateBurnAmount(
+        uint256 amountInToken
+    ) external onlyOwnerOrGovernance {
+        _setCreateBurnAmount(amountInToken);
+    }
+
+    /// @dev Limited operational lane. Its range does not apply to governance.
     function setCreateBurnRuleByAdmin(
         uint256 amountInToken
     ) external onlyAdmin {
         require(
-            amountInToken >= 1 * 10 ** 18 && amountInToken <= 10 * 10 ** 18
+            amountInToken >= ADMIN_MIN_CREATE_BURN_AMOUNT &&
+                amountInToken <= ADMIN_MAX_CREATE_BURN_AMOUNT
         );
+        _setCreateBurnAmount(amountInToken);
+    }
+
+    function _setCreateBurnAmount(uint256 amountInToken) internal {
         createBurnAmountInToken = amountInToken;
-        emit CreateBurnRuleUpdated(
-            createBurnEnabled,
-            createBurnPricingToken,
-            amountInToken
-        );
+        emit CreateBurnRuleUpdated(createBurnEnabled, createBurnPricingToken, amountInToken);
     }
 
     /* ========== TWAP：供 Deal 调用报价 ========== */

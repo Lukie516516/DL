@@ -1,0 +1,21 @@
+[package]
+name = "deal-compact-monetary-policy"
+version = "0.1.0"
+description = "Generated Deal Compact V2 monetary_policy composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_monetary_policy"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-dc-controller = { path = "../../modules/deal-dc-controller", features = ["no-entrypoint"] }
+deal-parameter-registry = { path = "../../modules/deal-parameter-registry", features = ["no-entrypoint"] }

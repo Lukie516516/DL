@@ -1,0 +1,37 @@
+[package]
+name = "deal-compact-monetary-policy"
+version = "0.1.0"
+description = "Compact DealCoin controller and governed parameter registry"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_monetary_policy"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+
+[dev-dependencies]
+deal-dc-controller = { path = "../../../programs/deal-dc-controller", features = ["no-entrypoint"] }
+deal-parameter-registry = { path = "../../../programs/deal-parameter-registry", features = ["no-entrypoint"] }
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.1.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"

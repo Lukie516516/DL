@@ -1,0 +1,40 @@
+[package]
+name = "deal-domain-entry"
+version = "0.1.0"
+description = "Atomic domain Deal creation and hall counterparty selection for Solana Deal"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_domain_entry"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = [
+    "anchor-lang/idl-build",
+    "deal-asset-controller/idl-build",
+    "deal-core/idl-build",
+    "deal-domain-rank/idl-build",
+    "deal-domain-registry/idl-build",
+]
+
+[dependencies]
+anchor-lang.workspace = true
+deal-asset-controller = { path = "../deal-asset-controller", features = ["cpi"] }
+deal-core = { path = "../deal-core", features = ["cpi"] }
+deal-domain-rank = { path = "../deal-domain-rank", features = ["cpi"] }
+deal-domain-registry = { path = "../deal-domain-registry", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"

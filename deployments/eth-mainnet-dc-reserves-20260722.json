@@ -1,0 +1,56 @@
+{
+  "dryRun": false,
+  "checkedAt": "2026-07-22T05:42:24.750Z",
+  "chainId": 1,
+  "blockNumber": "25586250",
+  "wallet": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "nonce": 121,
+  "dc": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+  "before": {
+    "totalSupply": "1005002996718757177718673741",
+    "treasury": {
+      "address": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
+      "balance": "3900000000000000000000"
+    },
+    "satoshiVault": {
+      "address": "0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e",
+      "balance": "0"
+    }
+  },
+  "mint": {
+    "treasury": "5000000000000000000000000000",
+    "satoshiVault": "50000000000000000000000000000"
+  },
+  "afterExpected": {
+    "totalSupply": "56005002996718757177718673741",
+    "treasury": "5000003900000000000000000000",
+    "satoshiVault": "50000000000000000000000000000"
+  },
+  "executedAt": "2026-07-22T05:42:55.070Z",
+  "transactions": {
+    "treasury": {
+      "hash": "0xda6dfaf7c591ff56c0c2c9d07d9aa80f2fae484f805452ee8c86cfb07d308141",
+      "blockNumber": "25586252"
+    },
+    "satoshiVault": {
+      "hash": "0xd075a2e565fe66d019d07c3156e0240a7511ccffe50eb22dfbfe3f4f2966fb28",
+      "blockNumber": "25586253"
+    }
+  },
+  "after": {
+    "totalSupply": "56005002996718757177718673741",
+    "treasury": {
+      "address": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
+      "balance": "5000003900000000000000000000"
+    },
+    "satoshiVault": {
+      "address": "0xA2C8d5B2E440EbA62a5fd0A55978b39c3dAcFB3e",
+      "balance": "50000000000000000000000000000"
+    }
+  },
+  "display": {
+    "totalSupply": "56005002996.718757177718673741",
+    "treasury": "5000003900",
+    "satoshiVault": "50000000000"
+  }
+}

@@ -188,7 +188,7 @@ async function main() {
   console.log("\n--- Deploy AGI/WAGI lane ---");
   const wrappedAGI = await viem.deployContract("WrappedAGI", [], { client }) as AnyContract;
   console.log("WrappedAGI", wrappedAGI.address);
-  const router = await viem.deployContract("DealRouter", [wrappedAGI.address, base.dealSwapOrderBook], { client }) as AnyContract;
+  const router = await viem.deployContract("DealRouter", [wrappedAGI.address, base.dealSwapOrderBook, base.dealPairManager], { client }) as AnyContract;
   console.log("DealRouter", router.address);
   const routerQuoter = await viem.deployContract("DealRouterQuoter", [base.dealSwapOrderBook], { client }) as AnyContract;
   console.log("DealRouterQuoter", routerQuoter.address);

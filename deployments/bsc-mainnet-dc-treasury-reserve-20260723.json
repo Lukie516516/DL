@@ -1,0 +1,46 @@
+{
+  "dryRun": false,
+  "checkedAt": "2026-07-23T00:24:02.245Z",
+  "chainId": 56,
+  "blockNumber": "111570136",
+  "signer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "nonce": 97,
+  "dc": "0xFF5efE3B23762170a99F8F4C66abea11613b982D",
+  "treasury": {
+    "address": "0xa7F98A2C6a7861AB73440f869dc6e7914C1d7c0B",
+    "controller": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "bootstrapAdmin": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "bootstrapLocked": false
+  },
+  "before": {
+    "totalSupply": "1004999998333335185183127575",
+    "treasuryBalance": "500000000000000000000"
+  },
+  "mintAmount": "5000000000000000000000000000",
+  "afterExpected": {
+    "totalSupply": "6004999998333335185183127575",
+    "treasuryBalance": "5000000500000000000000000000"
+  },
+  "display": {
+    "beforeSupplyDC": "1004999998.333335185183127575",
+    "beforeTreasuryDC": "500",
+    "mintDC": "5000000000",
+    "afterSupplyDC": "6004999998.333335185183127575",
+    "afterTreasuryDC": "5000000500"
+  },
+  "executedAt": "2026-07-23T00:24:04.350Z",
+  "transaction": {
+    "hash": "0x2f6b6d86e386961f51e8f59c565df7a90a4d4b50cda57ddc6c93991aa7455d74",
+    "blockNumber": "111570143",
+    "gasUsed": "38441",
+    "status": "success"
+  },
+  "after": {
+    "totalSupply": "6004999998333335185183127575",
+    "treasuryBalance": "5000000500000000000000000000"
+  },
+  "displayAfter": {
+    "totalSupplyDC": "6004999998.333335185183127575",
+    "treasuryBalanceDC": "5000000500"
+  }
+}

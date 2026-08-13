@@ -1,0 +1,35 @@
+[package]
+name = "deal-message-hub"
+version = "0.1.0"
+description = "Participant message storage and optional DealCoin burn for Solana deals"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_message_hub"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+deal-core = { path = "../deal-core", features = ["cpi"] }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.1.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"

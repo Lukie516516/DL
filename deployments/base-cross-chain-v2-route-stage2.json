@@ -1,0 +1,24 @@
+{
+  "scope": "ETH Broadcaster Base route registration (inactive)",
+  "chainId": 1,
+  "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+  "baseChainKey": 30184,
+  "executor": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+  "active": false,
+  "transactions": [
+    {
+      "label": "Broadcaster.addChain(Base inactive)",
+      "hash": "0xc97d8f708692eb16b800abcd09c8a124233c5b81f41f18c1c8ecbe947fe803ae",
+      "blockNumber": "25704113",
+      "gasUsed": "204858"
+    },
+    {
+      "label": "Broadcaster.setPeer(Base Executor)",
+      "hash": "0x0f76b217ace68b782914d86ab94edaa5b374bddb277de3ef091c6435642c7a75",
+      "blockNumber": "25704115",
+      "gasUsed": "47652"
+    }
+  ],
+  "verifiedAt": "2026-08-07T15:54:40.265Z",
+  "verifiedBlock": "25704116"
+}

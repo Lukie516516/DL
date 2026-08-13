@@ -1,0 +1,21 @@
+[package]
+name = "deal-compact-identity-credit"
+version = "0.1.0"
+description = "Generated Deal Compact V2 identity_credit composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_identity_credit"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-identity = { path = "../../modules/deal-identity", features = ["no-entrypoint"] }
+deal-credit-graph = { path = "../../modules/deal-credit-graph", features = ["no-entrypoint"] }

@@ -1,0 +1,31 @@
+[package]
+name = "deal-history-index"
+version = "0.1.0"
+description = "Paged activity, reward, credit, and timeline index for Solana deals"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_history_index"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+deal-core = { path = "../deal-core", features = ["cpi"] }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"

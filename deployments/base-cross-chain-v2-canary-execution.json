@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "stage": "broadcast-sent",
+  "executedAt": "2026-08-10T04:42:03.392Z",
+  "scope": "execute proposal 21 and broadcast one zero-asset marker to BSC + Base",
+  "proposalId": "21",
+  "preflight": {
+    "status": "PASS",
+    "mode": "execute",
+    "proposalId": "21",
+    "proposalState": 3,
+    "totalStakedD": "70",
+    "liveQuoteWei": "2626627719932648",
+    "executionValueWei": "5000000000000000",
+    "estimatedGas": "1402760",
+    "walletBalanceEth": "0.022036153495859542",
+    "signerNonce": 174,
+    "broadcastNonceBefore": "2",
+    "expectedBroadcastNonce": "3",
+    "bscMessageHash": "0x19fa30373f856d9be846c831da5b3919c4c160a9eef6bb8343338e5052d05e97",
+    "baseMessageHash": "0x87b861508858236eed41e1c5aaeb0a7925253c9f5cb0ea1f76eb77b5983962b2",
+    "actionsExact": true,
+    "simulationPassed": true
+  },
+  "transaction": {
+    "hash": "0x728fc2e5bee5b86b381cabc820a91729cffb6e9c6298af6d4ae0e66e468d35c6",
+    "nonce": 174,
+    "blockNumber": "25722271",
+    "gasUsed": "1315800",
+    "effectiveGasPrice": "103104253",
+    "valueWei": "5000000000000000",
+    "receiptStatus": "success",
+    "calldataMatched": true
+  },
+  "broadcast": {
+    "nonce": "3",
+    "bscMessageHash": "0x19fa30373f856d9be846c831da5b3919c4c160a9eef6bb8343338e5052d05e97",
+    "baseMessageHash": "0x87b861508858236eed41e1c5aaeb0a7925253c9f5cb0ea1f76eb77b5983962b2",
+    "targetChainIds": [
+      30102,
+      30184
+    ],
+    "targets": [
+      "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+      "0x61921eCb954FFaAf8cd3Fd2e71EeCB14B3eD529f"
+    ],
+    "marker": "0xe735d9f79dc7413699af00ad995b58e853e30e3881bc5e72aff1ae13cab8ef3b",
+    "markerCalldata": "0x608b82a5e735d9f79dc7413699af00ad995b58e853e30e3881bc5e72aff1ae13cab8ef3b",
+    "eventsMatched": true,
+    "perChainEvents": [
+      {
+        "chainId": 30102,
+        "target": "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+        "lzGuid": "0x669b2883f4b9396e646855192dcacae0a08fc960311bb3abcb7d3e835cb8a53a",
+        "ccipMessageId": "0x309a926f03e56e2c7eae4f17ecad5e03dcb1e243faded59783eae8d181f47a73"
+      },
+      {
+        "chainId": 30184,
+        "target": "0x61921eCb954FFaAf8cd3Fd2e71EeCB14B3eD529f",
+        "lzGuid": "0x9d152ff36c0bc9b06a10b0110ab889e274232f66988441d176816e610b1128b2",
+        "ccipMessageId": "0x01ec2022825b7664a047b8a2ab462a0496e40f4b7c36210a694980a3e8497ebc"
+      }
+    ]
+  },
+  "immediateDestinationState": {
+    "bsc": {
+      "confirmStatus": [
+        false,
+        false,
+        false,
+        "0",
+        false
+      ],
+      "marker": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "updateCount": "0"
+    },
+    "base": {
+      "confirmStatus": [
+        false,
+        false,
+        false,
+        "0",
+        false
+      ],
+      "marker": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "updateCount": "0"
+    }
+  }
+}

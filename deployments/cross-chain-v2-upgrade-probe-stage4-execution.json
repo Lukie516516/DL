@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "executedAt": "2026-07-24T05:17:50.426Z",
+  "scope": "execute proposal 17 only",
+  "preflight": {
+    "preflightOnly": false,
+    "ethBlock": "25600451",
+    "bscBlock": "111801089",
+    "proposalId": "17",
+    "proposalState": 3,
+    "totalStakedD": "70",
+    "executionWallet": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "walletBalanceEth": "0.024711861860466148",
+    "executionValueEth": "0.002",
+    "liveQuoteEth": "0.001332661091714428",
+    "estimatedGas": "908607",
+    "latestNonce": 155,
+    "pendingNonce": 155,
+    "actionsExact": true,
+    "ethVersionBefore": "1",
+    "bscVersionBefore": "1",
+    "broadcastNonceBefore": "1",
+    "simulationPassed": true
+  },
+  "transaction": {
+    "txHash": "0x8f0b072a869f1d1a7d6330742c0305c135d50cb732796328eb9f78ad3a339a62",
+    "nonce": 155,
+    "blockNumber": "25600452",
+    "gasUsed": "845251",
+    "effectiveGasPrice": "123387121",
+    "nativeCostWei": "2104293087412371",
+    "valueWei": "2000000000000000",
+    "calldataMatched": true,
+    "receiptStatus": "success"
+  },
+  "events": {
+    "proposalExecuted": true,
+    "ethProxyUpgraded": true,
+    "broadcastDecodedAndMatched": true,
+    "broadcastNonce": "2"
+  },
+  "payload": {
+    "nonce": "2",
+    "target": "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+    "data": "0x4f1ef28600000000000000000000000014d0f49a72038fd745241109c5ba5059fffbf15600000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
+    "msgHash": "0xdf6b639a74bbbc4ad818da864aca19c8f8734dc40739e770fd17f9964ca24a26"
+  },
+  "immediateVerification": {
+    "proposalState": 6,
+    "proposalExecuted": true,
+    "ethProxyVersion": "2",
+    "ethProxyImplementation": "0x7DBF60d7Bfb9Dc3Cd26b8055e94B7601D6DDF0b6",
+    "ethControllerPreserved": true,
+    "ethMarkerPreserved": true,
+    "ethUpdateCountPreserved": true,
+    "broadcasterNonce": "2",
+    "bscProxyVersion": "1",
+    "bscMarkerBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "bscUpdateCountBefore": "0",
+    "bscConfirmStatus": [
+      false,
+      false,
+      false,
+      "0",
+      false
+    ],
+    "bscExecutionAttempts": "0"
+  }
+}

@@ -27,10 +27,12 @@
 | 允许第三方代创建 deal | `DealFactory` | `setAllowedCreateFor(address,bool)` | owner | 高 | 给域名模块、Hall、Swap 等入口代用户创建 deal 的权限。错误授权会产生异常 deal 入口。 |
 | 非 DC 交易手续费 | `DealFactory` | `setFeesAndMintOnFees(...)` | owner | 高 | 控制交易手续费比例，直接影响用户成本和协议收入。 |
 | admin 版手续费 / 奖励比例 | `DealFactory` | `setFeesAndMintOnFeesByAdmin(uint32,uint32)` | admin | 高 | 分母固定 1000，且合约限制返利合计不超过手续费。 |
-| 特殊免手续费 token | `DealFactory` | `setSpecialNoFeeTokenByAdmin(address)` | admin | 高 | 指定某 token 免手续费，会减少协议收入。 |
-| 国库地址 | `DealFactory` | `setTreasuryByAdmin(address)` | admin | 极高 | 交易手续费流向地址。改错会导致协议收入进入错误地址。 |
+| 特殊免手续费 token（治理） | `DealFactory` | `setSpecialNoFeeToken(address)` | owner / crossChainGovernance | 高 | DAO 正式入口；指定某 token 免手续费，会减少协议收入。 |
+| 特殊免手续费 token（admin） | `DealFactory` | `setSpecialNoFeeTokenByAdmin(address)` | admin | 高 | 保留原 admin 日常入口。 |
+| 国库地址（治理） | `DealFactory` | `setTreasury(address)` | owner / crossChainGovernance | 极高 | DAO 正式入口；改错会导致手续费进入错误地址。 |
+| 国库地址（admin） | `DealFactory` | `setTreasuryByAdmin(address)` | admin | 极高 | 保留原 admin 日常入口。 |
 | 留言收费开关 / token / 金额 | `DealFactory` | `setMessagePriceRule(bool,address,uint256)` | owner | 中 | 控制发消息是否收费，以及收什么币、收多少。 |
-| admin 版留言收费金额 | `DealFactory` | `setMessagePriceRuleByAdmin(uint256)` | admin | 中 | 只改金额，不改开关和 token。适合运营后台。 |
+| admin 版留言收费金额 | `DealFactory` | `setMessagePriceRuleByAdmin(uint256)` | admin | 中 | 只改金额，不改开关和 token。范围 `0.01 - 100 DC`，适合运营后台。 |
 | 创建 deal burn 开关 / token / 金额 | `DealFactory` | `setCreateBurnRule(bool,address,uint256)` | owner | 中 | 控制创建合约是否 burn / 收费。 |
 | admin 版创建 burn 金额 | `DealFactory` | `setCreateBurnRuleByAdmin(uint256)` | admin | 中 | 只改金额，不改开关和 token。 |
 
@@ -52,9 +54,11 @@
 | 参数 / 功能 | 合约 | 函数 | 当前权限 | 影响面 | 调整后影响 |
 | --- | --- | --- | --- | --- | --- |
 | 留言是否收费 | `DealFactory` | `setMessagePriceRule(...)` | owner | 中 | 开启后用户每次发消息都要支付 / burn。 |
-| 留言收费金额 | `DealFactory` | `setMessagePriceRuleByAdmin(uint256)` | admin | 中 | 例如设置为 `100 DC` 时，前端要传 `100 * 10^18`。 |
+| 留言收费金额（治理） | `DealFactory` | `setMessagePriceAmount(uint256)` | owner / crossChainGovernance | 中 | 只改金额，保留各链已配置的收费 token 和开关；用于多链同 calldata 治理。 |
+| 留言收费金额 | `DealFactory` | `setMessagePriceRuleByAdmin(uint256)` | admin | 中 | 例如设置为 `100 DC` 时，前端要传 `100 * 10^18`；当前 admin 范围 `0.01 - 100 DC`。 |
 | 留言收费 token | `DealFactory` | `setMessagePriceRule(...)` | owner | 高 | 改成错误 token 会导致用户无法正常发消息。 |
 | 创建 deal 是否收费 | `DealFactory` | `setCreateBurnRule(...)` | owner | 中 | 开启后创建合约会产生额外成本。 |
+| 创建 deal 收费金额（治理） | `DealFactory` | `setCreateBurnAmount(uint256)` | owner / crossChainGovernance | 中 | 只改金额，不改本链 token/开关；关闭状态可保持和恢复为 `0`。 |
 | 创建 deal 收费金额 | `DealFactory` | `setCreateBurnRuleByAdmin(uint256)` | admin | 中 | 只调金额。 |
 | 创建 deal 收费 token | `DealFactory` | `setCreateBurnRule(...)` | owner | 高 | 改错会导致创建失败或收费资产错误。 |
 
@@ -63,7 +67,7 @@
 | 参数 / 功能 | 合约 | 函数 | 当前权限 | 影响面 | 调整后影响 |
 | --- | --- | --- | --- | --- | --- |
 | 身份 NFT 铸造价格 | `DealInfoNFT` | `setMintPriceU(address,uint256)` | owner | 中 | 设置铸造官方身份 NFT 需要 burn 的 DC 数量。 |
-| admin 版铸造价格 | `DealInfoNFT` | `setMintPriceUByAdmin(uint256)` | admin | 中 | 只改 DC 价格，适合后台按钮。 |
+| admin 版铸造价格 | `DealInfoNFT` | `setMintPriceUByAdmin(uint256)` | admin | 中 | 只改 DC 价格，适合后台按钮。范围 `100 - 5,000,000 DC`，主网初始化建议 `100,000 DC`。 |
 | 链上图片最大大小 | `DealInfoNFT` | `setMaxImageDataBytes(uint256)` | owner | 中 | 影响用户能否把图片 bytes 直接存链上。上限越大，用户 gas 成本越高。 |
 | 当前赛季 | `DealInfoNFT` | `setCurrentSeason(uint16)` | owner | 低 | 影响后续新 NFT 的展示编号 / 赛季。 |
 | NFT 渲染器 | `DealInfoNFT` | `setRenderer(address)` | owner | 高 | 影响 tokenURI / imageOf 的展示结果。 |

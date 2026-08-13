@@ -3,10 +3,10 @@ pragma solidity ^0.8.26;
 
 import {OAppBase, Origin} from "../lib/OAppBase.sol";
 
-/// @title LZGovernanceDispatcher
-/// @notice 部署在主网（ETH）。DealGovernance 提案通过后调用 dispatch()，
-///         通过 LayerZero V2 把 calldata 发到目标链的 LZGovernanceExecutor。
-///         只有 DealGovernance 合约可以调用 dispatch()。
+/// @title LZGovernanceDispatcher  [LEGACY — 单桥简化版，已被 CrossChainBroadcaster 取代]
+/// @notice 仅使用 LayerZero 单桥，无 2-of-3 安全保护。
+///         生产环境请使用 CrossChainBroadcaster + DualBridgeExecutor（三桥 2-of-3）。
+///         本合约保留仅供参考或紧急单桥降级使用。
 contract LZGovernanceDispatcher is OAppBase {
     address public governance;
 

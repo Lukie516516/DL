@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "stage": "broadcast-sent",
+  "executedAt": "2026-08-12T11:57:03.060Z",
+  "proposalId": "26",
+  "transaction": {
+    "hash": "0x8869e20c9d0388b2784f5ebcaafde6b4469ecae7cc11b5f2b44f4699dc3efb2d",
+    "nonce": 197,
+    "blockNumber": "25738761",
+    "gasUsed": "1303500",
+    "value": "5000000000000000",
+    "status": "success"
+  },
+  "broadcast": {
+    "nonce": "6",
+    "innerCalldata": "0x344992c7000000000000000000000000000000000000000000000005a34a38fc00a00000",
+    "targetPrice": "104000000000000000000",
+    "bsc": {
+      "chainKey": 30102,
+      "executor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+      "target": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+      "messageHash": "0xf3272272db6d34a1f0215b3ba7b66b5dee60a8caeec9718ab87a76867764bcd7"
+    },
+    "base": {
+      "chainKey": 30184,
+      "executor": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "messageHash": "0x3a17b25c1d35e70b7e0d7af9f0125e649481d276473e646058330596bfb4199a"
+    },
+    "perChainEvents": [
+      {
+        "chainId": 30102,
+        "target": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+        "lzGuid": "0x363dadeb40f20c596371a07509227531b3246426b94cfe6184dd814168faf6a7",
+        "ccipMessageId": "0xc0d0888be7341b55b735e4c1c5617055e7ed4d3fc3eea32a7a3bb221a7f495af"
+      },
+      {
+        "chainId": 30184,
+        "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+        "lzGuid": "0x1f1760484a9b1eed2f93329443c844b86464885423dfdbcdb8067ac4687f3cf8",
+        "ccipMessageId": "0xdcfe000ff0a7feaec434050086e1a89ce1c69f3c251c5fb2b25a185f383e8b58"
+      }
+    ]
+  },
+  "verification": {
+    "ethExecuted": true,
+    "broadcastNonceExact": true,
+    "twoChainEvents": true
+  }
+}

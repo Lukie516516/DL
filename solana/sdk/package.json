@@ -1,0 +1,18 @@
+{
+  "name": "deal-solana-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test terminal-flow.test.mjs devnet-terminal-capacity.test.mjs mainnet-preflight.test.mjs",
+    "build:production:optimized": "node build-production-programs.mjs",
+    "capacity": "node devnet-terminal-capacity.mjs",
+    "preflight:devnet": "node devnet-preflight.mjs",
+    "deploy:devnet": "node devnet-deploy-production.mjs",
+    "preflight:mainnet": "node mainnet-preflight.mjs",
+    "deploy:mainnet:programs": "node mainnet-deploy-programs.mjs"
+  },
+  "dependencies": {
+    "@solana/web3.js": "1.98.4"
+  }
+}

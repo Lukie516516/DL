@@ -1,0 +1,22 @@
+[package]
+name = "deal-compact-settlement"
+version = "0.1.0"
+description = "Generated Deal Compact V2 settlement composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_settlement"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-finalizer = { path = "../../modules/deal-finalizer", features = ["no-entrypoint"] }
+deal-credit-valuator = { path = "../../modules/deal-credit-valuator", features = ["no-entrypoint"] }
+deal-reward-engine = { path = "../../modules/deal-reward-engine", features = ["no-entrypoint"] }

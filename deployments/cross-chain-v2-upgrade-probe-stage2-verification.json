@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-24T04:26:28.387Z",
+  "readOnly": true,
+  "privateKeyLoaded": false,
+  "transactionSentByVerification": false,
+  "sourceDeployment": "deployments/cross-chain-v2-upgrade-probe-stage2.json",
+  "snapshot": {
+    "ethBlock": "25600198",
+    "bscBlock": "111794295",
+    "proposalCount": "16",
+    "proposalId": "16",
+    "proposalState": 1,
+    "broadcastNonce": "1"
+  },
+  "leaderDisplay": {
+    "title": "跨链升级功能测试授权",
+    "body": "这是一次无业务影响的跨链升级测试。本提案只给 ETH 和 BSC 上两个独立测试合约开放升级权限，不涉及代币、国库、分红或任何业务合约；本提案通过后也不会立即升级，真正执行测试还需要另一个提案。",
+    "exactDescriptionMatched": true
+  },
+  "transactions": {
+    "bscAllowlist": {
+      "txHash": "0xbcad10c6b3ba03fe8ed39cb4b88db71d0e320507148df6d4c5ef063a15c28830",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+      "nonce": 102,
+      "blockNumber": "111793747",
+      "gasUsed": "48287",
+      "calldataMatched": true,
+      "valueWei": "0"
+    },
+    "mintExactMajorFee": {
+      "txHash": "0x8a828886aafb70f79463bf7ec1f4313cdb162f114792da5b4af6055a0baf19c6",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "nonce": 149,
+      "blockNumber": "25600178",
+      "gasUsed": "55517",
+      "calldataMatched": true,
+      "valueWei": "0"
+    },
+    "approveExactMajorFee": {
+      "txHash": "0x512754e08dc845e3acf4e5607a62e5366a4750185ad730680c400c8d81e6cfdd",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "nonce": 150,
+      "blockNumber": "25600180",
+      "gasUsed": "46038",
+      "calldataMatched": true,
+      "valueWei": "0"
+    },
+    "createProposal": {
+      "txHash": "0x63e4a17c718da4f398210c76f15b1bfb48353bbdb3bf5e715170539876f7f53e",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+      "nonce": 151,
+      "blockNumber": "25600183",
+      "gasUsed": "734854",
+      "calldataMatched": true,
+      "valueWei": "0"
+    }
+  },
+  "proposal": {
+    "proposer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "kind": 2,
+    "totalStaked": "0",
+    "vetoed": false,
+    "canceled": false,
+    "executed": false,
+    "description": "跨链升级功能测试授权\n\n这是一次无业务影响的跨链升级测试。本提案只给 ETH 和 BSC 上两个独立测试合约开放升级权限，不涉及代币、国库、分红或任何业务合约；本提案通过后也不会立即升级，真正执行测试还需要另一个提案。",
+    "actionsMatched": true
+  },
+  "scopeGuards": {
+    "bscProbeAllowlisted": true,
+    "ethUpgradeRuleStillInactive": true,
+    "bscUpgradeRuleStillInactive": true,
+    "ethProxyImplementation": "0x84CEBcA724a32Cf82739233A79D7b04F116030cc",
+    "bscProxyImplementation": "0x0b014b826a22b4bea24d2B5643116C75CF82263d",
+    "bothProxiesStillOnV1": true,
+    "bothV2ImplementationsReady": true,
+    "noStake": true,
+    "noExecution": true,
+    "noBroadcastByStage2": true,
+    "proposerDcBalance": "0",
+    "proposerDcAllowance": "0"
+  },
+  "result": {
+    "allFourReceiptsSuccessful": true,
+    "allFourTransactionTargetsAndCalldataMatched": true,
+    "exactMajorProposalStored": true,
+    "policiesNotYetActivated": true,
+    "proxyUpgradeNotPerformed": true,
+    "stage2ScopeRespected": true
+  }
+}

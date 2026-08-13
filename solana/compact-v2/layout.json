@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "name": "Deal Solana Compact V2",
+  "status": "implemented-and-loopback-deployed-audited-no-external-network-deployment",
+  "legacyProductionProgramCount": 24,
+  "targetProgramCount": 10,
+  "rentModel": {
+    "lamportsPerByte": 6960,
+    "accountStorageOverheadBytes": 128,
+    "programAccountBytes": 36,
+    "programDataMetadataBytes": 45,
+    "bufferMetadataBytes": 37,
+    "feeAndRetryHeadroomLamports": 2000000000
+  },
+  "clusters": [
+    {
+      "id": "governance_ingress",
+      "targetName": "deal_compact_governance_ingress",
+      "testProgramId": "yMNjETfB7r8J6FqjsDH9ZR11ZfCLLgoeQHp4nbXg3jp",
+      "legacyPrograms": ["deal_governance_executor"],
+      "estimatedMinBytes": 273608,
+      "estimatedMaxBytes": 273608,
+      "measuredBytes": 280824,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "三桥2/3、nonce、防重放、目标白名单和升级入口必须独立"
+    },
+    {
+      "id": "treasury",
+      "targetName": "deal_compact_treasury",
+      "testProgramId": "AiTezfTJ3DxeFr7oRiBhnz3wRZTJzCsrexhmRJd3u7rF",
+      "legacyPrograms": ["deal_protocol_treasury"],
+      "estimatedMinBytes": 212280,
+      "estimatedMaxBytes": 212280,
+      "measuredBytes": 211864,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "国库资产和controller权限不得与任一业务模块共享升级事故范围"
+    },
+    {
+      "id": "lifecycle",
+      "targetName": "deal_compact_lifecycle",
+      "testProgramId": "7XAP5nhk6tsEkwHRuXDvKEobRVw9YLstALs2ZCJZmv5T",
+      "legacyPrograms": ["deal_core", "deal_asset_controller"],
+      "estimatedMinBytes": 680000,
+      "estimatedMaxBytes": 760000,
+      "measuredBytes": 772184,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "Deal状态机与资产托管同域，但保留独立暂停位、配置和终局阶段约束"
+    },
+    {
+      "id": "settlement",
+      "targetName": "deal_compact_settlement",
+      "testProgramId": "7m8WXGUfwnuyxi2GmzNepfkrXgsCAurTKvANSdPqZXzG",
+      "legacyPrograms": ["deal_finalizer", "deal_credit_valuator", "deal_reward_engine"],
+      "estimatedMinBytes": 870000,
+      "estimatedMaxBytes": 1030000,
+      "measuredBytes": 854560,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "估值、奖励计算与终局receipt同域；DC铸币权和可重试索引仍在域外"
+    },
+    {
+      "id": "identity_credit",
+      "targetName": "deal_compact_identity_credit",
+      "testProgramId": "4uhbTXV4SnMgFje7EiJFE6hKjWPfQUDYYkg9AytrZUxW",
+      "legacyPrograms": ["deal_identity", "deal_credit_graph"],
+      "estimatedMinBytes": 560000,
+      "estimatedMaxBytes": 630000,
+      "measuredBytes": 603392,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "身份NFT、锁定、信用记录和top5同域，所有owner/防刷/迁移锁规则保留"
+    },
+    {
+      "id": "monetary_policy",
+      "targetName": "deal_compact_monetary_policy",
+      "testProgramId": "CGgu8uUw5BzkQtCW4JqaXLmAhwsHAX8VNRkVC5vbp3Jr",
+      "legacyPrograms": ["deal_dc_controller", "deal_parameter_registry"],
+      "estimatedMinBytes": 250512,
+      "estimatedMaxBytes": 250512,
+      "measuredBytes": 270424,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "measuredPrototype": {
+        "legacyPrograms": ["deal_dc_controller", "deal_parameter_registry"],
+        "legacyBytes": 370640,
+        "compactBytes": 250512,
+        "savedBytes": 120128
+      },
+      "boundary": "DC minter权限与DAO可调参数同属治理目标，但不能被普通业务入口绕过"
+    },
+    {
+      "id": "exchange",
+      "targetName": "deal_compact_exchange",
+      "testProgramId": "3gsSk16h3xrxDHg5u8SZQek11WcTCLw9Zs6HUeaNBf5S",
+      "legacyPrograms": [
+        "deal_dex_pair",
+        "deal_dex_router",
+        "deal_dex_quoter",
+        "deal_swap_asset_registry",
+        "deal_swap_orderbook"
+      ],
+      "estimatedMinBytes": 930000,
+      "estimatedMaxBytes": 1120000,
+      "measuredBytes": 931464,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "measuredPrototype": {
+        "legacyPrograms": ["deal_dex_pair", "deal_dex_quoter"],
+        "legacyBytes": 511944,
+        "compactBytes": 392984,
+        "savedBytes": 118960
+      },
+      "boundary": "Pair数学、Router、报价、官方资产和挂单同域；订单托管和Pair储备仍用独立PDA"
+    },
+    {
+      "id": "domain_assets",
+      "targetName": "deal_compact_domain_assets",
+      "testProgramId": "21m75WjpLxPYnFYFgP4srJQmfBKgUfSMP9xmp6pLsXuw",
+      "legacyPrograms": ["deal_domain_registry", "deal_domain_market"],
+      "estimatedMinBytes": 590000,
+      "estimatedMaxBytes": 670000,
+      "measuredBytes": 625864,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "域名NFT、解析、托管和二级市场同域，持有人与市场escrow状态必须等价"
+    },
+    {
+      "id": "domain_network",
+      "targetName": "deal_compact_domain_network",
+      "testProgramId": "254WzKpJ7RXvpS1UHeZJqhRUMcsHN5U868eqjviMgihg",
+      "legacyPrograms": ["deal_domain_rank", "deal_domain_entry", "deal_domain_hall"],
+      "estimatedMinBytes": 880000,
+      "estimatedMaxBytes": 1050000,
+      "measuredBytes": 902224,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "排行、域名Deal入口和大厅消息同域；域名资产与Deal资产仍由外部权威程序验证"
+    },
+    {
+      "id": "data_services",
+      "targetName": "deal_compact_data_services",
+      "testProgramId": "FGfBWHNDZCZJCMWT1yhw87sArj2NCs9yEeX3xMC7MjTn",
+      "legacyPrograms": ["deal_history_index", "deal_result_index", "deal_message_hub"],
+      "estimatedMinBytes": 670000,
+      "estimatedMaxBytes": 800000,
+      "measuredBytes": 721856,
+      "implementationStatus": "generated-sbf-runtime-passed",
+      "boundary": "历史、结果和消息均为可重试/分页数据层，不并入经济核心原子交易"
+    }
+  ]
+}

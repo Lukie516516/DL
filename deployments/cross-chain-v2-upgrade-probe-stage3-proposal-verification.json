@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-24T04:43:40.093Z",
+  "readOnly": true,
+  "privateKeyLoaded": false,
+  "transactionSentByVerification": false,
+  "sourceDeployment": "deployments/cross-chain-v2-upgrade-probe-stage3-proposal.json",
+  "snapshot": {
+    "ethBlock": "25600284",
+    "bscBlock": "111796587",
+    "proposalCount": "17",
+    "proposalId": "17",
+    "proposalState": 1,
+    "liveBridgeQuoteWei": "1332626773845132",
+    "bridgeFeeBudgetWei": "2000000000000000",
+    "broadcastNonce": "1"
+  },
+  "leaderDisplay": {
+    "title": "跨链升级测试",
+    "body": "将 ETH 和 BSC 上两个无资产测试合约从 V1 升级到 V2，只验证 DAO 跨链升级流程，不影响任何业务。",
+    "exactDescriptionMatched": true
+  },
+  "transactions": {
+    "mintExactMajorFee": {
+      "txHash": "0x3a84e7b3ff17c9a2f34e1b3faf3d85c1fa22fd1e9dfafce5cfd81dae7a72fb81",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "nonce": 152,
+      "blockNumber": "25600271",
+      "gasUsed": "55517",
+      "calldataMatched": true,
+      "valueWei": "0"
+    },
+    "approveExactMajorFee": {
+      "txHash": "0xfe34ebe535a9cc256f4d4e58a2f4c9f66e7bf8b2f901e5e6b773acd490749f77",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "nonce": 153,
+      "blockNumber": "25600273",
+      "gasUsed": "46038",
+      "calldataMatched": true,
+      "valueWei": "0"
+    },
+    "createProposal": {
+      "txHash": "0x166ad04fb525d28814472b43e493bb03e9f73850509b1ca4de23b6d3ad3cc70f",
+      "status": "success",
+      "from": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+      "to": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+      "nonce": 154,
+      "blockNumber": "25600275",
+      "gasUsed": "802036",
+      "calldataMatched": true,
+      "valueWei": "0"
+    }
+  },
+  "proposal": {
+    "proposer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "kind": 2,
+    "totalStaked": "0",
+    "executed": false,
+    "actionsMatched": true
+  },
+  "scopeGuards": {
+    "bothActionsCurrentlyAllowed": true,
+    "bscProbeAllowlisted": true,
+    "bothProxiesStillOnV1": true,
+    "bothV2ImplementationsReady": true,
+    "noStake": true,
+    "noExecution": true,
+    "noBroadcast": true,
+    "proposerDcBalance": "0",
+    "proposerDcAllowance": "0"
+  },
+  "result": {
+    "allThreeReceiptsSuccessful": true,
+    "allThreeTargetsAndCalldataMatched": true,
+    "exactTwoActionMajorProposalStored": true,
+    "quoteWithinStoredBudget": true,
+    "proxyUpgradeNotPerformed": true,
+    "stage3ScopeRespected": true
+  }
+}

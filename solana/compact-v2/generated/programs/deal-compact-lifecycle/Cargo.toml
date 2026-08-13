@@ -1,0 +1,21 @@
+[package]
+name = "deal-compact-lifecycle"
+version = "0.1.0"
+description = "Generated Deal Compact V2 lifecycle composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_lifecycle"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-core = { path = "../../modules/deal-core", features = ["no-entrypoint"] }
+deal-asset-controller = { path = "../../modules/deal-asset-controller", features = ["no-entrypoint"] }

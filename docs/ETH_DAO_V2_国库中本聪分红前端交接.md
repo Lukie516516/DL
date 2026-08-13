@@ -1,6 +1,6 @@
 # ETH DAO V2、国库、中本聪与分红前端交接
 
-更新时间：2026-07-21
+更新时间：2026-07-22
 网络：Ethereum Mainnet，`chainId = 1`
 
 ## 1. 前端结论
@@ -26,7 +26,7 @@
 5. 部署 DealDividendVault implementation + ERC1967Proxy。
 6. DAO 通过 proposal `8` 新增四条模块策略，总策略变为 52 条。
 7. DAO 通过 Treasury proposal `9` 从 ProtocolTreasury 转入 100 DC，并创建分红 round `0`。
-8. 当前没有执行过 Satoshi 付款；SatoshiVault 当前 DC 余额为 0。
+8. 当前没有执行过 Satoshi 付款；2026-07-22 经用户明确授权，SatoshiVault 已直接增发充值 `50,000,000,000 DC`，ProtocolTreasury 已直接增发充值 `5,000,000,000 DC`。
 
 主网执行记录：
 
@@ -35,6 +35,8 @@
 | DAO V2 升级并安装 Registry | 7 | `0x7ce0d235e82c946f0974640acc6c41eb4aa23d2628a20e0f5e95f089e92ccb64` |
 | 开放 Satoshi/分红四条策略 | 8 | `0xe255f8bd53ba84193f1636bd889eb5747b57c226a9b82a8e8dd2ef32540229d7` |
 | 创建首轮 100 DC 分红 | 9 | `0x192878dbfc5005e232d7088d7be868bd18fa629a5d0abdb9d5d34da7778dd953` |
+| MINTER_ROLE 向 ProtocolTreasury 增发 50 亿 DC | 不经过提案 | `0xda6dfaf7c591ff56c0c2c9d07d9aa80f2fae484f805452ee8c86cfb07d308141` |
+| MINTER_ROLE 向 SatoshiVault 增发 500 亿 DC | 不经过提案 | `0xd075a2e565fe66d019d07c3156e0240a7511ccffe50eb22dfbfe3f4f2966fb28` |
 
 ## 3. 生产地址
 
@@ -240,7 +242,7 @@ DC.balanceOf(ProtocolTreasury)
 ```text
 controller = DealGovernance proxy
 bootstrapLocked = true
-DC balance = 2900 DC（读取区块 25579995）
+DC balance = 5,000,003,900 DC（读取区块 25586256；原余额 3,900 DC + 本次增发 5,000,000,000 DC）
 ```
 
 ### 7.2 不允许前端钱包直接调用的函数
@@ -288,7 +290,7 @@ DealCoinPaid(to, amount) 事件
 ```text
 dealCoin = DC
 controller = DealGovernance proxy
-DC balance = 0
+DC balance = 50,000,000,000 DC（读取区块 25586256）
 ```
 
 ### 8.2 创建中本聪付款提案

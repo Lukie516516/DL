@@ -1,0 +1,77 @@
+{
+  "preparedAt": "2026-07-21T10:00:54.735Z",
+  "eth": {
+    "implementation": "0xF5DBD7A252B5501EC88FF33E39F1185d1B7DAdd0",
+    "proxy": "0x564D698F7935A2e6309bbA413D2DA547d620BBca",
+    "deploymentTxs": [
+      "0xc5056ca9f3dc6b1698131351ca04e9057db29086236722dd15b396db12998387",
+      "0xd0f7340a3db5dcb710560f1a454e1935707e6eac8d39c16258763c4b0c26e0ab"
+    ],
+    "deployedAt": "2026-07-21T09:59:19.017Z"
+  },
+  "bsc": {
+    "implementation": "0x86F9E774578E7e96372FEB47f5F0283Cb774fB97",
+    "proxy": "0xECB7A086Aa87B9e2BcBbc6573fA9D0FEF7b7D1D6",
+    "deploymentTxs": [
+      "0xd76f154dab48806ecc026c94b57c592cabe6609ad8a13a9fcc778a5ac1787c13",
+      "0x3113ef277ceb57dd9780d20dd01886737e480fd9c413874e648ec857e747ad53"
+    ],
+    "deployedAt": "2026-07-21T10:00:54.735Z",
+    "allowlistTx": "0x8f86e6ed8257bf2531b52553b8fe9a112fd70e96ca27225bdda48f5fa633725d"
+  },
+  "policyProposal": {
+    "proposalId": "10",
+    "description": "Enable ETH/BSC GovernanceProbe marker and UUPS rules",
+    "mintTx": "0x81342e40b3c0a868b8f553b7c6dab98b81a702412fec80a69669095fbec6d435",
+    "approveTx": "0x71cad35ddcb3509e8a97ae913acbda64fc19ad2b7cec5d991ee0240a6081ecdd",
+    "createTx": "0xc2e9fac4b644aaa2077e5ae6baea82e2032bc1a51d1ce8cb1ac3ac88ad849f4b",
+    "createdAt": "2026-07-21T10:15:40.436Z"
+  },
+  "majorMarkerPolicyProposal": {
+    "proposalId": "11",
+    "description": "纯跨链治理测试前置策略（不影响现有业务）：唯一行为是为已部署的 ETH/BSC GovernanceProbe 新增 Major 类型 recordMarker(bytes32) 精确权限，使后续 Major 测试提案可以在两条链写入同一个测试 marker。本提案本身不写 marker、不发送跨链消息、不转移代币，不调用国库/中本聪/分红，不升级合约，不修改任何业务地址或业务参数；仅新增上述两条探针测试权限，且 action maxValue 均为 0。",
+    "mintTx": "0x3f61d743eeb6af57f1c8a9d374a7720df3c2261f4b43ef0bbaf530d8e28e6746",
+    "approveTx": "0xf3a1648ab42b30a5fe5806036875f9d2e15283ab9b0d8d1d26529893065b022f",
+    "createTx": "0x33e0bd743eb1ceae3dbf51bcf88e2c410102eee6ca1174e09b09335adf1916e2",
+    "createdAt": "2026-07-22T06:06:17.545Z",
+    "executionTx": "0xf8e82e55c5d8338f755e2ab453de83fbdf2967c2f1f5cc7827c63e1b62403dc9",
+    "executedAt": "2026-07-22T06:22:11.000Z"
+  },
+  "majorMarkerProposal": {
+    "proposalId": "12",
+    "description": "纯跨链治理链路测试（对现有业务干扰项=0）：执行时仅在 ETH GovernanceProbe 写入固定测试 marker，并由 CrossChainBroadcaster 向 BSC GovernanceProbe 广播相同 recordMarker calldata，以验证 ETH DAO→Broadcaster→BSC DualBridgeExecutor 的 2/3 确认与执行链路。所有 action 仅作用于无业务资产的测试 Probe；不转移代币，不调用国库/中本聪/分红，不升级合约，不修改业务地址或参数。创建时仅按 DAO 既定规则支付 1000 DC Major 提案费；执行时除必要跨链消息费外 action value 为 0。",
+    "marker": "0xbf881c9c366f4c13886585821440811cf5519ba8508807a2368f8aa6bcac57a5",
+    "feeQuoteWei": "1040841558286156",
+    "mintTx": "0x85b44283f3eae2eb777ccee2fe57d88dced8370cf14227c8aade2a42fe0b7339",
+    "approveTx": "0xa689c79b6b661755fc1c88ccc6480d9f409c2808370707eec429d3d442c5e696",
+    "createTx": "0x4f902097d861dc7b8822e8989b04f90af260ebf5c5316344d7dc13c7979c237a",
+    "createdAt": "2026-07-22T06:32:38.938Z",
+    "stakedD": "70",
+    "executionTx": "0xf691b4a70867a818ba324f342349155c97d022219ac0484315f5138abdbf1a6a",
+    "executionBlock": "25586551",
+    "executedAt": "2026-07-22T06:42:23.000Z",
+    "broadcastNonce": "6",
+    "messageHash": "0x7e8cd5856965a0959577132ffe04382fddb696d1a8ada3e30f3bdb47aebd1272",
+    "bscExecutionTx": "0xa52762553bca9ab2d85ad2b9a651ca928be9d017c6217110b2ad890d63ab6868",
+    "bscExecutionBlock": "111431146",
+    "bscExecutedAt": "2026-07-22T07:00:29.000Z",
+    "bridgeConfirmations": {
+      "layerZero": {
+        "confirmed": true,
+        "tx": "0x369bf9a35075b12850f28a7d509f505feeddd357567ea877acc4ded0bd443b46",
+        "block": "111429161",
+        "confirmedAt": "2026-07-22T06:45:35.000Z"
+      },
+      "wormhole": {
+        "confirmed": false,
+        "observedAt": "2026-07-22T07:02:48.000Z"
+      },
+      "axelar": {
+        "confirmed": true,
+        "tx": "0xa52762553bca9ab2d85ad2b9a651ca928be9d017c6217110b2ad890d63ab6868",
+        "block": "111431146",
+        "confirmedAt": "2026-07-22T07:00:29.000Z"
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+[package]
+name = "deal-finalizer"
+version = "0.1.0"
+description = "Idempotent terminal settlement index coordinator for Solana deals"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_finalizer"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = [
+    "anchor-lang/idl-build",
+    "anchor-spl/idl-build",
+    "deal-credit-graph/idl-build",
+    "deal-credit-valuator/idl-build",
+    "deal-identity/idl-build",
+]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+deal-core = { path = "../deal-core", features = ["cpi"] }
+deal-credit-graph = { path = "../deal-credit-graph", features = ["cpi"] }
+deal-credit-valuator = { path = "../deal-credit-valuator", features = ["cpi"] }
+deal-history-index = { path = "../deal-history-index", features = ["cpi"] }
+deal-identity = { path = "../deal-identity", features = ["cpi"] }
+deal-asset-controller = { path = "../deal-asset-controller", features = ["no-entrypoint"] }
+deal-terminal-guard = { path = "../../crates/deal-terminal-guard" }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.0.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"

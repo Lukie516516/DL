@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "stage": "broadcast-sent",
+  "executedAt": "2026-08-12T06:27:45.173Z",
+  "proposalId": "23",
+  "preflight": {
+    "status": "PASS",
+    "mode": "execute",
+    "proposalId": "23",
+    "proposalState": 3,
+    "totalStakedD": "70",
+    "liveQuote": "2641072538881758",
+    "executionValue": "5000000000000000",
+    "estimatedGas": "1397224",
+    "walletBalanceEth": "0.015886675500117719",
+    "signerNonce": 183,
+    "broadcastNonceBefore": "3",
+    "expectedBroadcastNonce": "4",
+    "bscMessageHash": "0x90a4a49035a77c8ce9296454dae4b7593914c4c409e057f82ba772b8e18760e5",
+    "baseMessageHash": "0xfb70e0c59044c4526f14e83eff5c335bdf4cfea6ab7a2ba310d30f549662779d",
+    "actionsExact": true,
+    "simulationPassed": true
+  },
+  "transaction": {
+    "hash": "0xd5aff31a473b2de61e81029689fd07c2395e2364b48cb9e9602928c30523c63d",
+    "nonce": 183,
+    "blockNumber": "25737122",
+    "gasUsed": "1311334",
+    "effectiveGasPrice": "74567117",
+    "value": "5000000000000000",
+    "status": "success",
+    "calldataMatched": true
+  },
+  "broadcast": {
+    "nonce": "4",
+    "bscMessageHash": "0x90a4a49035a77c8ce9296454dae4b7593914c4c409e057f82ba772b8e18760e5",
+    "baseMessageHash": "0xfb70e0c59044c4526f14e83eff5c335bdf4cfea6ab7a2ba310d30f549662779d",
+    "targetChainIds": [
+      30102,
+      30184
+    ],
+    "targets": [
+      "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+      "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D"
+    ],
+    "innerUpgradeCalldata": "0x4f1ef2860000000000000000000000007fc9145a2539f0ed52cf6e7e34ce485635a9887e00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
+    "eventsMatched": true,
+    "perChainEvents": [
+      {
+        "chainId": 30102,
+        "target": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+        "lzGuid": "0x3bcb77c4b5fd9a91283a5a40f86e4875b757be79d07a3b43d9543a04dfab44c3",
+        "ccipMessageId": "0x8f538dbe4a3dc591b2ec14b02062f9df5315f9d61f4138c69e1b3453c35ca4af"
+      },
+      {
+        "chainId": 30184,
+        "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+        "lzGuid": "0x67df24869fa9ff77c7abe53f8c9b94619698d2283a235824e5e9c5842eb5ef58",
+        "ccipMessageId": "0xc8d0e5ff54fb89e5bb4acd630ea8684ec896458587667169406f7adcbdcd0643"
+      }
+    ]
+  }
+}

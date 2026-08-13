@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="用非技术语言介绍 DEAL 点对点交易协议的业务逻辑、技术架构、DAO 治理与跨链安全。" />
+  <title>DEAL 是怎样运作的？· 技术交流会</title>
+  <style>
+    :root {
+      --ink: #10231f;
+      --ink-soft: #4e625d;
+      --paper: #f3f1e9;
+      --paper-2: #faf8f1;
+      --panel: rgba(255, 255, 255, .72);
+      --line: rgba(16, 35, 31, .13);
+      --green: #0a6652;
+      --green-deep: #06483a;
+      --green-pale: #dcece5;
+      --orange: #e76f3c;
+      --orange-pale: #f8e3d8;
+      --yellow: #d9ad39;
+      --yellow-pale: #f5ebca;
+      --shadow: 0 22px 55px rgba(23, 48, 41, .09);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 3%, rgba(217, 173, 57, .15), transparent 30rem),
+        radial-gradient(circle at 92% 19%, rgba(10, 102, 82, .13), transparent 32rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+
+    button, summary { font: inherit; }
+    a { color: inherit; }
+    .progress {
+      position: fixed;
+      inset: 0 auto auto 0;
+      z-index: 50;
+      width: 0;
+      height: 3px;
+      background: var(--orange);
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px max(24px, calc((100vw - 1180px) / 2));
+      background: rgba(243, 241, 233, .82);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 850; letter-spacing: -.03em; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      color: white;
+      background: var(--green);
+      box-shadow: inset 0 0 0 6px rgba(255,255,255,.12);
+    }
+
+    .nav { display: flex; gap: 20px; color: var(--ink-soft); font-size: 14px; }
+    .nav a { text-decoration: none; }
+    .nav a:hover { color: var(--green); }
+    .actions { display: flex; gap: 8px; }
+    .button {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      color: var(--ink);
+      background: rgba(255,255,255,.62);
+    }
+    .button:hover { border-color: rgba(10, 102, 82, .4); }
+    .button.primary { color: white; border-color: var(--green); background: var(--green); }
+
+    main { overflow: hidden; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+    .hero {
+      position: relative;
+      min-height: 680px;
+      display: grid;
+      grid-template-columns: 1.12fr .88fr;
+      align-items: center;
+      gap: clamp(40px, 8vw, 110px);
+      padding: 92px 0 76px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 7px 12px;
+      border: 1px solid rgba(10, 102, 82, .2);
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(255,255,255,.5);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 760px;
+      margin-bottom: 22px;
+      font-family: Georgia, "Songti SC", "STSong", serif;
+      font-size: clamp(52px, 7.3vw, 94px);
+      font-weight: 500;
+      line-height: .98;
+      letter-spacing: -.065em;
+    }
+    h1 em { color: var(--orange); font-style: normal; }
+    .hero-lead { max-width: 660px; margin-bottom: 30px; color: var(--ink-soft); font-size: clamp(18px, 2vw, 23px); line-height: 1.55; }
+    .hero-lead strong { color: var(--ink); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .hero-actions a { text-decoration: none; }
+
+    .hero-map {
+      position: relative;
+      min-height: 500px;
+      display: grid;
+      place-items: center;
+    }
+    .orbit {
+      position: absolute;
+      width: min(460px, 100%);
+      aspect-ratio: 1;
+      border: 1px solid rgba(10, 102, 82, .18);
+      border-radius: 50%;
+    }
+    .orbit::before, .orbit::after {
+      content: "";
+      position: absolute;
+      inset: 14%;
+      border: inherit;
+      border-radius: inherit;
+    }
+    .orbit::after { inset: 30%; }
+    .core {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 164px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      color: white;
+      background: var(--green-deep);
+      box-shadow: 0 30px 80px rgba(6, 72, 58, .26);
+      text-align: center;
+    }
+    .core strong { display: block; font-family: Georgia, serif; font-size: 36px; letter-spacing: -.05em; }
+    .core span { font-size: 12px; opacity: .72; }
+    .node {
+      position: absolute;
+      z-index: 3;
+      width: 118px;
+      padding: 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(250, 248, 241, .92);
+      box-shadow: 0 16px 34px rgba(23, 48, 41, .1);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .node b { display: block; margin-bottom: 3px; color: var(--orange); font-size: 19px; }
+    .n1 { top: 3%; left: 12%; transform: rotate(-4deg); }
+    .n2 { top: 14%; right: 1%; transform: rotate(4deg); }
+    .n3 { right: 4%; bottom: 10%; transform: rotate(-3deg); }
+    .n4 { bottom: 3%; left: 8%; transform: rotate(3deg); }
+    .n5 { top: 37%; left: -7%; transform: rotate(-2deg); }
+
+    section { padding: 94px 0; scroll-margin-top: 60px; }
+    .section-head { display: grid; grid-template-columns: 140px 1fr; gap: 34px; margin-bottom: 42px; }
+    .kicker { color: var(--orange); font-size: 13px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    h2 {
+      max-width: 850px;
+      margin-bottom: 14px;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: clamp(34px, 5vw, 58px);
+      font-weight: 500;
+      line-height: 1.14;
+      letter-spacing: -.045em;
+    }
+    .section-intro { max-width: 820px; color: var(--ink-soft); font-size: 18px; }
+
+    .thesis {
+      position: relative;
+      padding: clamp(34px, 6vw, 70px);
+      overflow: hidden;
+      border-radius: 34px;
+      color: white;
+      background: var(--green-deep);
+      box-shadow: var(--shadow);
+    }
+    .thesis::after {
+      content: "DEAL";
+      position: absolute;
+      right: -24px;
+      bottom: -68px;
+      color: rgba(255,255,255,.055);
+      font-family: Georgia, serif;
+      font-size: clamp(110px, 22vw, 280px);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .thesis blockquote { position: relative; z-index: 1; max-width: 890px; margin: 0 0 26px; font-family: Georgia, "Songti SC", serif; font-size: clamp(30px, 4.7vw, 58px); line-height: 1.25; }
+    .thesis p { position: relative; z-index: 1; max-width: 760px; margin-bottom: 0; color: rgba(255,255,255,.7); font-size: 17px; }
+
+    .flow-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+    .flow-card {
+      position: relative;
+      min-height: 260px;
+      padding: 24px 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+    }
+    .flow-card:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      z-index: 3;
+      top: 46px;
+      right: -23px;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: var(--paper-2);
+      color: var(--orange);
+      font-weight: 900;
+    }
+    .flow-num { color: var(--orange); font-family: Georgia, serif; font-size: 38px; line-height: 1; }
+    .flow-card h3 { margin: 24px 0 9px; font-size: 19px; }
+    .flow-card p { color: var(--ink-soft); font-size: 14px; }
+    .flow-card small { display: block; margin-top: 18px; color: var(--green); font-weight: 750; }
+
+    .plain-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-top: 22px;
+      padding: 20px 22px;
+      border: 1px solid rgba(231,111,60,.25);
+      border-radius: 18px;
+      background: var(--orange-pale);
+    }
+    .plain-note b { color: var(--orange); white-space: nowrap; }
+
+    .system-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .system-card {
+      min-height: 270px;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 12px 35px rgba(23,48,41,.04);
+    }
+    .system-card:nth-child(1) { background: var(--green-pale); }
+    .system-card:nth-child(4) { background: var(--yellow-pale); }
+    .system-icon { margin-bottom: 18px; color: var(--orange); font-family: Georgia, serif; font-size: 38px; }
+    .system-card h3 { margin-bottom: 10px; font-size: 24px; }
+    .system-card p { color: var(--ink-soft); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 20px; }
+    .tag { padding: 5px 9px; border-radius: 999px; color: var(--green-deep); background: rgba(255,255,255,.65); font-size: 12px; font-weight: 750; }
+
+    .asset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .asset {
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper-2);
+    }
+    .asset-code { display: inline-block; margin-bottom: 26px; color: var(--orange); font-family: Georgia, serif; font-size: 52px; line-height: 1; }
+    .asset h3 { font-size: 22px; }
+    .asset p { color: var(--ink-soft); }
+    .asset-rule { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--green); font-size: 13px; font-weight: 800; }
+
+    .governance {
+      display: grid;
+      grid-template-columns: .85fr 1.15fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .gov-copy, .gov-path {
+      padding: clamp(28px, 4vw, 46px);
+      border-radius: 30px;
+    }
+    .gov-copy { color: white; background: var(--green-deep); }
+    .gov-copy h3 { margin-bottom: 16px; font-family: Georgia, serif; font-size: 35px; font-weight: 500; }
+    .gov-copy p { color: rgba(255,255,255,.68); }
+    .gov-list { display: grid; gap: 12px; margin-top: 28px; }
+    .gov-list div { padding: 13px 15px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(255,255,255,.06); }
+    .gov-path { border: 1px solid var(--line); background: var(--panel); }
+    .path-item { display: grid; grid-template-columns: 46px 1fr; gap: 15px; }
+    .path-item:not(:last-child) .path-line::after { content: ""; display: block; width: 1px; height: 70px; margin: 8px auto; background: rgba(10,102,82,.25); }
+    .path-dot { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; color: white; background: var(--green); font-weight: 850; }
+    .path-item h3 { margin: 8px 0 5px; font-size: 18px; }
+    .path-item p { margin-bottom: 22px; color: var(--ink-soft); font-size: 14px; }
+
+    .chain-strip { display: grid; grid-template-columns: 1fr 80px 1fr; align-items: center; gap: 24px; }
+    .chain-side { padding: 34px; border: 1px solid var(--line); border-radius: 28px; background: var(--panel); }
+    .chain-side.primary { color: white; background: var(--green-deep); }
+    .chain-side h3 { font-size: 24px; }
+    .chain-side p { margin-bottom: 0; color: var(--ink-soft); }
+    .chain-side.primary p { color: rgba(255,255,255,.68); }
+    .chain-arrow { color: var(--orange); font-size: 48px; text-align: center; }
+    .confirmations { display: flex; gap: 8px; margin-top: 20px; }
+    .confirmation { flex: 1; padding: 8px 4px; border-radius: 10px; background: rgba(10,102,82,.1); color: var(--green); text-align: center; font-size: 12px; font-weight: 800; }
+    .confirmation.ok { color: white; background: var(--green); }
+
+    .safety-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .safety-card { padding: 26px; border-top: 4px solid var(--orange); border-radius: 6px 6px 22px 22px; background: var(--panel); }
+    .safety-card h3 { font-size: 19px; }
+    .safety-card p { color: var(--ink-soft); font-size: 14px; }
+
+    .truth-box { margin-top: 24px; padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: var(--yellow-pale); }
+    .truth-box h3 { margin-bottom: 8px; }
+    .truth-box p { margin-bottom: 0; color: var(--ink-soft); }
+
+    .faq-layout { display: grid; grid-template-columns: 300px 1fr; gap: 34px; align-items: start; }
+    .faq-aside { position: sticky; top: 90px; }
+    .faq-aside p { color: var(--ink-soft); }
+    .faq-list { display: grid; gap: 10px; }
+    details { border: 1px solid var(--line); border-radius: 17px; background: rgba(255,255,255,.58); }
+    summary { cursor: pointer; display: flex; justify-content: space-between; gap: 20px; padding: 19px 21px; font-weight: 800; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--orange); font-size: 22px; line-height: 1; }
+    details[open] summary::after { content: "−"; }
+    .answer { padding: 0 21px 20px; color: var(--ink-soft); }
+    .answer strong { color: var(--ink); }
+
+    .boundary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+    .boundary-card { padding: 30px; border: 1px solid var(--line); border-radius: 26px; background: var(--panel); }
+    .boundary-card h3 { font-size: 22px; }
+    .boundary-card ul { margin: 18px 0 0; padding: 0; list-style: none; }
+    .boundary-card li { position: relative; margin: 10px 0; padding-left: 24px; color: var(--ink-soft); }
+    .boundary-card li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 900; }
+    .boundary-card.roadmap li::before { content: "→"; color: var(--orange); }
+
+    .speaker {
+      display: none;
+      margin-top: 18px;
+      padding: 18px 20px;
+      border-left: 4px solid var(--yellow);
+      border-radius: 0 15px 15px 0;
+      background: #fff6d9;
+      color: #655625;
+      font-size: 14px;
+    }
+    body.show-speaker .speaker { display: block; }
+
+    .closing { padding-bottom: 110px; }
+    .closing-card { padding: clamp(44px, 8vw, 90px); border-radius: 36px; color: white; background: var(--orange); text-align: center; }
+    .closing-card h2 { max-width: 850px; margin: 0 auto 20px; }
+    .closing-card p { max-width: 700px; margin: 0 auto; color: rgba(255,255,255,.78); font-size: 18px; }
+
+    footer { padding: 24px 0 44px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 13px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 980px) {
+      .nav { display: none; }
+      .hero { grid-template-columns: 1fr; padding-top: 70px; }
+      .hero-map { min-height: 430px; }
+      .flow-grid { grid-template-columns: 1fr 1fr; }
+      .flow-card:not(:last-child)::after { display: none; }
+      .asset-grid, .safety-grid { grid-template-columns: 1fr; }
+      .governance, .faq-layout { grid-template-columns: 1fr; }
+      .faq-aside { position: static; }
+    }
+
+    @media (max-width: 700px) {
+      .wrap { width: min(100% - 26px, 1180px); }
+      .topbar { padding: 10px 13px; }
+      .brand span:last-child, .button.secondary { display: none; }
+      .hero { min-height: auto; padding: 58px 0 36px; }
+      h1 { font-size: clamp(48px, 16vw, 68px); }
+      .hero-map { min-height: 370px; transform: scale(.9); }
+      section { padding: 70px 0; }
+      .section-head { grid-template-columns: 1fr; gap: 10px; }
+      .flow-grid, .system-grid, .boundary { grid-template-columns: 1fr; }
+      .flow-card { min-height: auto; }
+      .chain-strip { grid-template-columns: 1fr; }
+      .chain-arrow { transform: rotate(90deg); }
+      .node { width: 104px; }
+      .plain-note { display: block; }
+      footer .wrap { display: block; }
+    }
+
+    @media print {
+      :root { --paper: #fff; --panel: #fff; }
+      .topbar, .progress, .hero-actions, .speaker { display: none !important; }
+      body { background: #fff; }
+      .hero { min-height: auto; padding-top: 50px; }
+      section { padding: 48px 0; break-inside: avoid; }
+      .hero-map { min-height: 390px; }
+      details .answer { display: block; }
+      details { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">D</span><span>DEAL Protocol</span></div>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#how">交易如何运作</a>
+      <a href="#system">协议系统</a>
+      <a href="#governance">DAO 与跨链</a>
+      <a href="#faq">技术追问</a>
+    </nav>
+    <div class="actions">
+      <button class="button secondary" id="speakerButton" type="button" aria-pressed="false">显示演讲提示</button>
+      <button class="button primary" id="presentButton" type="button">全屏演示</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="hero" id="top">
+        <div>
+          <div class="eyebrow">Technical exchange · 2026</div>
+          <h1>DEAL 是怎样<em>运作</em>的？</h1>
+          <p class="hero-lead"><strong>它不是一个单纯的交易网站。</strong>DEAL 想做的，是把“两个人谈好的一笔交易”，变成一份能自动保管资产、记录过程、按约定结算的链上协议。</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#one-sentence">先用 30 秒讲清楚</a>
+            <a class="button" href="#faq">直接看常见追问</a>
+          </div>
+          <div class="speaker"><strong>你可以这样开场：</strong>“DEAL 并不想再造一个中心化电商平台，而是把交易本身做成双方共同确认、由链上规则执行的数字协议。”</div>
+        </div>
+        <div class="hero-map" aria-label="DEAL 系统要素图">
+          <div class="orbit"></div>
+          <div class="core"><div><strong>DEAL</strong><span>点对点协议引擎</span></div></div>
+          <div class="node n1"><b>01</b>交易条件</div>
+          <div class="node n2"><b>02</b>资产保管</div>
+          <div class="node n3"><b>03</b>链上身份</div>
+          <div class="node n4"><b>04</b>DAO 治理</div>
+          <div class="node n5"><b>05</b>多链执行</div>
+        </div>
+      </section>
+    </div>
+
+    <section id="one-sentence">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">01 / 一句话</div>
+          <div>
+            <h2>把信任放进规则，而不是放在中间人手里</h2>
+            <p class="section-intro">DEAL 把每一笔交易单独变成一个“小型数字保管箱”。双方的资产、操作和时间条件都由同一套规则管理。</p>
+          </div>
+        </div>
+        <div class="thesis">
+          <blockquote>“不需要相信对方会不会变卦，只需要双方事先确认同一套条件。”</blockquote>
+          <p>前端是交互入口，但不是记账中心。即使换一个前端，已经创建的交易、资产和状态仍在链上。</p>
+        </div>
+        <div class="speaker"><strong>30 秒版：</strong>DEAL 的核心不是“平台替你判断”，而是“双方先写清条件，系统再按条件执行”。它将资产保管、履约状态、超时处理和信用记录放进一个可验证的公共系统。</div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">02 / 一笔交易</div>
+          <div>
+            <h2>从谈好条件，到自动结算</h2>
+            <p class="section-intro">无论交易的是代币、NFT，还是单方付款与无资产承诺，核心都是同一个有起点、过程和终点的状态流程。</p>
+          </div>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card"><div class="flow-num">1</div><h3>写清条件</h3><p>谁与谁交易、交什么、数量多少、有效时间多长。</p><small>双方共享同一份条款</small></article>
+          <article class="flow-card"><div class="flow-num">2</div><h3>创建协议</h3><p>工厂按交易类型创建一个独立的交易实例，不与其他订单混在一起。</p><small>每单隔离，互不影响</small></article>
+          <article class="flow-card"><div class="flow-num">3</div><h3>锁定资产</h3><p>代币或 NFT 进入这笔交易自己的合约，不进入平台人工账户。</p><small>不等于转给对方</small></article>
+          <article class="flow-card"><div class="flow-num">4</div><h3>双方履约</h3><p>接受、确认、追加条件、取消或超时处理，都受当前状态约束。</p><small>不能跳过必要步骤</small></article>
+          <article class="flow-card"><div class="flow-num">5</div><h3>结算与留痕</h3><p>条件满足后交换资产；不满足时按规则退回。结果同步进入活动与信用记录。</p><small>过程可追溯</small></article>
+        </div>
+        <div class="plain-note"><b>用大白话说</b><span>这像一台不偏向任何一方的自动保管柜：只有约定的条件成立，柜门才会按约定的方向打开。</span></div>
+        <div class="speaker"><strong>被问“如何防止一方拿钱不办事”时：</strong>资产先锁在单笔交易的合约中，合约只认状态和条件。如果没达到结算条件，就不会把资产交给另一方；超时后走预先定义的退回或取消路径。</div>
+      </div>
+    </section>
+
+    <section id="system">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">03 / 不只是交易</div>
+          <div><h2>四个系统，组成一个协议生态</h2><p class="section-intro">DEAL 把执行、身份、价值和公共决策拆开，让每一层各自承担明确的职责。</p></div>
+        </div>
+        <div class="system-grid">
+          <article class="system-card"><div class="system-icon">I.</div><h3>交易协议引擎</h3><p>负责创建订单、保管资产、推进状态、处理超时与结算。不同资产组合由不同模板承接。</p><div class="tag-row"><span class="tag">代币 ↔ 代币</span><span class="tag">代币 ↔ NFT</span><span class="tag">单方支付</span><span class="tag">开放接单</span></div></article>
+          <article class="system-card"><div class="system-icon">II.</div><h3>身份与域名</h3><p>DealInfoNFT 是链上身份与信用载体；域名是用户或商家的公开门面，可以聚合交易、展示排名和设置访问条件。</p><div class="tag-row"><span class="tag">身份 NFT</span><span class="tag">信用记录</span><span class="tag">域名市场</span><span class="tag">活跃度</span></div></article>
+          <article class="system-card"><div class="system-icon">III.</div><h3>价值循环</h3><p>交易可使用多种资产。DC 承担协议内的费用、激励和价值流通；流动性池负责兑换与定价路径；部分费用进入国库或执行销毁。</p><div class="tag-row"><span class="tag">DC</span><span class="tag">流动性池</span><span class="tag">手续费路由</span><span class="tag">国库</span></div></article>
+          <article class="system-card"><div class="system-icon">IV.</div><h3>DAO 与协议升级</h3><p>参数调整、国库支出、核心升级和跨链指令通过不同级别的提案处理。升级保留原地址与历史数据，只更换经治理批准的逻辑。</p><div class="tag-row"><span class="tag">提案</span><span class="tag">质押</span><span class="tag">否决</span><span class="tag">精确权限</span></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="assets">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">04 / 三种凭证</div>
+          <div><h2>DC 管流通，D 管权益，NFT 管身份</h2><p class="section-intro">三者不是三个名字不同的代币，而是三类不同的权利与职责。</p></div>
+        </div>
+        <div class="asset-grid">
+          <article class="asset"><span class="asset-code">DC</span><h3>DealCoin</h3><p>日常流通与激励工具。可用于协议费用、奖励、流动性和分红资产。</p><div class="asset-rule">可流通 · 可增发/销毁 · 多链各自运行</div></article>
+          <article class="asset"><span class="asset-code">D</span><h3>协议权益</h3><p>固定 100 D。主要用于 ETH 主网治理、席位、否决和 DC 分红权重，1 D 对应 1% 权重。</p><div class="asset-rule">固定总量 · ETH 主网 · 权益与治理</div></article>
+          <article class="asset"><span class="asset-code">ID</span><h3>DealInfoNFT</h3><p>官方链上身份。承载用户身份、交易活跃与信用信息，并在重大治理中提供用户侧约束。</p><div class="asset-rule">一个 NFT 一个身份 · 可验证 · 可组合</div></article>
+        </div>
+        <div class="speaker"><strong>常见误解：</strong>DC 不等于“股权”，D 也不是日常支付币。这种分工是为了避免“为了交易就必须稀释治理权”，也避免“治理币剧烈流通导致决策权不稳定”。</div>
+      </div>
+    </section>
+
+    <section id="governance">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">05 / DAO</div>
+          <div><h2>把“谁能改系统”也写成公开规则</h2><p class="section-intro">技术上可升级，不代表某个人可以随意升级。DEAL 把不同风险的动作分级，并限定提案可以调用的目标、功能和金额。</p></div>
+        </div>
+        <div class="governance">
+          <div class="gov-copy"><h3>不是“投票后什么都能做”</h3><p>每类提案只能进入对应的执行通道。提案必须匹配已登记的合约地址和具体功能，超出边界就无法执行。</p><div class="gov-list"><div><strong>参数类</strong> · 日常费率和运营参数</div><div><strong>国库类</strong> · 明确资产、收款人和数量</div><div><strong>重大类</strong> · 升级、新模块和跨链能力</div><div><strong>高安全储备</strong> · 以更高门槛动用</div></div></div>
+          <div class="gov-path">
+            <div class="path-item"><div class="path-line"><div class="path-dot">1</div></div><div><h3>提案把行为写清楚</h3><p>标题和内容给人看；目标合约、金额和调用数据给系统执行。</p></div></div>
+            <div class="path-item"><div class="path-line"><div class="path-dot">2</div></div><div><h3>不同风险，不同门槛</h3><p>通过时间窗口、D 质押、席位否决与活跃 NFT 参与组合制衡。</p></div></div>
+            <div class="path-item"><div class="path-line"><div class="path-dot">3</div></div><div><h3>执行前再校验</h3><p>政策注册表检查“这一类提案能否调用这一个功能”，防止任意调用。</p></div></div>
+            <div class="path-item"><div class="path-line"><div class="path-dot">4</div></div><div><h3>结果链上留痕</h3><p>谁提、支持多少、是否否决、调了什么，都能按交易记录核验。</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="crosschain">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">06 / 跨链</div>
+          <div><h2>一个治理中心，多条业务链执行</h2><p class="section-intro">跨链在这里主要传递的是“已经通过的治理指令”，不是默认把用户资产在链之间搬来搬去。</p></div>
+        </div>
+        <div class="chain-strip">
+          <article class="chain-side primary"><h3>Ethereum 主网 DAO</h3><p>提案、D 治理、主网分红和高安全储备的核心决策中心。</p></article>
+          <div class="chain-arrow" aria-hidden="true">⇄</div>
+          <article class="chain-side"><h3>BSC / Base / 未来副链</h3><p>各链本地部署协议、本地国库与执行器，只执行白名单内且获得足够独立通道确认的指令。</p><div class="confirmations"><div class="confirmation ok">通道 A ✓</div><div class="confirmation ok">通道 B ✓</div><div class="confirmation">通道 C</div></div></article>
+        </div>
+        <div class="plain-note"><b>2-of-3 的含义</b><span>三条独立消息通道中，至少两条对同一指令给出一致确认，副链才执行。单一跨链服务中断或异常，不应单独决定系统行为。</span></div>
+        <div class="speaker"><strong>被问“跨链是不是把钱跨过去”时：</strong>我们当前强调的是“治理跨链”。例如 ETH DAO 决定更新 Base 的某个参数，多通道传递同一条指令，Base 执行器确认后在本地执行。它与用户资产桥是两个不同问题。</div>
+      </div>
+    </section>
+
+    <section id="safety">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">07 / 安全思路</div>
+          <div><h2>安全不靠一道锁，而靠多层边界</h2><p class="section-intro">DEAL 的安全目标是尽量把“可以做什么”缩小，并在变更前重现真实链上环境。</p></div>
+        </div>
+        <div class="safety-grid">
+          <article class="safety-card"><h3>交易状态机</h3><p>每个操作只能在正确状态发生。不允许跳步、重复结算或非交易参与者操作资产。</p></article>
+          <article class="safety-card"><h3>权限最小化</h3><p>治理与跨链执行器按目标合约和具体功能白名单放行，不把“任意调用”当作快捷方案。</p></article>
+          <article class="safety-card"><h3>主网分叉预演</h3><p>升级前复制主网当前状态，检查历史数据、地址关系和业务参数在升级前后是否一致。</p></article>
+          <article class="safety-card"><h3>单笔交易隔离</h3><p>用轻量化独立实例承载每笔交易。某个订单的资产和状态不与其他订单共用一个资金池。</p></article>
+          <article class="safety-card"><h3>可升级但可追溯</h3><p>代理保留地址和数据，实现逻辑经治理更换。升级交易和新逻辑地址均在链上可查。</p></article>
+          <article class="safety-card"><h3>分红防重复领取</h3><p>每一轮按权益和领取记录独立结算。同一份权益不能通过领取后转账的方式在同一轮内重复支取。</p></article>
+        </div>
+        <div class="truth-box"><h3>一个需要说清的边界</h3><p>测试、静态检查和主网分叉预演可以显著降低风险，但不应被表述为“绝对安全”。智能合约、底层公链、跨链服务、用户私钥和治理参与度仍各自存在风险。独立第三方审计是与内部测试不同的另一道保障。</p></div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap">
+        <div class="faq-layout">
+          <aside class="faq-aside"><div class="kicker">08 / Q &amp; A</div><h2>技术交流常见追问</h2><p>点开问题即可查看建议回答。回答保留技术含量，但不陷入合约代码细节。</p></aside>
+          <div class="faq-list">
+            <details open><summary>DEAL 和普通中心化平台最大的不同是什么？</summary><div class="answer"><strong>中心化平台用自己的数据库和客服规则来保证交易；DEAL 用双方共同确认的链上状态和资产保管规则来保证交易。</strong>前端可以改版，但不能靠改页面篡改已经在链上的交易结果。</div></details>
+            <details><summary>钱和 NFT 到底存在哪里？</summary><div class="answer">在履约期间，资产由<strong>这一笔交易自己的智能合约</strong>保管，不是转进团队的私人钱包。最终只能按状态机转给约定参与方或退回原所有者。</div></details>
+            <details><summary>为什么不把所有交易放在一个大合约里？</summary><div class="answer">每单独立能让<strong>资产和状态天然隔离</strong>，也更容易从地址层面追溯。Factory 使用轻量化克隆方式创建实例，无需每次完整复制所有代码，兼顾隔离与成本。</div></details>
+            <details><summary>如果合约需要修复，是否要迁移所有数据？</summary><div class="answer">核心模块采用<strong>代理地址 + 实现逻辑</strong>的可升级设计。地址和历史存储保留，经治理完成后更换实现逻辑。升级前会比较存储布局并在主网分叉上重放业务流程。</div></details>
+            <details><summary>DAO 如何防止恶意提案任意调用合约？</summary><div class="answer">提案通过后仍要经过<strong>政策注册表</strong>。它会检查提案类型、目标合约、具体函数、转账价值以及是否需要检查内嵌的跨链动作。不符合规则的 action 无法执行。</div></details>
+            <details><summary>跨链消息如果有一家服务出问怎么办？</summary><div class="answer">副链执行不依赖单一通道。对同一指令，<strong>至少两条独立通道提供一致确认</strong>才会触发。消息还需通过来源、目标白名单和唯一消息标识校验，防止伪造和重放。</div></details>
+            <details><summary>分红后把 D 转给别人，能不能再领一次？</summary><div class="answer">不能在同一轮用同一份权益重复领取。分红轮使用<strong>该轮的权重与领取记录</strong>计算，并不是每次只看“当下钱包里有多少 D”。质押在治理中的 D 也会按规则计入权重。</div></details>
+            <details><summary>前端查询链上数据为什么不会越来越慢？</summary><div class="answer">链上事件适合审计，但不适合每次从创世区块扫到现在。DEAL 增加了<strong> Reader 批量读取和链上索引模块</strong>，前端可以一次读取多条提案、交易、时间和排名数据；大规模场景仍可搭配链下索引器做缓存。</div></details>
+            <details><summary>为什么需要区块链，普通数据库做不了吗？</summary><div class="answer">普通数据库可以做出更快、更便宜的用户体验，但最终控制权在运营数据库的主体。DEAL 选择区块链，是为了让<strong>资产保管、状态变更、治理结果和升级记录可被多方独立验证</strong>。代价是 gas、确认时间和用户门槛。</div></details>
+            <details><summary>你们可以说“已经完全安全”吗？</summary><div class="answer">不应该。更准确的表述是：<strong>已经建立单元测试、权限负向测试、存储一致性检查、主网分叉预演和生产只读验证流程</strong>。这些能提高发现问题的概率，但不等于消灭所有未知风险，也不替代独立第三方审计。</div></details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="boundary">
+      <div class="wrap">
+        <div class="section-head"><div class="kicker">09 / 当前边界</div><div><h2>什么是当前系统，什么是继续建设</h2><p class="section-intro">技术交流最重要的是不把“已验证”“已部署”和“已完全交权”混为一谈。</p></div></div>
+        <div class="boundary">
+          <article class="boundary-card"><h3>已建立的核心能力</h3><ul><li>多类资产组合的点对点交易与状态结算</li><li>身份 NFT、交易活动、信用与域名系统</li><li>ETH DAO V2、国库、主网 D 与 DC 分红模块</li><li>BSC 与 Base 的协议部署和多通道跨链治理路径</li><li>Reader/索引辅助的前端批量查询方案</li></ul></article>
+          <article class="boundary-card roadmap"><h3>持续完成的工作</h3><ul><li>将剩余高权限操作逐步统一纳入 DAO 与精确策略</li><li>每条新链继续做参数同步、国库标准化和端到端预演</li><li>Solana 紧凑架构继续测试，不把本地验证描述为已完成主网上线</li><li>引入更多独立审计、监控和前端索引基础设施</li><li>D 分红与高安全储备保持在 ETH，副链不复制这两套业务</li></ul></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <div class="wrap">
+        <div class="closing-card"><h2>DEAL 的核心不是“发一个币”，而是建立一套可编程的交易关系。</h2><p>它让陌生人、商家和社区可以在共同规则下交易，并让这套规则能够公开升级、跨链执行和持续治理。</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="wrap"><span>DEAL Protocol · 技术交流会简介</span><span>内容基于当前项目架构整理 · 2026-08-12</span></div></footer>
+
+  <script>
+    const progress = document.getElementById('progress');
+    const speakerButton = document.getElementById('speakerButton');
+    const presentButton = document.getElementById('presentButton');
+
+    addEventListener('scroll', () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
+    }, { passive: true });
+
+    speakerButton.addEventListener('click', () => {
+      const visible = document.body.classList.toggle('show-speaker');
+      speakerButton.textContent = visible ? '隐藏演讲提示' : '显示演讲提示';
+      speakerButton.setAttribute('aria-pressed', String(visible));
+    });
+
+    presentButton.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      } catch (_) {
+        presentButton.textContent = '浏览器未允许全屏';
+      }
+    });
+
+    addEventListener('fullscreenchange', () => {
+      presentButton.textContent = document.fullscreenElement ? '退出全屏' : '全屏演示';
+    });
+  </script>
+</body>
+</html>

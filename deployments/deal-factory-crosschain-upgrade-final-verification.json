@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-12T06:46:32Z",
+  "stage": "eth-executed-bsc-base-3of3-complete",
+  "proposal": {
+    "id": "23",
+    "description": "升级Base交易工厂，BSC同步校验，不修改业务参数。",
+    "state": "Executed",
+    "totalStakedD": "70",
+    "executionTransaction": "0xd5aff31a473b2de61e81029689fd07c2395e2364b48cb9e9602928c30523c63d",
+    "executionBlock": "25737122",
+    "broadcastNonce": "4"
+  },
+  "implementation": {
+    "address": "0x7fC9145A2539F0eD52Cf6E7E34Ce485635A9887E",
+    "runtimeHash": "0xdc7b6c061c5d97b62294659bf5ee9d40353238010763d1bd8c804a1974676002",
+    "ethFactory": "0x02330431F96B21776274F3147bd4C233Caf7D752",
+    "bscFactory": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256",
+    "baseFactory": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+    "sameAddressAndRuntimeOnAllThreeChains": true
+  },
+  "bsc": {
+    "messageHash": "0x90a4a49035a77c8ce9296454dae4b7593914c4c409e057f82ba772b8e18760e5",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": 3
+    },
+    "executed": true,
+    "executionAttempts": "1",
+    "executionTransaction": "0x3c59633e9215668d9f002047fbebe4f2c070da43fa0aa992f5a0d9772218a3fc",
+    "executionBlock": "115458462",
+    "sameImplementationReplaySucceeded": true
+  },
+  "base": {
+    "messageHash": "0xfb70e0c59044c4526f14e83eff5c335bdf4cfea6ab7a2ba310d30f549662779d",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": 3
+    },
+    "executed": true,
+    "executionAttempts": "1",
+    "executionTransaction": "0x8fe256e1e7d26b4eb29c1e3b930df2244d9c7f4b6910c5cc487535a4fc48992f",
+    "executionBlock": "49863772",
+    "implementationBefore": "0xAcf74FD151DE6FFE455Ab862A7de9B77cfCe82ed",
+    "implementationAfter": "0x7fC9145A2539F0eD52Cf6E7E34Ce485635A9887E",
+    "allRecordedBusinessStatePreserved": true,
+    "governanceSetterSimulationPassed": true,
+    "unauthorizedSetterRejected": true
+  },
+  "invariants": {
+    "thresholdTwoEnforcedBeforeExecution": true,
+    "allThreeBridgesEventuallyConfirmed": true,
+    "exactlyOneBusinessExecutionPerChain": true,
+    "noBusinessParameterChanged": true,
+    "noManualDestinationTransactionSent": true
+  }
+}

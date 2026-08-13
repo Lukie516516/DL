@@ -21,6 +21,7 @@ import {
   DAO_V2_PROPOSAL_KIND,
   toRegistryRuleInputs,
 } from "../scripts/dao-v2-policy.js";
+import { ensureForkSpendableD } from "./helpers/mainnetForkGovernance.js";
 
 const IMPLEMENTATION_SLOT =
   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc" as Hex;
@@ -115,11 +116,20 @@ forkDescribe("DealGovernance V2 ETH mainnet fork", function () {
     const dAsHolder = await viem.getContractAt("D", dAddress, {
       client: { public: publicClient, wallet: dHolderWallet },
     });
-    const holderDBalance = await dAsHolder.read.balanceOf([dHolder]);
-    assert.ok(
-      holderDBalance >= FAST_PASS_STAKE,
-      `configured fork D holder has ${holderDBalance}; set DAO_V2_FORK_D_HOLDER to a current >=70 D holder`,
+    const governanceAsHolder = await viem.getContractAt(
+      "DealGovernance",
+      governanceAddress,
+      {
+        client: { public: publicClient, wallet: dHolderWallet },
+      },
     );
+    await ensureForkSpendableD({
+      publicClient,
+      governance: governanceAsHolder,
+      dToken: dAsHolder,
+      holder: dHolder,
+      required: FAST_PASS_STAKE,
+    });
 
     const mainnetDeployer = getAddress(eth.deployer);
     await networkHelpers.impersonateAccount(mainnetDeployer);

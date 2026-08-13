@@ -40,6 +40,8 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
 
     address public pair;
     uint256 public mintPriceDL;
+    uint256 public constant ADMIN_MIN_MINT_PRICE_DL = 100 ether;
+    uint256 public constant ADMIN_MAX_MINT_PRICE_DL = 5_000_000 ether;
     address public renderer;
 
     /// @notice 铸造事件（记录 DealCoin/DC 本位标价与燃烧结果）
@@ -170,7 +172,7 @@ contract DealInfoNFT is ERC721, EIP712, ERC721Votes, Ownable {
 
     /// @dev Legacy name kept for ABI compatibility. `u` is now the direct DealCoin/DC burn amount.
     function setMintPriceUByAdmin(uint256 u) external onlyAdmin {
-        require(u >= 1 * 10**16 && u <= 100 * 10**18);
+        require(u >= ADMIN_MIN_MINT_PRICE_DL && u <= ADMIN_MAX_MINT_PRICE_DL);
         mintPriceDL = u;
     }
 

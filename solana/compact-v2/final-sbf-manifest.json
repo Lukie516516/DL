@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-01",
+  "status": "loopback-localnet-deployed-audited-not-deployed-to-external-network",
+  "toolchain": {
+    "hostRustc": "1.94.0",
+    "solanaCargoBuildSbf": "3.1.10",
+    "platformTools": "1.52",
+    "sbfRustc": "1.89.0",
+    "solanaCli": "3.1.10"
+  },
+  "inputs": {
+    "cargoLockSha256": "21293c3c625fe1e0da3975629fec33d3a8b611f187ac3997746e0d35dec6831d",
+    "sourceEquivalenceSha256": "44de15a99ddb1240976c0294ae8c906eb89fa79a6f8e31a379e739b93f213831",
+    "routerManifestSha256": "21df5c03ee9fa3d26f128aca8815b600d5d637207ec0045546e23831a42ab158",
+    "generatorSha256": "f655d6445adc50a2ffe9bf4b8254dfd8290220c6d7b4ef06877cdad90b95add9",
+    "layoutSha256": "c953deb62ab9f297adca77ae2aa36b8ee459e856e7b9e705f9053429875c3eb6"
+  },
+  "programs": [
+    {
+      "name": "deal_compact_data_services",
+      "bytes": 721856,
+      "sha256": "c0809a8600976cb163c5d6e292a28dc937523a03ffbd8ecba2cc6cd121fc3997"
+    },
+    {
+      "name": "deal_compact_domain_assets",
+      "bytes": 625864,
+      "sha256": "2b203d89829e343a7aad956b33bc6f621ae8ea79cf446a0646184caa6eff1e21"
+    },
+    {
+      "name": "deal_compact_domain_network",
+      "bytes": 902224,
+      "sha256": "d014a7b45fa1969f3bde77294dd1fda192725ba59359ab74feadd6da87960ddc"
+    },
+    {
+      "name": "deal_compact_exchange",
+      "bytes": 931464,
+      "sha256": "563ca16e809a0e041917112a8d1578171a88ac3fd85ce5c45f7ab4e861ede52c"
+    },
+    {
+      "name": "deal_compact_governance_ingress",
+      "bytes": 280824,
+      "sha256": "60b4c19360106b96dd670e662ba2726f470dbe3223172ef3bbc27dfa6d8a9dd6"
+    },
+    {
+      "name": "deal_compact_identity_credit",
+      "bytes": 603392,
+      "sha256": "128282b14cea3dfd97be53801a32e840959cefcc8c5f676bcedab1ae6d91aedc"
+    },
+    {
+      "name": "deal_compact_lifecycle",
+      "bytes": 772184,
+      "sha256": "c87d93217a2eb837d7f1567de4fd7ebf30b777cc741756acebf83051fe03a514"
+    },
+    {
+      "name": "deal_compact_monetary_policy",
+      "bytes": 270424,
+      "sha256": "7038a4037f4ae2a8fe1394ae841d379e8fae6ede3cea92bbc930f4c0d205597b"
+    },
+    {
+      "name": "deal_compact_settlement",
+      "bytes": 854560,
+      "sha256": "129e09b3d547797c8f5e2a36c0d77bdfc9b005e358f57d3f85dabab257fc2f18"
+    },
+    {
+      "name": "deal_compact_treasury",
+      "bytes": 211864,
+      "sha256": "10f73eeeb0c72679c524caba8f2415845687bafa5a013676ea5a40c93d20cf32"
+    }
+  ],
+  "totals": {
+    "programCount": 10,
+    "bytes": 6174656,
+    "persistentRentSol": 42.99906096,
+    "largestReusableBufferSol": 6.48413784,
+    "feeAndRetryHeadroomSol": 2,
+    "recommendedWalletSol": 51.4831988
+  }
+}

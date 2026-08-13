@@ -175,7 +175,7 @@ async function main() {
   const orderBook = await viem.getContractAt("DealSwapOrderBook", P.dealSwapOrderBook, { client });
 
   console.log("\n--- Resume at router ---");
-  const router = await viem.deployContract("DealRouter", [P.wrappedNative, P.dealSwapOrderBook], { client });
+  const router = await viem.deployContract("DealRouter", [P.wrappedNative, P.dealSwapOrderBook, P.dealPairManager], { client });
   console.log("DealRouter", router.address);
   await tx("OrderBook.setRouter", publicClient, orderBook.write.setRouter([router.address]));
 

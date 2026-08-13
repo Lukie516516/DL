@@ -1,0 +1,335 @@
+{
+  "scope": "Base production governance handoff",
+  "chainId": 8453,
+  "deploymentFile": "deployments/base-mainnet-8453.json",
+  "deployer": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "executor": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+  "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+  "startedAt": "2026-08-11T04:39:43.077Z",
+  "completedAt": "2026-08-11T04:40:17.388Z",
+  "complete": true,
+  "actionCount": 39,
+  "skipped": [
+    "Executor.setPeer(Ethereum)",
+    "Executor.allow(executor)",
+    "Executor.setDelegate(self)",
+    "DC.grant Factory MINTER_ROLE"
+  ],
+  "transactions": [
+    {
+      "index": 3,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealFactory)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x0366f0f47354ddc0bb339af7b9ae8e654ac07cc658da3f77d95a545cd8dfa021",
+      "blockNumber": "49816919",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 4,
+      "phase": "executor-config",
+      "label": "Executor.allow(dlToken)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x605cfb5b0971dab724f79905f51fc08789921175987b08f648a0ab8951a989b9",
+      "blockNumber": "49816920",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 5,
+      "phase": "executor-config",
+      "label": "Executor.allow(protocolTreasury)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0xc4ee3d19a47236fbf80ea62ec68d80be7032b8fb61546d47ccd199998033e43c",
+      "blockNumber": "49816920",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 6,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealPairManager)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0xd2b2236f1abdd8cef83abf70c17434c691462ed4525167991e8e0507cb8e4fd5",
+      "blockNumber": "49816921",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 7,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealImplementationRegistry)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0xca855c7f50ea34bcdaa2b07ccf7ad65ec9a23a3da679c09420726c27859c84c2",
+      "blockNumber": "49816921",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 8,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealInfoNFT)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x58a60bdadf8e4083204fc862ca75cced8c36a8a2d544563bd2767167fd7cba30",
+      "blockNumber": "49816922",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 9,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealCreditGraph)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x71cf18e08c4b22dbc5f6504de9178ac1fa8e41dd9d8aef44a720f2ad81eb0d0f",
+      "blockNumber": "49816922",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 10,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealSwapOrderBook)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0xb402325a24a67777cf38a063b163672846c4c29128d544f662505b556e15f62e",
+      "blockNumber": "49816923",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 11,
+      "phase": "executor-config",
+      "label": "Executor.allow(dealSwapAssetRegistry)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x15d4146a6735255fada671e4a7bcc1a8a9541fba20619445da2d7c1c535474f7",
+      "blockNumber": "49816923",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 12,
+      "phase": "executor-config",
+      "label": "Executor.allow(dcDomain)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x232c7a2530d38ac8de09cbd3480a468aa51aa1d7980779c0b2c9911e62dac475",
+      "blockNumber": "49816924",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 13,
+      "phase": "executor-config",
+      "label": "Executor.allow(dcDomainRank)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x49e9f84520247f8cdef23d98d4c9cc6a0218848b42ef959bc39f0215bff4d94e",
+      "blockNumber": "49816924",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 14,
+      "phase": "executor-config",
+      "label": "Executor.allow(dcDomainMarket)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x0f2c69128688fbb323babb439fa637acd3cc377ee3ca43853cbb9dc4b60c0897",
+      "blockNumber": "49816925",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 15,
+      "phase": "executor-config",
+      "label": "Executor.allow(dcDomainSwap)",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x1080c68346393373d76865132b578c9c767bddbb316135f3766d35e3df0ce4a4",
+      "blockNumber": "49816925",
+      "gasUsed": "48287"
+    },
+    {
+      "index": 17,
+      "phase": "protocol-handoff",
+      "label": "Factory.setCrossChainGovernance",
+      "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "hash": "0x317e3ad9d5fdcbedd4e73f129483082eeafd2faf4497083bc2ff29ce35746a22",
+      "blockNumber": "49816926",
+      "gasUsed": "51927"
+    },
+    {
+      "index": 18,
+      "phase": "protocol-handoff",
+      "label": "Factory.setAdmin",
+      "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "hash": "0xf046909bcda426f79c0596726ca8dd61b83fa41ac511df3fb2b490f3af7e23d6",
+      "blockNumber": "49816926",
+      "gasUsed": "32279"
+    },
+    {
+      "index": 19,
+      "phase": "protocol-handoff",
+      "label": "Factory.transferOwnership",
+      "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+      "hash": "0x3dcc581381c2cba71a98e1bc17cbb4d0762611c11ca702a7ba7cdb5872f1e080",
+      "blockNumber": "49816926",
+      "gasUsed": "35124"
+    },
+    {
+      "index": 20,
+      "phase": "protocol-handoff",
+      "label": "Treasury.bootstrapSetController",
+      "target": "0xb8f27EEb0c21e69CdE1F7c4C27b81f5c71c21dCb",
+      "hash": "0x5d33e48f61b61356f49c3aed3ddd33a73839388bff21131be158d401474a9556",
+      "blockNumber": "49816927",
+      "gasUsed": "30501"
+    },
+    {
+      "index": 21,
+      "phase": "protocol-handoff",
+      "label": "Treasury.lockBootstrap",
+      "target": "0xb8f27EEb0c21e69CdE1F7c4C27b81f5c71c21dCb",
+      "hash": "0xe0cf3a8f5468fd81b16f7b2728060ef8df6a010261529c194ff71bfc1c149715",
+      "blockNumber": "49816927",
+      "gasUsed": "27455"
+    },
+    {
+      "index": 23,
+      "phase": "token-roles",
+      "label": "DC.grant Executor MINTER_ROLE",
+      "target": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+      "hash": "0xd7831e4709b9350bd57f774761901823c50c3f6c078b7ad51fe2de891b77bc7f",
+      "blockNumber": "49816928",
+      "gasUsed": "51265"
+    },
+    {
+      "index": 24,
+      "phase": "token-roles",
+      "label": "DC.grant Executor PAUSER_ROLE",
+      "target": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+      "hash": "0x0ef652424a592b176483b9db2509be844176a755efb0eb064c1f89999ba9d627",
+      "blockNumber": "49816928",
+      "gasUsed": "51265"
+    },
+    {
+      "index": 25,
+      "phase": "token-roles",
+      "label": "DC.grant Executor DEFAULT_ADMIN_ROLE",
+      "target": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+      "hash": "0x90f01ef4f854d9ba724c83bafcfb494ac7a9357a2046b872e7bb715431cafa7c",
+      "blockNumber": "49816929",
+      "gasUsed": "50881"
+    },
+    {
+      "index": 26,
+      "phase": "token-roles",
+      "label": "DC.renounce deployer MINTER_ROLE",
+      "target": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+      "hash": "0x7be9403f83dbc877dd8e58357b22fdc17276a91736fc3339d3cda2a9bfc97c71",
+      "blockNumber": "49816929",
+      "gasUsed": "24983"
+    },
+    {
+      "index": 27,
+      "phase": "token-roles",
+      "label": "DC.renounce deployer DEFAULT_ADMIN_ROLE",
+      "target": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+      "hash": "0x2f410e79ea9d4d5873722db37b78f40c407d02bb7c7693bf49d06f9947d32d0c",
+      "blockNumber": "49816930",
+      "gasUsed": "24599"
+    },
+    {
+      "index": 28,
+      "phase": "auxiliary-handoff",
+      "label": "InfoNFT.setAdmin",
+      "target": "0x5cd69B939eB7a9498a22B7d9DF66C0Cbf8E29CB6",
+      "hash": "0x8a05d3f5063a35ccc0bb2eb0df404538525328eba9cc386e0fee0698316bea79",
+      "blockNumber": "49816931",
+      "gasUsed": "27457"
+    },
+    {
+      "index": 29,
+      "phase": "auxiliary-handoff",
+      "label": "PairManager.transferOwner",
+      "target": "0x20289f30C92e0bb36cA0B32741EccFF2C95595Ee",
+      "hash": "0xb5f91028b1baa1de050cb4df535f8ebd2e6ef108b02867488d79ccff5ab181e9",
+      "blockNumber": "49816931",
+      "gasUsed": "28344"
+    },
+    {
+      "index": 30,
+      "phase": "auxiliary-handoff",
+      "label": "OrderBook.transferOwner",
+      "target": "0x36d4BA2f2E5b60ceEe76167D97abaCB5490e4ba3",
+      "hash": "0x9ef57fa1f1b714990288c3fa80623841070fbce9d8dbe08080a2454a729ef05b",
+      "blockNumber": "49816931",
+      "gasUsed": "26905"
+    },
+    {
+      "index": 31,
+      "phase": "auxiliary-handoff",
+      "label": "AssetRegistry.transferOwner",
+      "target": "0xD2a702bf9732f4fb2dD84F36fC03251816BeA07c",
+      "hash": "0x55dd011a00e11f73b1932a62a93fde490192ae860bf668bd171186764faab4ca",
+      "blockNumber": "49816932",
+      "gasUsed": "28355"
+    },
+    {
+      "index": 32,
+      "phase": "auxiliary-handoff",
+      "label": "DCDomainSwap.transferOwner",
+      "target": "0x37fadb350Fd4c00f6608E3C4FA2c172fab1eE11D",
+      "hash": "0x58b8f2027a4eb34290004b53e0099027b5c3d49495364be72c4bac4f6e7d8c8a",
+      "blockNumber": "49816932",
+      "gasUsed": "28367"
+    },
+    {
+      "index": 33,
+      "phase": "auxiliary-handoff",
+      "label": "ImplementationRegistry.transferOwnership",
+      "target": "0x10Fd064bb8cb9ec9372Ff9E9e308C77f18e210A8",
+      "hash": "0xbef221fcbd99d4588a34955f34e2229500edd85d4e9cd633b9591bdc1a912ba0",
+      "blockNumber": "49816933",
+      "gasUsed": "28651"
+    },
+    {
+      "index": 34,
+      "phase": "auxiliary-handoff",
+      "label": "InfoNFT.transferOwnership",
+      "target": "0x5cd69B939eB7a9498a22B7d9DF66C0Cbf8E29CB6",
+      "hash": "0x9e89f96325c68452e0fc3331e83fe53bfd747fc6821704aba9860436907edd0b",
+      "blockNumber": "49816933",
+      "gasUsed": "30061"
+    },
+    {
+      "index": 35,
+      "phase": "auxiliary-handoff",
+      "label": "CreditGraph.transferOwnership",
+      "target": "0xFF5efE3B23762170a99F8F4C66abea11613b982D",
+      "hash": "0x6c1b16351963c6e49015b0d1c26860f4ce6f7a5897acfd947f4477c07814308c",
+      "blockNumber": "49816934",
+      "gasUsed": "28802"
+    },
+    {
+      "index": 36,
+      "phase": "auxiliary-handoff",
+      "label": "DCDomain.transferOwnership",
+      "target": "0x257c1fEab3D9E8d305325aA654fFa913a72510dd",
+      "hash": "0x6561b1a97ba050edc8ea7b27926989f3a9496d5cb51b429ee96273fa808bf9bb",
+      "blockNumber": "49816934",
+      "gasUsed": "29463"
+    },
+    {
+      "index": 37,
+      "phase": "auxiliary-handoff",
+      "label": "DCDomainRank.transferOwnership",
+      "target": "0xd602fa2c7a4BBdCd841AD5e9D69b8C028D48e0B2",
+      "hash": "0xee2e2624822aa21ac76e33d764383d2519651b20495d2dd535768dc3a38cb5e7",
+      "blockNumber": "49816935",
+      "gasUsed": "34831"
+    },
+    {
+      "index": 38,
+      "phase": "auxiliary-handoff",
+      "label": "DCDomainMarket.transferOwnership",
+      "target": "0xC639E2811f8847A88c66a21020C91A95fC078438",
+      "hash": "0x2fe2cc3ffb89c1177994cdc1c07deb4b480aa46b554e9f0af18afb6842cedca0",
+      "blockNumber": "49816935",
+      "gasUsed": "28948"
+    },
+    {
+      "index": 39,
+      "phase": "finalize",
+      "label": "Executor.transferOwnership(self) — MUST BE LAST",
+      "target": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+      "hash": "0x3a10399aa1a8f12eea40111c9e2b7eea190c9d2826c8d845b00e98042121ae25",
+      "blockNumber": "49816936",
+      "gasUsed": "29184"
+    }
+  ]
+}

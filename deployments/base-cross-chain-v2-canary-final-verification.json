@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-10T10:03:53Z",
+  "stage": "bsc-3of3-base-3of3-executed",
+  "proposal": {
+    "id": "21",
+    "state": "Executed",
+    "totalStaked": "70000000000000000000",
+    "executed": true,
+    "executionTransaction": "0x728fc2e5bee5b86b381cabc820a91729cffb6e9c6298af6d4ae0e66e468d35c6",
+    "executionBlock": "25722271",
+    "executionValueWei": "5000000000000000",
+    "liveQuoteBeforeWei": "2626627719932648",
+    "broadcastNonce": "3"
+  },
+  "marker": "0xe735d9f79dc7413699af00ad995b58e853e30e3881bc5e72aff1ae13cab8ef3b",
+  "bsc": {
+    "messageHash": "0x19fa30373f856d9be846c831da5b3919c4c160a9eef6bb8343338e5052d05e97",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": 3
+    },
+    "executed": true,
+    "executionAttempts": "1",
+    "markerMatched": true,
+    "updateCount": "1",
+    "destinationTransactions": {
+      "layerZero": "0xa9b0ae4154e753ebb05095c323df922302bc9734ddef47cad6dd058aebcabbe7",
+      "axelar": "0x8fb196743934834ebce37862bfd0e992d02982db9fcc80b92b71526a87f9a6ba",
+      "chainlinkCcip": "0xc4dd8c2b1625c38c9edcece7be6bd99a240639729f5998c9bd81afc86d8dd1aa"
+    }
+  },
+  "base": {
+    "messageHash": "0x87b861508858236eed41e1c5aaeb0a7925253c9f5cb0ea1f76eb77b5983962b2",
+    "confirmations": {
+      "layerZero": true,
+      "chainlinkCcip": true,
+      "axelar": true,
+      "count": 3
+    },
+    "executed": true,
+    "executionAttempts": "1",
+    "markerMatched": true,
+    "updateCount": "1",
+    "destinationTransactions": {
+      "layerZero": "0xae8b63143327a4f477926f9c67ef64fe895c4c629ab6edaa1e821de041e7055d",
+      "chainlinkCcip": "0x6fd9426149e5d245fec644cb1a744e0ac1e7cc9189c67196342fcd88f8503688",
+      "axelar": "0x6d11309571d2225fe501c81050f38a12b82554791c69488ed5c394926e0c8de9"
+    },
+    "axelar": {
+      "commandId": "0x92e7913379d92650164b51c0b872e877c40d48b39ebc5f5926670e25f7da819d",
+      "approvedTransaction": "0x2e3c91f81196b1a8f90871d2d5c5602ebfeeef24204bae38bb8c21f58b0566c2",
+      "gatewayApprovalForChecksumAddress": true,
+      "gatewayApprovalForLowercaseAddress": false,
+      "executorConfiguredSourceAddressBeforeFix": "0xcf4d1b59c43f0e19f7e0e0416067e999f12cd1e6",
+      "executorConfiguredSourceAddress": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+      "axelarDeliveredSourceAddress": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+      "revert": "WrongAxSrcAddress()",
+      "revertSelector": "0x7977c504",
+      "businessExecutionAffected": false,
+      "minimalFixForkTest": "1 passing",
+      "mainnetFixSent": true,
+      "sourceAddressFixTransaction": "0xf27d3345e69de46accbb22bd7036720d275a0a1ebde6bfee12f0d49f9ce7982b",
+      "sourceAddressFixBlock": "49783403",
+      "sourceAddressFixGasUsed": "41286",
+      "lateConfirmationTransaction": "0x6d11309571d2225fe501c81050f38a12b82554791c69488ed5c394926e0c8de9",
+      "lateConfirmationBlock": "49783416",
+      "lateConfirmationGasUsed": "85378",
+      "gatewayApprovalConsumed": true,
+      "duplicateBusinessExecution": false
+    }
+  },
+  "invariants": {
+    "sameMarkerOnBscAndBase": true,
+    "exactlyOneUpdatePerChain": true,
+    "exactlyOneExecutionAttemptPerChain": true,
+    "noAssetMovementByProbe": true,
+    "noBusinessContractChanged": true
+  }
+}

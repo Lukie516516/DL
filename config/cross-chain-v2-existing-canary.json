@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "featureId": "existing-zero-change-canary",
+  "proposalKind": 2,
+  "title": "跨链 V2 通道测试",
+  "body": "本配置复现已执行的零业务变化 canary：通过 ETH DAO 向 BSC DealFactory 发送 setDealImplementation(当前相同地址)。它只用于验证规划器、权限、费用和监控，不应再次创建或执行提案。",
+  "localActions": [],
+  "broadcasts": [
+    {
+      "label": "BSC DealFactory 同值写入",
+      "targets": [
+        {
+          "chainKey": 30102,
+          "target": "0x1Ca748Feb347d0d177E844E7D4CDCA908957c256"
+        }
+      ],
+      "calldata": "0xec05b2be000000000000000000000000591625be924b98accab7e2c8af698c858aa2608d",
+      "lzGas": "500000",
+      "feeBudgetWei": "2000000000000000"
+    }
+  ]
+}

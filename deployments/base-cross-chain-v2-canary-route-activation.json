@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "scope": "enable only BSC asset-free Probe and activate only the registered Base route",
+  "stage": "ready",
+  "startedAt": "2026-08-10T02:39:37.721Z",
+  "updatedAt": "2026-08-10T02:40:06.706Z",
+  "owner": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+  "bscExecutor": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+  "bscProbe": "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+  "broadcaster": "0xCF4D1b59c43F0e19f7e0e0416067e999f12cd1e6",
+  "baseExecutor": "0xf92cE4DBA86eDbfAdEA32880a04FF1123a188218",
+  "baseProbe": "0x61921eCb954FFaAf8cd3Fd2e71EeCB14B3eD529f",
+  "broadcastNonceBefore": "2",
+  "bscMarkerBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "bscUpdateCountBefore": "0",
+  "baseMarkerBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "baseUpdateCountBefore": "0",
+  "bscRouteBefore": "[\n  30102,\n  \"11344663589394136015\",\n  \"0x407381d841DD48bBBd40Bd37f9dB268CE75950A8\",\n  \"binance\",\n  \"0x407381d841dd48bbbd40bd37f9db268ce75950a8\",\n  \"1000000000000000\",\n  true\n]",
+  "transactions": {
+    "bscAllowlist": {
+      "chainId": 56,
+      "hash": "0x0d496f375eaaead757c6a21486b46778d516571b1b9bc6cc5ca967a577c3adc8",
+      "nonce": 107,
+      "blockNumber": "115042342",
+      "gasUsed": "48287",
+      "verified": true
+    },
+    "baseActivation": {
+      "chainId": 1,
+      "hash": "0x702575ccbbaf3bf0790b57542442868fe011ca13b2e09443b9e851e51694a258",
+      "nonce": 170,
+      "blockNumber": "25721662",
+      "gasUsed": "69948",
+      "verified": true
+    }
+  },
+  "verification": {
+    "bscProbeAllowed": true,
+    "baseRouteActive": true,
+    "bscRoutePreserved": true,
+    "broadcastNonce": "2",
+    "probeStatePreserved": true,
+    "combinedQuoteWei": "2626636492547261",
+    "feeBudgetWei": "5000000000000000",
+    "noBroadcastSent": true
+  }
+}

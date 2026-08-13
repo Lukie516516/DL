@@ -3,16 +3,10 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title CrossChainExecutor
-/// @notice Deployed on every non-ETH chain (BSC, Polygon, etc.).
-///         Receives governance execution messages from CrossChainDispatcher on ETH,
-///         verifies origin, then executes the calls locally.
-///
-/// Ownership model:
-///   - The contracts you want governed (e.g. DealFactory) should transfer
-///     ownership to this CrossChainExecutor address.
-///   - Only authenticated messages from ETH can trigger execution.
-///   - The local `owner` is a safety multisig for emergencies only.
+/// @title CrossChainExecutor  [PLACEHOLDER — bridgeAdapter 未设置，桥未接线]
+/// @notice 已部署在 Agiking 主网作为占位合约，bridgeAdapter = address(0)，
+///         目前只有 owner 可以手动调用（紧急模式）。
+///         生产跨链治理请使用 DualBridgeExecutor（BSC 主网，三桥 2-of-3）。
 contract CrossChainExecutor is Ownable {
 
     // ─── State ────────────────────────────────────────────────────────────────
@@ -41,6 +35,7 @@ contract CrossChainExecutor is Ownable {
     event DispatcherUpdated(address indexed newDispatcher);
     event BridgeAdapterUpdated(address indexed newAdapter);
     event CallExecuted(address indexed target, bool success);
+    event CallFailed(address indexed target, bytes data, bytes reason);
     event TargetAllowed(address indexed target, bool allowed);
     event WhitelistToggled(bool enabled);
 
@@ -49,7 +44,6 @@ contract CrossChainExecutor is Ownable {
     error NotDispatcher();
     error WrongSourceChain();
     error TargetNotAllowed(address target);
-    error CallFailed(uint256 index, bytes returndata);
     error MessageAlreadyExecuted(bytes32 msgId);
 
     // ─── Constructor ──────────────────────────────────────────────────────────
@@ -125,11 +119,19 @@ contract CrossChainExecutor is Ownable {
 
         for (uint256 i = 0; i < targets.length; ++i) {
             address t = targets[i];
-            if (whitelistEnabled && !allowedTarget[t]) revert TargetNotAllowed(t);
+            if (whitelistEnabled && !allowedTarget[t]) {
+                emit CallFailed(t, calldatas[i], abi.encodePacked("target not allowed"));
+                continue;
+            }
 
             (bool ok, bytes memory ret) = t.call{value: values[i]}(calldatas[i]);
-            if (!ok) revert CallFailed(i, ret);
-            emit CallExecuted(t, ok);
+            if (ok) {
+                emit CallExecuted(t, true);
+            } else {
+                // 不 revert：revert 会让 LZ 消息卡在 retry 队列
+                // 失败后 DAO 用新 nonce 重新发起提案即可
+                emit CallFailed(t, calldatas[i], ret);
+            }
         }
     }
 

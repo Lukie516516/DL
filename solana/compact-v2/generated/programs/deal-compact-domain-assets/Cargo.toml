@@ -1,0 +1,21 @@
+[package]
+name = "deal-compact-domain-assets"
+version = "0.1.0"
+description = "Generated Deal Compact V2 domain_assets composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_domain_assets"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-domain-registry = { path = "../../modules/deal-domain-registry", features = ["no-entrypoint"] }
+deal-domain-market = { path = "../../modules/deal-domain-market", features = ["no-entrypoint"] }

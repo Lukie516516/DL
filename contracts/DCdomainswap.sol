@@ -108,6 +108,7 @@ contract DCDomainSwap {
     );
     event DealInfoNftUsed(address indexed deal, uint256 indexed aNftId);
     event ReplaceTimeoutUpdated(uint64 oldValue, uint64 newValue);
+    event OwnerTransferred(address indexed oldOwner, address indexed newOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "DCDomainSwap: not owner");
@@ -126,7 +127,15 @@ contract DCDomainSwap {
         dcDomain = IDCDomain(_dcDomain);
         dcRank   = IDCDomainRank(_dcRank);
         FACTORY  = _factory;
+        emit OwnerTransferred(address(0), msg.sender);
     }//填入DCdomain、DCDomainRank、Factory的地址
+
+    /// @notice Transfers parameter governance without changing deal creation logic.
+    function transferOwner(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "DCDomainSwap: zero owner");
+        emit OwnerTransferred(owner, newOwner);
+        owner = newOwner;
+    }
 
     function setReplaceTimeoutSeconds(uint64 value) external onlyOwner {
         require(

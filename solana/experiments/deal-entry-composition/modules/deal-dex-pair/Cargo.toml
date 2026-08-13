@@ -1,0 +1,34 @@
+[package]
+name = "deal-dex-pair"
+version = "0.1.0"
+description = "DC pair, virtual reserves, fee burn, and TWAP accounting for Solana"
+edition = "2021"
+license = "MIT"
+rust-version = "1.89"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_dex_pair"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = { version = "=1.0.2", default-features = false, features = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"] }
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.0.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"

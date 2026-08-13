@@ -27,6 +27,9 @@ const PAIR_AGI_REAL_DC = 50_000_000n * ONE;
 const PAIR_AGI_REAL_OTHER = WEI;
 const PAIR_AGI_VIRTUAL_OTHER = 50_000n * ONE;
 
+const INFO_NFT_MINT_PRICE_DC = 100_000n * ONE;
+const MESSAGE_PRICE_DC = 100n * ONE;
+
 const P: Record<string, Address> = {
   dlToken: "0x802c43662c38aad9b4299c2f723a6b16f228217a",
   ausd: "0xa6f5539dab221a6d4506c88ef461f0b4fca13f35",
@@ -265,11 +268,12 @@ async function main() {
   const pairAusd = await createInitPair(ausd, P.ausd, PAIR_AUSD_REAL_DC, PAIR_AUSD_REAL_OTHER, PAIR_AUSD_VIRTUAL_OTHER);
   const pairUsdt = await createInitPair(usdt, P.usdt, PAIR_USDT_REAL_DC, PAIR_USDT_REAL_OTHER, PAIR_USDT_VIRTUAL_OTHER);
   const pairAgi = await createInitPair(wrappedNative, P.wrappedNative, PAIR_AGI_REAL_DC, PAIR_AGI_REAL_OTHER, PAIR_AGI_VIRTUAL_OTHER);
-  await tx("InfoNFT mint price 88 DC", publicClient, infoNft.write.setMintPriceU([zeroAddress, 88n * ONE]));
+  await tx("InfoNFT mint price 100000 DC", publicClient, infoNft.write.setMintPriceU([zeroAddress, INFO_NFT_MINT_PRICE_DC]));
+  await tx("Factory message price 100 DC", publicClient, factory.write.setMessagePriceRule([true, P.dlToken, MESSAGE_PRICE_DC]));
 
   const orderBook = await deploy(viem, "DealSwapOrderBook", [dep], client);
   await tx("Factory.setOpsGlobals orderBook", publicClient, factory.write.setOpsGlobals([orderBook.address, zeroAddress, zeroAddress]));
-  const router = await deploy(viem, "DealRouter", [P.wrappedNative, orderBook.address], client);
+  const router = await deploy(viem, "DealRouter", [P.wrappedNative, orderBook.address, P.dealPairManager], client);
   const routerQuoter = await deploy(viem, "DealRouterQuoter", [orderBook.address], client);
   await tx("OrderBook.setRouter", publicClient, orderBook.write.setRouter([router.address]));
   const swapAssetRegistry = await deploy(viem, "DealSwapAssetRegistry", [

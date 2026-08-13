@@ -1,0 +1,20 @@
+[package]
+name = "deal-compact-treasury"
+version = "0.1.0"
+description = "Generated Deal Compact V2 treasury composition root"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_compact_treasury"
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true
+deal-protocol-treasury = { path = "../../modules/deal-protocol-treasury", features = ["no-entrypoint"] }

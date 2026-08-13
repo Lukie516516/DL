@@ -37,6 +37,9 @@ const PAIR_AGI_REAL_DC = 50_000_000n * ONE;
 const PAIR_AGI_REAL_OTHER = WEI;
 const PAIR_AGI_VIRTUAL_OTHER = 50_000n * ONE;
 
+const INFO_NFT_MINT_PRICE_DC = 100_000n * ONE;
+const MESSAGE_PRICE_DC = 100n * ONE;
+
 function requireAddress(label: string, value: string): Address {
   try {
     return getAddress(value.trim()) as Address;
@@ -359,8 +362,10 @@ async function main() {
   const pairUsdt = await createInitPair(usdt, usdt.address, PAIR_USDT_REAL_DC, PAIR_USDT_REAL_OTHER, PAIR_USDT_VIRTUAL_OTHER);
   const pairAgi = await createInitPair(wrappedNative, wrappedNative.address, PAIR_AGI_REAL_DC, PAIR_AGI_REAL_OTHER, PAIR_AGI_VIRTUAL_OTHER);
   console.log("pair DC↔AUSD", pairAusd, "pair DC↔USDT", pairUsdt, "pair DC↔WAGI", pairAgi);
-  await writeTx(publicClient, infoNft.write.setMintPriceU([zeroAddress, 88n * ONE]));
-  console.log("DealInfoNFT mint price set to direct burn of 88 DealCoin/DC");
+  await writeTx(publicClient, infoNft.write.setMintPriceU([zeroAddress, INFO_NFT_MINT_PRICE_DC]));
+  console.log("DealInfoNFT mint price set to direct burn of 100000 DealCoin/DC");
+  await writeTx(publicClient, factory.write.setMessagePriceRule([true, dl.address, MESSAGE_PRICE_DC]));
+  console.log("Deal message fee set to direct burn of 100 DealCoin/DC");
 
   // —— Order book + router ——
   const orderBook = await deploy(viem, "DealSwapOrderBook", [dep], { client });
@@ -368,7 +373,7 @@ async function main() {
 
   await writeTx(publicClient, factory.write.setOpsGlobals([orderBook.address, zeroAddress, zeroAddress]));
 
-  const router = await deploy(viem, "DealRouter", [wrappedNative.address, orderBook.address], {
+  const router = await deploy(viem, "DealRouter", [wrappedNative.address, orderBook.address, dealPairManager.address], {
     client,
   });
   console.log("DealRouter", router.address);

@@ -5,6 +5,7 @@ import { network } from "hardhat";
 import { encodeFunctionData, getAddress, toHex, zeroAddress } from "viem";
 
 const ONE = 10n ** 18n;
+const MAX_UINT256 = (1n << 256n) - 1n;
 const ACCEPT = 1;
 const REJECT = 2;
 const OPEN_JOIN = 0;
@@ -16,6 +17,45 @@ const TEMPLATE_EMPTY_TO_EMPTY = 3;
 const TEMPLATE_NFT_TO_EMPTY = 4;
 
 type Address = `0x${string}`;
+
+function findDealErrorCode(value: unknown): number | undefined {
+  const seen = new Set<unknown>();
+  const stack: unknown[] = [value];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || seen.has(current)) continue;
+    seen.add(current);
+
+    if (typeof current === "string") {
+      const decoded = current.match(/DealError\(uint16 code\)\s*\(?\s*(\d+)\s*\)?/);
+      if (decoded) return Number(decoded[1]);
+      const selector = "0x1c0c2080";
+      const at = current.indexOf(selector);
+      if (at >= 0 && current.length >= at + 10 + 64) {
+        const word = current.slice(at + 10, at + 10 + 64);
+        if (/^[0-9a-fA-F]{64}$/.test(word)) return Number(BigInt(`0x${word}`));
+      }
+      continue;
+    }
+
+    if (typeof current === "object") {
+      for (const value of Object.values(current as Record<string, unknown>)) {
+        stack.push(value);
+      }
+    }
+  }
+  return undefined;
+}
+
+function assertCustomDealError(fn: () => Promise<unknown>, code: number): Promise<void> {
+  return assert.rejects(fn, (err: unknown) => {
+    const actual = findDealErrorCode(err);
+    if (actual === code) return true;
+    throw new assert.AssertionError({
+      message: `Expected DealError(${code}), got ${actual ?? "unknown"}: ${String(err)}`,
+    });
+  });
+}
 
 async function deployFixture() {
   const { viem } = await network.connect({ network: "hardhatMainnet" });
@@ -843,6 +883,210 @@ describe("Deal Rules", async function () {
       fixture.publicClient,
       await fixture.factory.write.setFeesAndMintOnFeesByAdmin([6, 2]),
     );
+  });
+
+  it("limits admin InfoNFT mint price to the production control-board range", async function () {
+    const fixture = await deployFixture();
+    const price = 100_000n * ONE;
+
+    await waitFor(
+      fixture.publicClient,
+      await fixture.infoNft.write.setMintPriceUByAdmin([price]),
+    );
+    assert.equal(await fixture.infoNft.read.mintPriceDL(), price);
+
+    await assert.rejects(
+      fixture.infoNft.write.setMintPriceUByAdmin([99n * ONE]),
+    );
+    await assert.rejects(
+      fixture.infoNft.write.setMintPriceUByAdmin([5_000_001n * ONE]),
+    );
+  });
+
+  it("limits admin message fee to the production control-board range", async function () {
+    const fixture = await deployFixture();
+    const price = 100n * ONE;
+
+    await waitFor(
+      fixture.publicClient,
+      await fixture.factory.write.setMessagePriceRuleByAdmin([price]),
+    );
+    assert.equal(await fixture.factory.read.msgPriceAmountInToken(), price);
+
+    await assert.rejects(
+      fixture.factory.write.setMessagePriceRuleByAdmin([0n]),
+    );
+    await assert.rejects(
+      fixture.factory.write.setMessagePriceRuleByAdmin([101n * ONE]),
+    );
+  });
+
+  it("lets governance change only the message amount above the admin ceiling", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, owner, alice, bob, ausd, factory } = fixture;
+    const currentPrice = 104n * ONE;
+
+    await waitFor(
+      publicClient,
+      await factory.write.setMessagePriceRule([true, ausd.address, currentPrice]),
+    );
+    await waitFor(
+      publicClient,
+      await factory.write.setCrossChainGovernance([alice.account.address]),
+    );
+
+    const factoryAsGovernance = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: alice },
+    });
+    const factoryAsOutsider = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: bob },
+    });
+
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setMessagePriceAmount([0n]),
+    );
+    assert.equal(await factory.read.msgPriceEnabled(), true);
+    assert.equal(getAddress(await factory.read.msgPriceToken()), getAddress(ausd.address));
+    assert.equal(await factory.read.msgPriceAmountInToken(), 0n);
+
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setMessagePriceAmount([MAX_UINT256]),
+    );
+    assert.equal(await factory.read.msgPriceAmountInToken(), MAX_UINT256);
+
+    await assert.rejects(
+      factoryAsOutsider.write.setMessagePriceAmount([currentPrice]),
+    );
+    await assert.rejects(
+      factory.write.setMessagePriceRuleByAdmin([currentPrice]),
+    );
+
+    await waitFor(
+      publicClient,
+      await factory.write.setMessagePriceAmount([currentPrice]),
+    );
+    assert.equal(await factory.read.msgPriceAmountInToken(), currentPrice);
+    assert.equal(getAddress(await factory.read.owner()), getAddress(owner.account.address));
+  });
+
+  it("lets governance preserve and restore the disabled zero create-burn amount", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, alice, bob, ausd, factory } = fixture;
+    const canaryAmount = 11n * ONE;
+
+    await waitFor(
+      publicClient,
+      await factory.write.setCreateBurnRule([false, ausd.address, 0n]),
+    );
+    await waitFor(
+      publicClient,
+      await factory.write.setCrossChainGovernance([alice.account.address]),
+    );
+
+    const factoryAsGovernance = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: alice },
+    });
+    const factoryAsOutsider = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: bob },
+    });
+
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setCreateBurnAmount([canaryAmount]),
+    );
+    assert.equal(await factory.read.createBurnEnabled(), false);
+    assert.equal(getAddress(await factory.read.createBurnPricingToken()), getAddress(ausd.address));
+    assert.equal(await factory.read.createBurnAmountInToken(), canaryAmount);
+
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setCreateBurnAmount([0n]),
+    );
+    assert.equal(await factory.read.createBurnAmountInToken(), 0n);
+    await assert.rejects(factory.write.setCreateBurnRuleByAdmin([0n]));
+    await assert.rejects(factoryAsOutsider.write.setCreateBurnAmount([ONE]));
+  });
+
+  it("leaves the full create-burn amount range to governance while enabled", async function () {
+    const fixture = await deployFixture();
+    const { publicClient, ausd, factory } = fixture;
+
+    await waitFor(
+      publicClient,
+      await factory.write.setCreateBurnRule([true, ausd.address, 0n]),
+    );
+    assert.equal(await factory.read.createBurnEnabled(), true);
+    assert.equal(await factory.read.createBurnAmountInToken(), 0n);
+
+    await waitFor(
+      publicClient,
+      await factory.write.setCreateBurnAmount([MAX_UINT256]),
+    );
+    assert.equal(await factory.read.createBurnAmountInToken(), MAX_UINT256);
+
+    await waitFor(publicClient, await factory.write.setCreateBurnAmount([0n]));
+    assert.equal(await factory.read.createBurnAmountInToken(), 0n);
+    await assert.rejects(factory.write.setCreateBurnRuleByAdmin([0n]));
+  });
+
+  it("keeps admin operations while giving DAO final control of admin, treasury and upgrades", async function () {
+    const fixture = await deployFixture();
+    const { viem, publicClient, owner, alice, bob, treasury, ausd, factory } = fixture;
+
+    await waitFor(
+      publicClient,
+      await factory.write.setCrossChainGovernance([alice.account.address]),
+    );
+    const factoryAsGovernance = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: alice },
+    });
+    const factoryAsNewAdmin = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: bob },
+    });
+    const factoryAsOutsider = await viem.getContractAt("DealFactory", factory.address, {
+      client: { wallet: treasury },
+    });
+
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setTreasury([bob.account.address]),
+    );
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setSpecialNoFeeToken([ausd.address]),
+    );
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.setAdmin([bob.account.address]),
+    );
+    assert.equal(getAddress(await factory.read.treasury()), getAddress(bob.account.address));
+    assert.equal(getAddress(await factory.read.specialNoFeeToken()), getAddress(ausd.address));
+    assert.equal(getAddress(await factory.read.admin()), getAddress(bob.account.address));
+
+    await waitFor(
+      publicClient,
+      await factoryAsNewAdmin.write.setSpecialNoFeeTokenByAdmin([zeroAddress]),
+    );
+    assert.equal(await factory.read.specialNoFeeToken(), zeroAddress);
+    await assert.rejects(
+      factoryAsOutsider.write.setTreasury([treasury.account.address]),
+    );
+    await assert.rejects(factoryAsGovernance.write.setTreasury([zeroAddress]));
+
+    const replacement = await viem.deployContract("DealFactory");
+    await assert.rejects(
+      factoryAsOutsider.write.upgradeToAndCall([replacement.address, "0x"]),
+    );
+    await waitFor(
+      publicClient,
+      await factoryAsGovernance.write.upgradeToAndCall([replacement.address, "0x"]),
+    );
+    assert.equal(getAddress(await factory.read.owner()), getAddress(owner.account.address));
+    assert.equal(getAddress(await factory.read.crossChainGovernance()), getAddress(alice.account.address));
+    assert.equal(getAddress(await factory.read.admin()), getAddress(bob.account.address));
+    assert.equal(getAddress(await factory.read.treasury()), getAddress(bob.account.address));
   });
 
   it("mints DC rewards for same-token recognized trades on both sides", async function () {
@@ -1898,8 +2142,8 @@ describe("Deal Rules", async function () {
       client: { wallet: alice },
     });
 
-    await assert.rejects(
-      factoryAsAlice.write.createDeal([
+    await assertCustomDealError(
+      () => factoryAsAlice.write.createDeal([
         {
           init: {
             aSwapToken: zeroAddress,
@@ -1930,7 +2174,7 @@ describe("Deal Rules", async function () {
           trackCreator: false,
         },
       ]),
-      /DealError\(39\)/,
+      39,
     );
   });
 
@@ -1950,10 +2194,7 @@ describe("Deal Rules", async function () {
 
     const dealBob = await viem.getContractAt("Deal", dealAddress, { client: { wallet: bob } });
 
-    await assert.rejects(
-      dealBob.write.join([nftId, false]),
-      /DealError\(45\)/,
-    );
+    await assertCustomDealError(() => dealBob.write.join([nftId, false]), 45);
   });
 
   it("rejects selling a locked nft that is already bound into another active deal", async function () {
@@ -1999,8 +2240,8 @@ describe("Deal Rules", async function () {
       ]),
     );
 
-    await assert.rejects(
-      factoryAsAlice.write.createDeal([
+    await assertCustomDealError(
+      () => factoryAsAlice.write.createDeal([
         {
           init: {
             aSwapToken: zeroAddress,
@@ -2031,7 +2272,7 @@ describe("Deal Rules", async function () {
           trackCreator: false,
         },
       ]),
-      /DealError\(42\)/,
+      42,
     );
   });
 

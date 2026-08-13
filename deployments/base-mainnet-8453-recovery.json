@@ -1,0 +1,46 @@
+{
+  "DealAssetNftLib": {
+    "address": "0x19CC1320DcF7e1396404599209D7c9a844A21b8a",
+    "transactionHash": "0xfcceebeed7f31d466733d42ca45ccff3913cf3516f846dd9e6b3f8ffe73bc7f1"
+  },
+  "Deal": {
+    "address": "0xDB1CaB9F6ccaf78eE8c673517c8BEf6ad62dE58C",
+    "transactionHash": "0xaa8cdfb7b1d5c6a7635434ea62a72d0b50d454b5817ce8699335410b94e89279"
+  },
+  "DealNoAsset": {
+    "address": "0x8af16ec65e2bEe3897a0d6DE1350e8d74a61C410",
+    "transactionHash": "0x1f8667d35a8d7f1ddcaebfe54fd93123608d20cd882b9c18f72ea32c804efbd8"
+  },
+  "DealAAssetNft": {
+    "address": "0xb6f24d3Ed15351B9Bfd47B7EBB9eA5BeDA05728f",
+    "transactionHash": "0x184a61c4b7b31204e966cb9d88c22b7093fe56b6350b41a9b9e5e2863fb51838"
+  },
+  "DealBAssetNft": {
+    "address": "0xA952c195cADF2D148582E90612b6A40F7b99f508",
+    "transactionHash": "0xfbe2c7901bec17168bf31bd60231a01d3c925c7e2c11088c3127f1248251b85e"
+  },
+  "DealAAssetNftOnly": {
+    "address": "0x7979abcf36fe76940c557de7b942a2fe69edb6b8",
+    "transactionHash": "0xb0e0dd4a75786487a5d2334666defac7633cf159edf81c055e1bb0f64c05919b"
+  },
+  "DealBAssetNftOnly": {
+    "address": "0x93066f6D0C18266Db369B1D38d6Fe4cD6Bd480C3",
+    "transactionHash": "0xd80cb82834573adbb489c07c65e441b2b943398eb6075bdda93f143dc4e8dcc8"
+  },
+  "DealOpenTokenToken": {
+    "address": "0xbb686a57fff9b2886622369cf30e085aedea5dcd",
+    "transactionHash": "0x150eecfa03cb91815c4a408e4f79cac3fbcbfe5ba0207eccf9bfe897c587edf0"
+  },
+  "DealSwapTemplate": {
+    "address": "0xa7F98A2C6a7861AB73440f869dc6e7914C1d7c0B",
+    "transactionHash": "0x9cc8b93e3561cbd6133750b4efbde0d79079438e70084c0442906eaac39b9aeb"
+  },
+  "DCToken": {
+    "address": "0xBB88a5b4aCDD18Fca66C2eb14cBdB791b9e8Df23",
+    "transactionHash": "0x2f3d3e07174a2fae06f5f212463fa564246b55c13546af100d7d2c53d0c0c8a5"
+  },
+  "DealFactory": {
+    "address": "0xAcf74FD151DE6FFE455Ab862A7de9B77cfCe82ed",
+    "transactionHash": "0x4c210bcdc15318304b85d1915a0ebb99b155e5c069cb8ece1a42a73736f7b34f"
+  }
+}

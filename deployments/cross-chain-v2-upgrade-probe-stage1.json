@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scope": "deploy six asset-free probe contracts only; no allowlist, token, proposal, stake, execute or upgrade",
+  "stage": "both_deployed",
+  "startedAt": "2026-07-23T12:38:30.473Z",
+  "updatedAt": "2026-07-23T12:40:50.596Z",
+  "signers": {
+    "eth": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893",
+    "bsc": "0xE88c63D29ECE76E3336B0Db747E10876c3bf9893"
+  },
+  "eth": {
+    "chainId": 1,
+    "controller": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "v1Implementation": {
+      "nonce": 146,
+      "address": "0x84CEBcA724a32Cf82739233A79D7b04F116030cc",
+      "txHash": "0xe9d8097bd1e03b6c391aa43dfb8f6ef920c014a5313ea0e897cea8b54bdb1405",
+      "blockNumber": "25595482",
+      "gasUsed": "476130",
+      "verified": true
+    },
+    "proxy": {
+      "nonce": 147,
+      "address": "0xacD12B3B3067f8D489bC7c5832E85C104fB2A054",
+      "txHash": "0x96dcb1eee9ca3a205f7e541d1a30e89be6ac92df7a9b0b61544fc3d2337bcbc4",
+      "blockNumber": "25595485",
+      "gasUsed": "155391",
+      "verified": true
+    },
+    "v2Implementation": {
+      "nonce": 148,
+      "address": "0x7DBF60d7Bfb9Dc3Cd26b8055e94B7601D6DDF0b6",
+      "txHash": "0x27e31aba90ac4d2253c281f0ed5880665d3cd1631b3d25d6ffb342e7161a26a5",
+      "blockNumber": "25595487",
+      "gasUsed": "484347",
+      "verified": true
+    },
+    "verified": true
+  },
+  "bsc": {
+    "chainId": 56,
+    "controller": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "v1Implementation": {
+      "nonce": 99,
+      "address": "0x0b014b826a22b4bea24d2B5643116C75CF82263d",
+      "txHash": "0x0c44b6e0fa484267e1938a8ee32c758fcc328a3a98fa68754f36778529d3a28f",
+      "blockNumber": "111668306",
+      "gasUsed": "476130",
+      "verified": true
+    },
+    "proxy": {
+      "nonce": 100,
+      "address": "0xd31C6417aE0C267F8C5bd634B96dA7590E6E6aB3",
+      "txHash": "0x5d0d962673970af4b28d08384f2fcfb3b6d7749246bc22264e222c53f59b7c2e",
+      "blockNumber": "111668327",
+      "gasUsed": "155391",
+      "verified": true
+    },
+    "v2Implementation": {
+      "nonce": 101,
+      "address": "0x14D0F49A72038FD745241109c5bA5059FFFbf156",
+      "txHash": "0x2b9d1c3b1b1d05fff365026cf561de8c095dfdcff493909ac9782f906fadd3f9",
+      "blockNumber": "111668349",
+      "gasUsed": "484347",
+      "verified": true
+    },
+    "verified": true
+  },
+  "verification": {
+    "ethProxyImplementation": "0x84CEBcA724a32Cf82739233A79D7b04F116030cc",
+    "bscProxyImplementation": "0x0b014b826a22b4bea24d2B5643116C75CF82263d",
+    "ethController": "0x9a41a9A85C16F590789C846Fb933fF8C715407F7",
+    "bscController": "0x407381d841DD48bBBd40Bd37f9dB268CE75950A8",
+    "ethVersion": "1",
+    "bscVersion": "1",
+    "bscAllowlisted": false,
+    "ethPolicyAllowed": false,
+    "bscPolicyAllowed": false,
+    "transactionCount": 6
+  }
+}

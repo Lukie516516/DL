@@ -22,6 +22,12 @@
 # OS / editor noise
 .DS_Store
 Thumbs.db
+/.codegraph/
+
+# Local bridge/test state (runtime-only, may contain environment-specific data)
+/.triple-bridge-e2e-state.json
+/.triple-bridge-state.json
+/.wormhole-test-state.json
 
 # Local archives
 *.zip

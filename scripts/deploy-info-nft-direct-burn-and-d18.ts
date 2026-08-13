@@ -14,6 +14,7 @@ import { defineChain, formatEther, getAddress, zeroAddress, type Address } from 
 const AGIKING_CHAIN_ID = 31415926;
 const DEPLOYMENT_FILE = "agiking-31415926.json";
 const ONE = 10n ** 18n;
+const INFO_NFT_MINT_PRICE_DC = 100_000n * ONE;
 
 type DeploymentJson = {
   chainId: number;
@@ -110,7 +111,7 @@ function writeHandoff(file: string, deployedAt: string, deployer: Address, addre
 ## 前端接线
 
 1. 官方身份 NFT 地址切到新版 \`DealInfoNFT\`。
-2. 身份 NFT 铸造价格读 \`DealInfoNFT.mintPriceDL()\`，当前是 \`88e18\`，表示直接 burn 88 DC。
+2. 身份 NFT 铸造价格读 \`DealInfoNFT.mintPriceDL()\`，当前是 \`100000e18\`，表示直接 burn 100000 DC。
 3. \`pair()\` 仅为旧 ABI 兼容字段，身份 NFT 铸造不再用 pair 报价。
 4. D 代币地址切到新版 \`D\`，\`decimals() = 18\`，\`MAX_SUPPLY() = 100e18\`，\`SEAT_THRESHOLD() = 2.5e18\`。
 5. 信用读取切到新版 \`DealCreditGraph\`。
@@ -174,7 +175,7 @@ async function main() {
   const dividendSource = getAddress((process.env.DIVIDEND_SOURCE?.trim() || dep) as Address) as Address;
 
   console.log("\n--- Deploy InfoNFT + CreditGraph ---");
-  const infoNft = await viem.deployContract("DealInfoNFT", [old.dealFactory, zeroAddress, 88n * ONE], { client }) as AnyContract;
+  const infoNft = await viem.deployContract("DealInfoNFT", [old.dealFactory, zeroAddress, INFO_NFT_MINT_PRICE_DC], { client }) as AnyContract;
   console.log("DealInfoNFT:", infoNft.address);
   const infoNftRenderer = await viem.deployContract("DealInfoNFTRenderer", [], { client }) as AnyContract;
   console.log("DealInfoNFTRenderer:", infoNftRenderer.address);
@@ -245,7 +246,7 @@ async function main() {
   if (dDecimals !== 18) throw new Error("D decimals mismatch");
   if (dMaxSupply !== 100n * ONE) throw new Error("D max supply mismatch");
   if (dThreshold !== (25n * ONE) / 10n) throw new Error("D seat threshold mismatch");
-  if (nftPrice !== 88n * ONE) throw new Error("InfoNFT mint price mismatch");
+  if (nftPrice !== INFO_NFT_MINT_PRICE_DC) throw new Error("InfoNFT mint price mismatch");
   console.log("  OK Factory + D + InfoNFT pointers");
 
   const deployedAt = new Date().toISOString();

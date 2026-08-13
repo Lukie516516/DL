@@ -1,0 +1,11 @@
+[package]
+name = "deal-terminal-guard"
+version = "0.1.0"
+description = "Shared top-level Solana terminal-flow instruction validation"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anchor-lang.workspace = true
+solana-instructions-sysvar.workspace = true

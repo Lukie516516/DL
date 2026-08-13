@@ -10,17 +10,10 @@ abstract contract CrossChainMessengerBase {
     function _sendMessage(uint32 dstChainId, bytes memory payload) internal virtual;
 }
 
-/// @title CrossChainDispatcher
-/// @notice Deployed on ETH. Called as a proposal action inside DealGovernance.
-///         Fans out arbitrary governance calls to registered executor contracts
-///         on other chains via any bridge.
-///
-/// Usage inside a DealGovernance proposal:
-///   targets[i]   = address(crossChainDispatcher)
-///   calldatas[i] = abi.encodeCall(
-///       CrossChainDispatcher.dispatch,
-///       (chainIds, targets, calldatas, values)
-///   )
+/// @title CrossChainDispatcher  [PLACEHOLDER — _sendMessage 为空函数，桥未接线]
+/// @notice 已部署在 Agiking 主网作为占位合约，_sendMessage 默认 no-op，
+///         调用 dispatch() 不发送任何跨链消息。
+///         生产跨链治理请使用 CrossChainBroadcaster + DualBridgeExecutor（ETH→BSC，三桥 2-of-3）。
 contract CrossChainDispatcher is CrossChainMessengerBase, Ownable {
 
     // ─── State ────────────────────────────────────────────────────────────────

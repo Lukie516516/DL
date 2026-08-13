@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-10T10:08:35Z",
+  "chainId": 8453,
+  "scope": "Sync the only audited portable Base parameter difference with current ETH and BSC production values",
+  "comparison": {
+    "ethMessagePriceDc": "104000000000000000000",
+    "bscMessagePriceDc": "104000000000000000000",
+    "baseBeforeMessagePriceDc": "100000000000000000000",
+    "baseAfterMessagePriceDc": "104000000000000000000",
+    "otherPortableParameterDiffs": 0,
+    "baseWiringFailures": 0
+  },
+  "transaction": {
+    "hash": "0x4084621fc2f0d2e5f22c4d49559ac29e6143dd39810df14072ecd3f6fdf913dd",
+    "blockNumber": "49783580",
+    "gasUsed": "39369",
+    "status": "success",
+    "target": "0x591625Be924B98ACcAb7e2c8aF698c858Aa2608D",
+    "function": "setMessagePriceRule(true, Base DC, 104 ether)"
+  },
+  "invariants": {
+    "factoryAuthorityUnchanged": true,
+    "treasuryUnchanged": true,
+    "feesAndTimeoutsUnchanged": true,
+    "dcSupplyUnchanged": true,
+    "crossChainCanaryStill3of3": true,
+    "probeStillExecutedExactlyOnce": true
+  }
+}

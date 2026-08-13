@@ -1,0 +1,54 @@
+[workspace]
+members = [
+    "crates/deal-terminal-guard",
+    "programs/deal-asset-controller",
+    "programs/deal-core",
+    "programs/deal-credit-graph",
+    "programs/deal-credit-valuator",
+    "programs/deal-dc-controller",
+    "programs/deal-d-token",
+    "programs/deal-dividend",
+    "programs/deal-dex-pair",
+    "programs/deal-dex-quoter",
+    "programs/deal-dex-router",
+    "programs/deal-domain-registry",
+    "programs/deal-domain-market",
+    "programs/deal-domain-rank",
+    "programs/deal-domain-entry",
+    "programs/deal-domain-hall",
+    "programs/deal-swap-asset-registry",
+    "programs/deal-swap-orderbook",
+    "programs/deal-finalizer",
+    "programs/deal-governance-activity",
+    "programs/deal-governance",
+    "programs/deal-governance-executor",
+    "programs/deal-history-index",
+    "programs/deal-identity",
+    "programs/deal-message-hub",
+    "programs/deal-parameter-registry",
+    "programs/deal-protocol-treasury",
+    "programs/deal-result-index",
+    "programs/deal-reward-engine",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+rust-version = "1.89"
+
+[workspace.dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = { version = "=1.0.2", default-features = false, features = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"] }
+solana-keccak-hasher = { version = "=3.1.0", features = ["sha3"] }
+solana-instructions-sysvar = "=3.0.1"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1

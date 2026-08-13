@@ -1,0 +1,80 @@
+[toolchain]
+anchor_version = "1.0.2"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+deal_asset_controller = "5ezPaVi6sh3QUaNLyipjPQXQQ5diaF8MYv8QpFQpaYWo"
+deal_core = "4pPmeaNz9YQzLhVUPmySMRbcyKTau44h7tJDbAxtot5g"
+deal_credit_graph = "4r5qdEKj9Ub2S23C21W2PigyqoWdRUGZSok3mf6d8cfH"
+deal_credit_valuator = "5mXPbnW19tZ3M4CLz59riBfF8u6sEq2LJxDjBB434v4m"
+deal_dc_controller = "9aRw5UVbzrYFH9iLvns6tNoYKV6cYKnM2CwKj986TjdH"
+deal_d_token = "7yHub6z31FBMNdYxAgVX2AKiXbut6cHxZbx6M1mycjEt"
+deal_dividend = "9LuwMxg22xFMBmaYGuLyREvdn93K33psWdZY5TEQuzjL"
+deal_dex_pair = "7gj62yTY5NpATrvseLcsC4eNvsBWd53eAK5RBe2kgQe6"
+deal_dex_quoter = "AahNv56jV3g33PrV4RSqRi2Xw3XihJBgFNgGgZN7EB4F"
+deal_dex_router = "AD3GF5txa1xfnfCKNVGwCDmLMt9ZGupreHQDQ4sHpjd1"
+deal_domain_registry = "EK5YXKpbYo7Jkah2a3fERFfQfWa4gaR5pZgvqTFozeFW"
+deal_domain_market = "EuveF2F6K3sTqYPhSFywmxjp9y1UuWLs84KBG9UkgCrg"
+deal_domain_rank = "5owFRkhyq4nzMjVzjbGTWpLLD4YYZg4C9BjxE5NMe1sN"
+deal_domain_entry = "Emnf1JhAgC8AY4g77xST3g5StgNvNTMgm9KqhitRLV5Z"
+deal_domain_hall = "8oNTEygKh3gSVwspzcxqterUhqYjbFTFAz9E89vnuTsf"
+deal_swap_asset_registry = "FUyP78nzDkoajFWpQ69zjd4AJJ7FtUsDA7xUmqm5wgih"
+deal_swap_orderbook = "7mugNHvfUndSfnLiTLTojFMHXC965s1ZxSv2VeVjMiSQ"
+deal_finalizer = "5VGLevrU3z3P9Epr6E1nTuMuxTdqqZiusbz21NugTgG9"
+deal_governance_activity = "6Q8EE4YfEMt3fMmavAJdadYt8zbKJqNDuCSx8XFG5gLJ"
+deal_governance = "9t2XDazJT4p4FBMXZ4jiF5sX3TJYqqUP1jaoNMW9f4yH"
+deal_governance_executor = "7SQaq2kgAZKV7hUnpW1ZZVoXXdg9JfzEH8qh4VzEAx8Q"
+deal_history_index = "GVdfEGRAMJxihudnpskiNGykX4wEeoDdi7MEoHriZBBv"
+deal_identity = "GTVqt2Zky42gqpxoLC7Zc2xUWKDAdkzkw26MUogpRk7e"
+deal_message_hub = "tY7R1Ai842jvRRNCdgudjAw7HVuENopG4ZmwYNTQNCJ"
+deal_parameter_registry = "3ZemYrD7Zbo7A2CDYfXd6zwBK7nGsAyJPSy5JwboSCub"
+deal_protocol_treasury = "2PoaC93xnLCD4zUTQVG91MMURnuaajkBuqLhZEPvP9j8"
+deal_result_index = "CwCq9ZzGg1SLhxgZohcqWDzyorzw9ro6iA7EFov8Fvom"
+deal_reward_engine = "EVq7dnxAft4VVAXp3gZvt93DnJyUA3uwBRSS86yxZwo5"
+
+[programs.localnet]
+deal_asset_controller = "5ezPaVi6sh3QUaNLyipjPQXQQ5diaF8MYv8QpFQpaYWo"
+deal_core = "4pPmeaNz9YQzLhVUPmySMRbcyKTau44h7tJDbAxtot5g"
+deal_credit_graph = "4r5qdEKj9Ub2S23C21W2PigyqoWdRUGZSok3mf6d8cfH"
+deal_credit_valuator = "5mXPbnW19tZ3M4CLz59riBfF8u6sEq2LJxDjBB434v4m"
+deal_dc_controller = "9aRw5UVbzrYFH9iLvns6tNoYKV6cYKnM2CwKj986TjdH"
+deal_d_token = "7yHub6z31FBMNdYxAgVX2AKiXbut6cHxZbx6M1mycjEt"
+deal_dividend = "9LuwMxg22xFMBmaYGuLyREvdn93K33psWdZY5TEQuzjL"
+deal_dex_pair = "7gj62yTY5NpATrvseLcsC4eNvsBWd53eAK5RBe2kgQe6"
+deal_dex_quoter = "AahNv56jV3g33PrV4RSqRi2Xw3XihJBgFNgGgZN7EB4F"
+deal_dex_router = "AD3GF5txa1xfnfCKNVGwCDmLMt9ZGupreHQDQ4sHpjd1"
+deal_domain_registry = "EK5YXKpbYo7Jkah2a3fERFfQfWa4gaR5pZgvqTFozeFW"
+deal_domain_market = "EuveF2F6K3sTqYPhSFywmxjp9y1UuWLs84KBG9UkgCrg"
+deal_domain_rank = "5owFRkhyq4nzMjVzjbGTWpLLD4YYZg4C9BjxE5NMe1sN"
+deal_domain_entry = "Emnf1JhAgC8AY4g77xST3g5StgNvNTMgm9KqhitRLV5Z"
+deal_domain_hall = "8oNTEygKh3gSVwspzcxqterUhqYjbFTFAz9E89vnuTsf"
+deal_swap_asset_registry = "FUyP78nzDkoajFWpQ69zjd4AJJ7FtUsDA7xUmqm5wgih"
+deal_swap_orderbook = "7mugNHvfUndSfnLiTLTojFMHXC965s1ZxSv2VeVjMiSQ"
+deal_finalizer = "5VGLevrU3z3P9Epr6E1nTuMuxTdqqZiusbz21NugTgG9"
+deal_governance_activity = "6Q8EE4YfEMt3fMmavAJdadYt8zbKJqNDuCSx8XFG5gLJ"
+deal_governance = "9t2XDazJT4p4FBMXZ4jiF5sX3TJYqqUP1jaoNMW9f4yH"
+deal_governance_executor = "7SQaq2kgAZKV7hUnpW1ZZVoXXdg9JfzEH8qh4VzEAx8Q"
+deal_history_index = "GVdfEGRAMJxihudnpskiNGykX4wEeoDdi7MEoHriZBBv"
+deal_identity = "GTVqt2Zky42gqpxoLC7Zc2xUWKDAdkzkw26MUogpRk7e"
+deal_message_hub = "tY7R1Ai842jvRRNCdgudjAw7HVuENopG4ZmwYNTQNCJ"
+deal_parameter_registry = "3ZemYrD7Zbo7A2CDYfXd6zwBK7nGsAyJPSy5JwboSCub"
+deal_protocol_treasury = "2PoaC93xnLCD4zUTQVG91MMURnuaajkBuqLhZEPvP9j8"
+deal_result_index = "CwCq9ZzGg1SLhxgZohcqWDzyorzw9ro6iA7EFov8Fvom"
+deal_reward_engine = "EVq7dnxAft4VVAXp3gZvt93DnJyUA3uwBRSS86yxZwo5"
+
+[provider]
+cluster = "localnet"
+wallet = "./.local/test-wallet.json"
+
+[scripts]
+test = "cargo test --workspace"
+
+[hooks]
+
+[test]
+startup_wait = 10000
+shutdown_wait = 2000
+upgradeable = false

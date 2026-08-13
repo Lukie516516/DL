@@ -1,0 +1,103 @@
+{
+  "initializedAt": "2026-08-11T03:56:05.402Z",
+  "mode": "ETH legacy parity: real DC + 1 smallest counterasset unit + virtual counterasset reserve",
+  "noSatoshiAccount": true,
+  "treasuryDc": "5000000000000000000000000000",
+  "totalSupply": "6005000000000000000000000000",
+  "pools": [
+    {
+      "label": "DC/USDC",
+      "pair": "0xee40Bbc8cC387aCa294fb9ECa429B10AbeBf1DBA",
+      "reserves": [
+        "5000000000000000000000000",
+        "1"
+      ],
+      "virtualReserves": [
+        "0",
+        "499999999"
+      ],
+      "effectiveReserves": [
+        "5000000000000000000000000",
+        "500000000"
+      ]
+    },
+    {
+      "label": "DC/bridged USDT",
+      "pair": "0x00e284922E5A727b4378768b5ED5D22fbF3297e8",
+      "reserves": [
+        "500000000000000000000000000",
+        "1"
+      ],
+      "virtualReserves": [
+        "0",
+        "49999999999"
+      ],
+      "effectiveReserves": [
+        "500000000000000000000000000",
+        "50000000000"
+      ]
+    },
+    {
+      "label": "DC/WETH",
+      "pair": "0xC99577B3027181F85b650651021bb7F804F50e61",
+      "reserves": [
+        "500000000000000000000000000",
+        "1"
+      ],
+      "virtualReserves": [
+        "0",
+        "31999999999999999999"
+      ],
+      "effectiveReserves": [
+        "500000000000000000000000000",
+        "32000000000000000000"
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "label": "Treasury DC.mint",
+      "hash": "0x40bd79f6901b6e803c3691f45d2aea4b0ec949b13d0f24f206a10d8526fee96d"
+    },
+    {
+      "label": "DC/USDC DC.mint",
+      "hash": "0xd7f067d3a559c5b6ec67476fe1832274f6eeea63b1b2ad4df1354440e09fa88f"
+    },
+    {
+      "label": "DC/USDC counterasset.transfer",
+      "hash": "0x68a586da68987769a764b744f35243704b18544065bac8ea744af021e51b1f02"
+    },
+    {
+      "label": "DC/USDC PairManager.initPair",
+      "hash": "0xee8a5cf50de661e7098da84798eef94759d2f43660c19d4b487ffcdafd9cc7b5"
+    },
+    {
+      "label": "DC/bridged USDT DC.mint",
+      "hash": "0x7f90b79c8561c32e6a92235fa82b8e13b5685cb54b471b4b3b1f0100491d8528"
+    },
+    {
+      "label": "DC/bridged USDT counterasset.transfer",
+      "hash": "0x68a87782431b25f6f523003115d3f33fc21a303ca0048037ec4e9c5f30b8383f"
+    },
+    {
+      "label": "DC/bridged USDT PairManager.initPair",
+      "hash": "0xb55e908cdb3e0028ac55b5330c27fa2e4e668f8b1a62cfea1c705392981579e6"
+    },
+    {
+      "label": "DC/WETH DC.mint",
+      "hash": "0xf9b829da2365a05c73ee9703e06abf55f40a23422b05756919ee36bf9d5fd6c0"
+    },
+    {
+      "label": "WETH.deposit",
+      "hash": "0x498e5b0f321f3987b9afac4a3a3c49ffc6c31feb55dc3611c2cd02ebd979881b"
+    },
+    {
+      "label": "DC/WETH counterasset.transfer",
+      "hash": "0xdbe6576897cd77203bab3b1fa04c073ac362a74b5cecb0535e9c78a3823e4f27"
+    },
+    {
+      "label": "DC/WETH PairManager.initPair",
+      "hash": "0x952a853cba6233080aa2f4557f1264ba6365a772c572e3ce684d1de11d844345"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+[workspace]
+members = [
+    "crates/deal-terminal-guard",
+    "modules/deal-governance-executor",
+    "modules/deal-protocol-treasury",
+    "modules/deal-core",
+    "modules/deal-asset-controller",
+    "modules/deal-finalizer",
+    "modules/deal-credit-valuator",
+    "modules/deal-reward-engine",
+    "modules/deal-identity",
+    "modules/deal-credit-graph",
+    "modules/deal-dc-controller",
+    "modules/deal-parameter-registry",
+    "modules/deal-dex-pair",
+    "modules/deal-dex-router",
+    "modules/deal-dex-quoter",
+    "modules/deal-swap-asset-registry",
+    "modules/deal-swap-orderbook",
+    "modules/deal-domain-registry",
+    "modules/deal-domain-market",
+    "modules/deal-domain-rank",
+    "modules/deal-domain-entry",
+    "modules/deal-domain-hall",
+    "modules/deal-history-index",
+    "modules/deal-result-index",
+    "modules/deal-message-hub",
+    "programs/deal-compact-governance-ingress",
+    "programs/deal-compact-treasury",
+    "programs/deal-compact-lifecycle",
+    "programs/deal-compact-settlement",
+    "programs/deal-compact-identity-credit",
+    "programs/deal-compact-monetary-policy",
+    "programs/deal-compact-exchange",
+    "programs/deal-compact-domain-assets",
+    "programs/deal-compact-domain-network",
+    "programs/deal-compact-data-services",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+rust-version = "1.89"
+
+[workspace.dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = { version = "=1.0.2", default-features = false, features = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"] }
+solana-keccak-hasher = { version = "=3.1.0", features = ["sha3"] }
+solana-instructions-sysvar = "=3.0.1"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1

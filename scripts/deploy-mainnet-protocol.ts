@@ -26,7 +26,8 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { network } from "hardhat";
-import { encodeFunctionData, getAddress, zeroAddress, type Address } from "viem";
+import { encodeFunctionData, getAddress, zeroAddress, type Address, type Hex } from "viem";
+import { BASE_MAINNET, deploymentChain, firstEnv } from "./lib/evm-chain-config.js";
 
 const ONE = 10n ** 18n;
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
@@ -40,6 +41,15 @@ const DEFAULT_FEE_NUM = Number(envBigInt("MAINNET_DEAL_FEE_NUM", 3n));
 const DEFAULT_MINT_REWARD_NUM = Number(envBigInt("MAINNET_DEAL_REWARD_NUM", 1n));
 
 type AnyContract = Record<string, any> & { address: Address };
+type GasEntry = {
+  label: string;
+  type: "deployment" | "setup";
+  transactionHash: string;
+  gasUsed: string;
+  effectiveGasPriceWei: string;
+  l1FeeWei: string;
+  nativeCostWei: string;
+};
 type DeploymentJson = {
   chainId: number;
   network: string;
@@ -50,11 +60,29 @@ type DeploymentJson = {
   abi: Record<string, unknown[]>;
   params: Record<string, string | number | boolean>;
   notes: string[];
+  gasReport?: {
+    entries: GasEntry[];
+    totalGasUsed: string;
+    totalL1FeeWei: string;
+    totalNativeCostWei: string;
+    l1FeeAvailable: boolean;
+  };
 };
+type ResumeDeploymentEntry = { address: Address; transactionHash: Hex };
 
 const erc20Abi = [
   { type: "function", name: "transfer", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }], stateMutability: "nonpayable" },
   { type: "function", name: "decimals", inputs: [], outputs: [{ type: "uint8" }], stateMutability: "view" },
+] as const;
+
+const erc20MetadataAbi = [
+  { type: "function", name: "symbol", inputs: [], outputs: [{ name: "", type: "string" }], stateMutability: "view" },
+  { type: "function", name: "decimals", inputs: [], outputs: [{ name: "", type: "uint8" }], stateMutability: "view" },
+] as const;
+
+const baseBridgedTokenAbi = [
+  { type: "function", name: "l1Token", inputs: [], outputs: [{ name: "", type: "address" }], stateMutability: "view" },
+  { type: "function", name: "l2Bridge", inputs: [], outputs: [{ name: "", type: "address" }], stateMutability: "view" },
 ] as const;
 
 function loadEnv() {
@@ -108,6 +136,13 @@ function optionalAddressFrom(keys: string[]): Address | undefined {
   return undefined;
 }
 
+function optionalHash(key: string): Hex | undefined {
+  const raw = process.env[key]?.trim();
+  if (!raw) return undefined;
+  if (!/^0x[a-fA-F0-9]{64}$/.test(raw)) throw new Error(`Invalid transaction hash for ${key}`);
+  return raw as Hex;
+}
+
 function loadAbi(relativeArtifactJson: string): unknown[] {
   const p = join(process.cwd(), "artifacts", "contracts", relativeArtifactJson);
   const j = JSON.parse(readFileSync(p, "utf8")) as { abi: unknown[] };
@@ -135,6 +170,86 @@ async function waitFor(publicClient: any, hash: `0x${string}`, label?: string) {
   return receipt;
 }
 
+async function waitForRuntimeCode(publicClient: any, address: Address, label: string) {
+  for (let attempt = 1; attempt <= 20; ++attempt) {
+    const code = await publicClient.getCode({ address });
+    if (code && code !== "0x") return;
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  }
+  throw new Error(`${label} receipt succeeded but runtime code is not visible at ${address}`);
+}
+
+function recoverableBroadcastHash(error: unknown): Hex | undefined {
+  const e = error as Record<string, unknown> | undefined;
+  const details = [e?.name, e?.shortMessage, e?.message, e?.details]
+    .filter(Boolean)
+    .join("\n");
+  if (!/TransactionNotFound|could not be found/i.test(details)) return undefined;
+  return details.match(/0x[a-fA-F0-9]{64}/)?.[0] as Hex | undefined;
+}
+
+async function assertAssetContract(
+  publicClient: any,
+  label: string,
+  address: Address,
+  expectedSymbol?: string,
+  expectedDecimals?: number,
+) {
+  const code = await publicClient.getCode({ address });
+  if (!code || code === "0x") throw new Error(`${label} has no runtime code at ${address}`);
+  const [symbol, decimals] = await Promise.all([
+    publicClient.readContract({ address, abi: erc20MetadataAbi, functionName: "symbol" }),
+    publicClient.readContract({ address, abi: erc20MetadataAbi, functionName: "decimals" }),
+  ]);
+  if (expectedSymbol !== undefined && symbol !== expectedSymbol) {
+    throw new Error(`${label} symbol mismatch: ${symbol} != ${expectedSymbol}`);
+  }
+  if (expectedDecimals !== undefined && Number(decimals) !== expectedDecimals) {
+    throw new Error(`${label} decimals mismatch: ${decimals} != ${expectedDecimals}`);
+  }
+  if (Number(decimals) > 36) throw new Error(`${label} decimals ${decimals} exceed protocol normalization limit`);
+  return { symbol: String(symbol), decimals: Number(decimals) };
+}
+
+async function assertBaseMainnetAssets(
+  publicClient: any,
+  stable0: Address,
+  stable1: Address,
+  wrappedNative: Address,
+) {
+  const allowNoncanonical = envBool("BASE_ALLOW_NONCANONICAL_ASSETS", false);
+  if (!allowNoncanonical) {
+    if (stable0.toLowerCase() !== BASE_MAINNET.usdc.toLowerCase()) {
+      throw new Error(`Base stable0 must be canonical USDC ${BASE_MAINNET.usdc}; got ${stable0}`);
+    }
+    if (stable1.toLowerCase() !== BASE_MAINNET.usdt.toLowerCase()) {
+      throw new Error(`Base stable1 must be Base Standard Bridge USDT ${BASE_MAINNET.usdt}; got ${stable1}`);
+    }
+    if (wrappedNative.toLowerCase() !== BASE_MAINNET.weth.toLowerCase()) {
+      throw new Error(`Base wrapped native must be canonical WETH ${BASE_MAINNET.weth}; got ${wrappedNative}`);
+    }
+  }
+
+  await Promise.all([
+    assertAssetContract(publicClient, "Base USDC", stable0, "USDC", 6),
+    assertAssetContract(publicClient, "Base bridged USDT", stable1, "USDT", 6),
+    assertAssetContract(publicClient, "Base WETH", wrappedNative, "WETH", 18),
+  ]);
+
+  if (stable1.toLowerCase() === BASE_MAINNET.usdt.toLowerCase()) {
+    const [l1Token, l2Bridge] = await Promise.all([
+      publicClient.readContract({ address: stable1, abi: baseBridgedTokenAbi, functionName: "l1Token" }),
+      publicClient.readContract({ address: stable1, abi: baseBridgedTokenAbi, functionName: "l2Bridge" }),
+    ]);
+    if (String(l1Token).toLowerCase() !== BASE_MAINNET.ethereumUsdt.toLowerCase()) {
+      throw new Error(`Base bridged USDT has wrong L1 token: ${l1Token}`);
+    }
+    if (String(l2Bridge).toLowerCase() !== BASE_MAINNET.standardBridge.toLowerCase()) {
+      throw new Error(`Base bridged USDT has wrong L2 bridge: ${l2Bridge}`);
+    }
+  }
+}
+
 async function main() {
   loadEnv();
 
@@ -143,15 +258,61 @@ async function main() {
   const [deployer] = await viem.getWalletClients();
   const client = { public: publicClient, wallet: deployer } as const;
   const chainId = Number(await publicClient.getChainId());
-  const networkName = chainId === 1 ? "eth-mainnet" : chainId === 56 ? "bsc-mainnet" : `chain-${chainId}`;
+  const chainConfig = deploymentChain(chainId);
+  const networkName = chainConfig.networkName;
   const dep = deployer.account.address as Address;
-  const deployDao = envBool("MAINNET_DEPLOY_DAO", chainId === 1);
+  const deployDao = envBool("MAINNET_DEPLOY_DAO", chainConfig.deployDaoByDefault);
+  const gasReportEnabled = envBool("MAINNET_GAS_REPORT", false);
+  const resumeProtocolTreasury = optionalAddress("BASE_RESUME_PROTOCOL_TREASURY_ADDRESS");
+  const resumeDealLib = optionalAddress("BASE_RESUME_DEAL_LIB_ADDRESS");
+  const resumeProtocolTreasuryTx = optionalHash("BASE_RESUME_PROTOCOL_TREASURY_TX");
+  const resumeDealLibTx = optionalHash("BASE_RESUME_DEAL_LIB_TX");
+  const resumeDeploymentsFile = process.env.BASE_RESUME_DEPLOYMENTS_FILE?.trim();
+  const resumeDeployments = resumeDeploymentsFile
+    ? JSON.parse(readFileSync(resumeDeploymentsFile, "utf8")) as Record<string, ResumeDeploymentEntry>
+    : {};
+  if (chainId !== BASE_MAINNET.chainId && (resumeProtocolTreasury || resumeDealLib)) {
+    throw new Error("BASE_RESUME_* addresses are only valid for Base mainnet recovery");
+  }
+  const gasEntries: GasEntry[] = [];
+  const deploymentOccurrences = new Map<string, number>();
+
+  function recordGas(label: string, type: GasEntry["type"], receipt: any) {
+    if (!gasReportEnabled) return;
+    const gasUsed = BigInt(receipt.gasUsed ?? 0n);
+    const effectiveGasPrice = BigInt(receipt.effectiveGasPrice ?? 0n);
+    const l1Fee = receipt.l1Fee === undefined || receipt.l1Fee === null
+      ? 0n
+      : BigInt(receipt.l1Fee);
+    gasEntries.push({
+      label,
+      type,
+      transactionHash: String(receipt.transactionHash),
+      gasUsed: gasUsed.toString(),
+      effectiveGasPriceWei: effectiveGasPrice.toString(),
+      l1FeeWei: l1Fee.toString(),
+      nativeCostWei: (gasUsed * effectiveGasPrice + l1Fee).toString(),
+    });
+  }
+
+  if (gasReportEnabled) {
+    for (const [label, hash, expectedAddress] of [
+      ["ProtocolTreasury", resumeProtocolTreasuryTx, resumeProtocolTreasury],
+      ["DealLib", resumeDealLibTx, resumeDealLib],
+    ] as const) {
+      if (!hash) continue;
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error(`${label} resume transaction failed: ${hash}`);
+      if (expectedAddress && receipt.contractAddress?.toLowerCase() !== expectedAddress.toLowerCase()) {
+        throw new Error(`${label} resume transaction contract mismatch: ${receipt.contractAddress}`);
+      }
+      recordGas(label, "deployment", receipt);
+    }
+  }
 
   const admin = envAddress("MAINNET_ADMIN_ADDRESS", dep);
   const dInitialHolder = envAddress("MAINNET_D_INITIAL_HOLDER", dep);
-  const requestedTreasury = chainId === 56
-    ? optionalAddress("BSC_MAINNET_TREASURY_ADDRESS")
-    : optionalAddressFrom([chainId === 1 ? "ETH_MAINNET_TREASURY_ADDRESS" : "", "MAINNET_TREASURY_ADDRESS"].filter(Boolean));
+  const requestedTreasury = optionalAddressFrom(chainConfig.treasuryEnvKeys);
   const useProtocolTreasury = envBool("MAINNET_USE_PROTOCOL_TREASURY", true);
   const treasuryControllerInput = optionalAddress("MAINNET_TREASURY_CONTROLLER_ADDRESS");
   const lockTreasuryBootstrap = envBool("MAINNET_LOCK_TREASURY_BOOTSTRAP", false);
@@ -159,14 +320,15 @@ async function main() {
   const dividendSourceInput = optionalAddress("MAINNET_DIVIDEND_SOURCE");
   let treasury = requestedTreasury ?? dep;
 
-  const stable0 = optionalAddress("MAINNET_STABLE0_ADDRESS");
-  const stable1 = optionalAddress("MAINNET_STABLE1_ADDRESS");
+  const stable0 = optionalAddressFrom(chainConfig.stable0EnvKeys) ?? chainConfig.defaultStable0?.address;
+  const stable1 = optionalAddressFrom(chainConfig.stable1EnvKeys) ?? chainConfig.defaultStable1?.address;
   const deployMockStables = envBool("MAINNET_DEPLOY_MOCK_STABLES", false);
   if ((!stable0 || !stable1) && !deployMockStables) {
     throw new Error("Set MAINNET_STABLE0_ADDRESS and MAINNET_STABLE1_ADDRESS, or explicitly set MAINNET_DEPLOY_MOCK_STABLES=1");
   }
 
-  const wrappedNativeInput = optionalAddress("MAINNET_WRAPPED_NATIVE_ADDRESS");
+  const wrappedNativeInput = optionalAddressFrom(chainConfig.wrappedNativeEnvKeys)
+    ?? chainConfig.defaultWrappedNative?.address;
   const deployWrappedNative = envBool("MAINNET_DEPLOY_WRAPPED_NATIVE", false);
   if (!wrappedNativeInput && !deployWrappedNative) {
     throw new Error("Set MAINNET_WRAPPED_NATIVE_ADDRESS, or explicitly set MAINNET_DEPLOY_WRAPPED_NATIVE=1");
@@ -177,21 +339,101 @@ async function main() {
   const mintDcToDeployer = envBigInt("MAINNET_MINT_DC_TO_DEPLOYER", 0n);
   const activateMessageFee = envBool("MAINNET_MESSAGE_FEE_ENABLED", true);
 
+  if (stable0 && stable1 && stable0.toLowerCase() === stable1.toLowerCase()) {
+    throw new Error("stable0 and stable1 must be distinct assets");
+  }
+  if (chainId === BASE_MAINNET.chainId) {
+    if (!stable0 || !stable1 || !wrappedNativeInput) throw new Error("Base mainnet assets are incomplete");
+    await assertBaseMainnetAssets(publicClient, stable0, stable1, wrappedNativeInput);
+    if (!envBool("BASE_MAINNET_PROTOCOL_DEPLOY", false)) {
+      throw new Error("Base mainnet write gate closed: set BASE_MAINNET_PROTOCOL_DEPLOY=1 only after explicit authorization");
+    }
+  } else if (!deployMockStables && stable0 && stable1 && wrappedNativeInput) {
+    await Promise.all([
+      assertAssetContract(publicClient, "stable0", stable0),
+      assertAssetContract(publicClient, "stable1", stable1),
+      assertAssetContract(publicClient, "wrapped native", wrappedNativeInput),
+    ]);
+  }
+
   async function deploy(name: string, args: unknown[] = [], options: Record<string, unknown> = {}) {
+    const occurrence = (deploymentOccurrences.get(name) ?? 0) + 1;
+    deploymentOccurrences.set(name, occurrence);
+    const resumeKey = occurrence === 1 ? name : `${name}#${occurrence}`;
+    const resume = resumeDeployments[resumeKey];
+    if (resume) {
+      const address = getAddress(resume.address) as Address;
+      const receipt = await publicClient.getTransactionReceipt({ hash: resume.transactionHash });
+      if (receipt.status !== "success" || receipt.contractAddress?.toLowerCase() !== address.toLowerCase()) {
+        throw new Error(`${resumeKey} resume receipt mismatch`);
+      }
+      await waitForRuntimeCode(publicClient, address, resumeKey);
+      recordGas(name, "deployment", receipt);
+      const contract = await viem.getContractAt(name, address);
+      console.log(`${name}: ${address} (resumed from ${resume.transactionHash})`);
+      return contract as AnyContract;
+    }
+    if (gasReportEnabled) {
+      try {
+        const sent = await viem.sendDeploymentTransaction(name, args, { client, ...options });
+        const receipt = await waitFor(
+          publicClient,
+          sent.deploymentTransaction.hash,
+          `${name} deploy`,
+        );
+        recordGas(name, "deployment", receipt);
+        await waitForRuntimeCode(publicClient, sent.contract.address, name);
+        console.log(`${name}: ${sent.contract.address}`);
+        return sent.contract as AnyContract;
+      } catch (error) {
+        // Some public Base RPCs briefly return TransactionNotFound immediately
+        // after accepting a raw transaction. Never resend: wait for the already
+        // broadcast hash and recover the contract from its receipt instead.
+        const hash = recoverableBroadcastHash(error);
+        if (!hash) throw error;
+        console.log(`  ${name}: RPC lookup lag for ${hash}; waiting without resending`);
+        const receipt = await waitFor(publicClient, hash, `${name} deploy (recovered)`);
+        if (!receipt.contractAddress) throw new Error(`${name} recovery receipt has no contract address: ${hash}`);
+        recordGas(name, "deployment", receipt);
+        await waitForRuntimeCode(publicClient, receipt.contractAddress, name);
+        const contract = await viem.getContractAt(name, receipt.contractAddress);
+        console.log(`${name}: ${contract.address} (recovered)`);
+        return contract as AnyContract;
+      }
+    }
     const contract = await viem.deployContract(name, args, { client, ...options }) as AnyContract;
     console.log(`${name}: ${contract.address}`);
     return contract;
   }
 
   async function tx(label: string, hashPromise: Promise<`0x${string}`>) {
-    await waitFor(publicClient, await hashPromise, label);
+    const receipt = await waitFor(publicClient, await hashPromise, label);
+    recordGas(label, "setup", receipt);
   }
 
   let protocolTreasury: AnyContract | undefined;
   let protocolTreasuryController: Address = ZERO;
   if (useProtocolTreasury && !requestedTreasury) {
     protocolTreasuryController = treasuryControllerInput ?? dividendExecutorInput ?? dep;
-    protocolTreasury = await deploy("ProtocolTreasury", [protocolTreasuryController, dep]);
+    if (resumeProtocolTreasury) {
+      const code = await publicClient.getCode({ address: resumeProtocolTreasury });
+      if (!code || code === "0x") throw new Error("Resumed ProtocolTreasury has no runtime code");
+      protocolTreasury = await viem.getContractAt("ProtocolTreasury", resumeProtocolTreasury) as AnyContract;
+      const [controller, bootstrapAdmin, bootstrapLocked] = await Promise.all([
+        protocolTreasury.read.controller(),
+        protocolTreasury.read.bootstrapAdmin(),
+        protocolTreasury.read.bootstrapLocked(),
+      ]);
+      if (controller.toLowerCase() !== protocolTreasuryController.toLowerCase()) {
+        throw new Error(`Resumed ProtocolTreasury controller mismatch: ${controller}`);
+      }
+      if (bootstrapAdmin.toLowerCase() !== dep.toLowerCase() || bootstrapLocked) {
+        throw new Error("Resumed ProtocolTreasury bootstrap state mismatch");
+      }
+      console.log(`ProtocolTreasury: ${protocolTreasury.address} (resumed)`);
+    } else {
+      protocolTreasury = await deploy("ProtocolTreasury", [protocolTreasuryController, dep]);
+    }
     treasury = protocolTreasury.address;
     if (lockTreasuryBootstrap) {
       await tx("ProtocolTreasury.lockBootstrap", protocolTreasury.write.lockBootstrap());
@@ -219,7 +461,15 @@ async function main() {
   console.log(`Deploy DAO stack: ${deployDao}`);
 
   // Libraries + implementations.
-  const dealLib = await deploy("DealLib");
+  let dealLib: AnyContract;
+  if (resumeDealLib) {
+    const code = await publicClient.getCode({ address: resumeDealLib });
+    if (!code || code === "0x") throw new Error("Resumed DealLib has no runtime code");
+    dealLib = await viem.getContractAt("DealLib", resumeDealLib) as AnyContract;
+    console.log(`DealLib: ${dealLib.address} (resumed)`);
+  } else {
+    dealLib = await deploy("DealLib");
+  }
   const dealAssetNftLib = await deploy("DealAssetNftLib");
   const dealImpl = await deploy("Deal");
   const dealNoAssetImpl = await deploy("DealNoAsset", [], { libraries: { DealLib: dealLib.address } });
@@ -320,7 +570,14 @@ async function main() {
   async function createPair(label: string, token: Address, realDcEnv: string, realOtherEnv: string, virtualOtherEnv: string) {
     if (!createPairs) return ZERO;
     await tx(`PairManager.createPair(${label})`, dealPairManager.write.createPair([token, PAIR_FEE_NUM, PAIR_FEE_DEN]));
-    const pair = await dealPairManager.read.pairForToken([token]) as Address;
+    let pair = ZERO;
+    for (let attempt = 1; attempt <= 20; ++attempt) {
+      pair = await dealPairManager.read.pairForToken([token]) as Address;
+      if (pair !== ZERO) break;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
+    if (pair === ZERO) throw new Error(`${label} pair transaction succeeded but mapping is not visible yet`);
+    await waitForRuntimeCode(publicClient, pair, `${label} pair`);
     console.log(`${label} pair: ${pair}`);
     if (!initPairs) return pair;
     const realDc = envBigInt(realDcEnv);
@@ -468,11 +725,7 @@ async function main() {
   const out: DeploymentJson = {
     chainId,
     network: networkName,
-    rpcUrl: chainId === 1
-      ? process.env.ETH_MAINNET_RPC_URL
-      : chainId === 56
-        ? process.env.BSC_MAINNET_RPC_URL
-        : (process.env.ETH_MAINNET_RPC_URL ?? process.env.BSC_MAINNET_RPC_URL),
+    rpcUrl: firstEnv(chainConfig.rpcEnvKeys),
     deployedAt,
     deployer: dep,
     addresses,
@@ -550,7 +803,22 @@ async function main() {
     ],
   };
 
-  const dir = join(process.cwd(), "deployments");
+  if (gasReportEnabled) {
+    const totalGasUsed = gasEntries.reduce((sum, entry) => sum + BigInt(entry.gasUsed), 0n);
+    const totalL1FeeWei = gasEntries.reduce((sum, entry) => sum + BigInt(entry.l1FeeWei), 0n);
+    const totalNativeCostWei = gasEntries.reduce((sum, entry) => sum + BigInt(entry.nativeCostWei), 0n);
+    out.gasReport = {
+      entries: gasEntries,
+      totalGasUsed: totalGasUsed.toString(),
+      totalL1FeeWei: totalL1FeeWei.toString(),
+      totalNativeCostWei: totalNativeCostWei.toString(),
+      l1FeeAvailable: gasEntries.some((entry) => BigInt(entry.l1FeeWei) > 0n),
+    };
+    console.log("Gas report:", JSON.stringify(out.gasReport, null, 2));
+  }
+
+  const dir = process.env.MAINNET_DEPLOYMENT_OUTPUT_DIR?.trim()
+    || join(process.cwd(), "deployments");
   mkdirSync(dir, { recursive: true });
   mkdirSync(join(dir, "backups"), { recursive: true });
   const file = join(dir, `${networkName}-${chainId}.json`);
@@ -604,7 +872,7 @@ function renderHandoff(
 | DealPairManager | \`${addresses.dealPairManager}\` |
 | DealImplementationRegistry | \`${addresses.dealImplementationRegistry}\` |
 | DealCoin/DC | \`${addresses.dlToken}\` |
-| ProtocolTreasury / Treasury | \`${addresses.protocolTreasury ?? treasury}\` |
+| ProtocolTreasury / Treasury | \`${addresses.protocolTreasury ?? params.treasury}\` |
 | stable0 | \`${addresses.stable0}\` |
 | stable1 | \`${addresses.stable1}\` |
 | wrappedNative | \`${addresses.wrappedNative}\` |

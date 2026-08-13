@@ -1,0 +1,161 @@
+[
+  {
+    "name": "token-to-token-ordinary",
+    "template_type": 0,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 1,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealNoAssetImplementation"
+  },
+  {
+    "name": "token-to-token-fast",
+    "template_type": 0,
+    "open_fast": true,
+    "a_swap": 1,
+    "b_swap": 1,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealOpenTokenTokenImplementation"
+  },
+  {
+    "name": "token-to-nft-a-token",
+    "template_type": 1,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": true,
+    "valid": true,
+    "implementation_key": "dealBAssetNftImplementation"
+  },
+  {
+    "name": "token-to-nft-b-token",
+    "template_type": 1,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 1,
+    "a_asset": true,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealAAssetNftImplementation"
+  },
+  {
+    "name": "token-to-empty-a-token",
+    "template_type": 2,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealNoAssetImplementation"
+  },
+  {
+    "name": "token-to-empty-b-token",
+    "template_type": 2,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 1,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealNoAssetImplementation"
+  },
+  {
+    "name": "empty-to-empty",
+    "template_type": 3,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealNoAssetImplementation"
+  },
+  {
+    "name": "nft-to-empty-a-nft",
+    "template_type": 4,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 0,
+    "a_asset": true,
+    "b_asset": false,
+    "valid": true,
+    "implementation_key": "dealAAssetNftOnlyImplementation"
+  },
+  {
+    "name": "nft-to-empty-b-nft",
+    "template_type": 4,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": true,
+    "valid": true,
+    "implementation_key": "dealBAssetNftOnlyImplementation"
+  },
+  {
+    "name": "invalid-token-to-token-missing-b",
+    "template_type": 0,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": false
+  },
+  {
+    "name": "invalid-token-to-nft-two-tokens",
+    "template_type": 1,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 1,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": false
+  },
+  {
+    "name": "invalid-token-to-empty-two-tokens",
+    "template_type": 2,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 1,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": false
+  },
+  {
+    "name": "invalid-empty-to-empty-with-token",
+    "template_type": 3,
+    "open_fast": false,
+    "a_swap": 1,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": false
+  },
+  {
+    "name": "invalid-nft-to-empty-two-nfts",
+    "template_type": 4,
+    "open_fast": false,
+    "a_swap": 0,
+    "b_swap": 0,
+    "a_asset": true,
+    "b_asset": true,
+    "valid": false
+  },
+  {
+    "name": "invalid-fast-non-token-to-token",
+    "template_type": 3,
+    "open_fast": true,
+    "a_swap": 0,
+    "b_swap": 0,
+    "a_asset": false,
+    "b_asset": false,
+    "valid": false
+  }
+]

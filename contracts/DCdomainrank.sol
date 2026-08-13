@@ -734,8 +734,9 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
         uint256 pos    = _topDomainIdPos[tokenId]; // 1-based
 
         if (pos > 0) {
-            // Already in heap — volume increased → sift up (heap shrinks toward min at root)
-            _heapSiftUp(pos - 1);
+            // Already in heap. Trade volume only increases, so in a min-heap
+            // this node can only need to move away from the root.
+            _heapSiftDown(pos - 1);
         } else if (_topDomainIds.length < MAX_LEADERBOARD) {
             // Room available → append + sift up
             _topDomainIds.push(tokenId);
@@ -965,4 +966,3 @@ function _pendingConsumeDeal(string memory domainName, address deal, Player stor
     }
 
 }
-

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "stage": "executed",
+  "observedAt": "2026-08-12T08:22:12.534Z",
+  "proposalId": "24",
+  "transaction": {
+    "hash": "0xa4eb0bbfb97cd328c2fdbdf9963190c5e1fd5b3f821b463deba0e65965c7ad3a",
+    "sender": "0x14800e9a1a8b39fb84aa7fa4e6d7beb553cbf0fd",
+    "nonce": 50,
+    "blockNumber": "25737648",
+    "gasUsed": "271402",
+    "status": "success"
+  },
+  "verification": {
+    "finalState": 6,
+    "fiveRulesExact": true,
+    "bscProbeAllowed": false,
+    "bscFactoryAllowed": true,
+    "noBroadcast": true,
+    "externallyExecuted": true
+  }
+}

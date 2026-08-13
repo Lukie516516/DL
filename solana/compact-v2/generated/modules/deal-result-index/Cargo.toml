@@ -1,0 +1,53 @@
+[package]
+name = "deal-result-index"
+version = "0.1.0"
+description = "Paged reward and credit result discovery for Solana Deal"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "deal_result_index"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = [
+    "anchor-lang/idl-build",
+    "deal-core/idl-build",
+    "deal-finalizer/idl-build",
+    "deal-reward-engine/idl-build",
+]
+
+[dependencies]
+anchor-lang.workspace = true
+deal-core = { path = "../deal-core", features = ["no-entrypoint"] }
+deal-finalizer = { path = "../deal-finalizer", features = ["no-entrypoint"] }
+deal-reward-engine = { path = "../deal-reward-engine", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+bincode = "1.3"
+deal-asset-controller = { path = "../deal-asset-controller", features = ["no-entrypoint"] }
+deal-credit-graph = { path = "../deal-credit-graph", features = ["no-entrypoint"] }
+deal-credit-valuator = { path = "../deal-credit-valuator", features = ["no-entrypoint"] }
+deal-dc-controller = { path = "../deal-dc-controller", features = ["no-entrypoint"] }
+deal-dex-pair = { path = "../deal-dex-pair", features = ["no-entrypoint"] }
+deal-history-index = { path = "../deal-history-index", features = ["no-entrypoint"] }
+deal-identity = { path = "../deal-identity", features = ["no-entrypoint"] }
+deal-swap-asset-registry = { path = "../deal-swap-asset-registry", features = ["no-entrypoint"] }
+deal-terminal-guard = { path = "../../crates/deal-terminal-guard" }
+litesvm = "0.10.0"
+solana-account = "3.4.0"
+solana-address-lookup-table-interface = "3.0.1"
+solana-compute-budget-interface = "3.0.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-program-option = "3.1.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
+spl-token-interface = "2.0.0"
